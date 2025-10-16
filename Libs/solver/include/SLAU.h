@@ -1,2 +1,3 @@
 #pragma once
-auto gg = 0.0;
+
+double testing();
