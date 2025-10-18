@@ -16,7 +16,8 @@ solver
 add_executable(FEM src/main.cpp)
 
 target_include_directories(src PRIVATE
-    ${CMAKE_SOURCE_DIR}/Libs/solver/include  
+    ${CMAKE_SOURCE_DIR}/Libs/solver/include
+    ${CMAKE_SOURCE_DIR}/Libs/linalg/include 
 )
 target_link_libraries(FEM solver linalg)
 
