@@ -1,13 +1,13 @@
 file(GLOB SRC_HEADERS include/*.h)
 file(GLOB SRC_SOURCES src/*.cpp)
 
+set(CMAKE_SHOW_INCLUDES OFF)
+set(CMAKE_INCLUDE_CURRENT_DIR OFF)
 
 add_library(src)
 target_sources(src PUBLIC 
     src/main.cpp
 )
-
-
 
 target_link_libraries(src 
 linalg
