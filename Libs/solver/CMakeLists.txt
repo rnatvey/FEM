@@ -1,8 +1,6 @@
 file(GLOB SOLVER_HEADERS include/*.h)
 file(GLOB SOLVER_SOURCES src/*.cpp)
 
-set(CMAKE_SHOW_INCLUDES OFF)
-set(CMAKE_INCLUDE_CURRENT_DIR OFF)
 
 add_library(solver)
 target_sources(solver PUBLIC  

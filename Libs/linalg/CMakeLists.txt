@@ -2,8 +2,6 @@
 file(GLOB LINALG_HEADERS include/*.h)
 file(GLOB LINALG_SOURCES src/*.cpp)
 
-set(CMAKE_SHOW_INCLUDES OFF)
-set(CMAKE_INCLUDE_CURRENT_DIR OFF)
 
 add_library(linalg STATIC
     src/vector.cpp
