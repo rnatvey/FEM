@@ -7,7 +7,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR OFF)
 
 add_library(linalg STATIC
     src/vector.cpp
-)
+ "include/matrix.h")
 
 
 target_include_directories(linalg

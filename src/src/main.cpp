@@ -1,6 +1,7 @@
 #include <iostream>
 #include "slau.h"
 #include "vector.h"
+#include "matrix.h"
 
 int main()
 {
