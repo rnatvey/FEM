@@ -1,0 +1,16 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "D:/Dipl/FEM/3rdParty/eigen-5.0.0/unsupported/test/cxx11_tensor_striding.cpp"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"BuildUnsupported"
+		],
+		"name" : "cxx11_tensor_striding"
+	}
+}

@@ -2,6 +2,7 @@
 #include "slau.h"
 #include "vector.h"
 #include "matrix.h"
+#include <Eigen/Dense>
 
 int main()
 {

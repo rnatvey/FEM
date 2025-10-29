@@ -1,0 +1,16 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "D:/Dipl/FEM/3rdParty/eigen-5.0.0/test/geo_parametrizedline.cpp"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"BuildOfficial"
+		],
+		"name" : "geo_parametrizedline_1"
+	}
+}

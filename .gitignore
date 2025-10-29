@@ -2,3 +2,17 @@
 out/
 build/
 *.exe
+CmakeCache.txt
+CmakeFiles/cmake_install.cmake
+*.cmake
+!CmakeLists.txt
+Makefile
+*.cbp
+*.so
+*.so.*
+*.dylib
+*.a
+*.lib
+*.dll
+.DS_Store
+Thumbs.db

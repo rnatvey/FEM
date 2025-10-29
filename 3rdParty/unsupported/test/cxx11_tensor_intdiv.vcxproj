@@ -1,0 +1,205 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|x64">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|x64">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{53D8D1D3-BB8F-34FE-A34C-F6DB37A5A48A}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>cxx11_tensor_intdiv</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\test;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\unsupported;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\Eigen;D:\Dipl\FEM\3rdParty\unsupported\test\..\..\test;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\test;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\unsupported;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\Eigen;D:\Dipl\FEM\3rdParty\unsupported\test\..\..\test;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\test;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\unsupported;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\Eigen;D:\Dipl\FEM\3rdParty\unsupported\test\..\..\test;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\test;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\unsupported;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\Eigen;D:\Dipl\FEM\3rdParty\unsupported\test\..\..\test;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\CMakeLists.txt">
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule D:/Dipl/FEM/3rdParty/eigen-5.0.0/unsupported/test/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/Dipl/FEM/3rdParty/eigen-5.0.0 -BD:/Dipl/FEM/3rdParty --check-stamp-file D:/Dipl/FEM/3rdParty/unsupported/test/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Program Files\CMake\share\cmake-3.25\Modules\CMakeFindDependencyMacro.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckIncludeFile.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckLibraryExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA\select_compute_arch.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageHandleStandardArgs.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageMessage.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPkgConfig.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindThreads.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindAdolc.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindFFTW.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindGoogleHash.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindMPFR.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindMPREAL.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\Dipl\FEM\3rdParty\unsupported\test\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule D:/Dipl/FEM/3rdParty/eigen-5.0.0/unsupported/test/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/Dipl/FEM/3rdParty/eigen-5.0.0 -BD:/Dipl/FEM/3rdParty --check-stamp-file D:/Dipl/FEM/3rdParty/unsupported/test/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Program Files\CMake\share\cmake-3.25\Modules\CMakeFindDependencyMacro.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckIncludeFile.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckLibraryExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA\select_compute_arch.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageHandleStandardArgs.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageMessage.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPkgConfig.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindThreads.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindAdolc.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindFFTW.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindGoogleHash.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindMPFR.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindMPREAL.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\Dipl\FEM\3rdParty\unsupported\test\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule D:/Dipl/FEM/3rdParty/eigen-5.0.0/unsupported/test/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/Dipl/FEM/3rdParty/eigen-5.0.0 -BD:/Dipl/FEM/3rdParty --check-stamp-file D:/Dipl/FEM/3rdParty/unsupported/test/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Program Files\CMake\share\cmake-3.25\Modules\CMakeFindDependencyMacro.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckIncludeFile.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckLibraryExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA\select_compute_arch.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageHandleStandardArgs.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageMessage.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPkgConfig.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindThreads.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindAdolc.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindFFTW.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindGoogleHash.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindMPFR.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindMPREAL.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\Dipl\FEM\3rdParty\unsupported\test\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule D:/Dipl/FEM/3rdParty/eigen-5.0.0/unsupported/test/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/Dipl/FEM/3rdParty/eigen-5.0.0 -BD:/Dipl/FEM/3rdParty --check-stamp-file D:/Dipl/FEM/3rdParty/unsupported/test/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Program Files\CMake\share\cmake-3.25\Modules\CMakeFindDependencyMacro.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckIncludeFile.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckLibraryExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA\select_compute_arch.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageHandleStandardArgs.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageMessage.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPkgConfig.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindThreads.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindAdolc.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindFFTW.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindGoogleHash.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindMPFR.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindMPREAL.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\Dipl\FEM\3rdParty\unsupported\test\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\ZERO_CHECK.vcxproj">
+      <Project>{D4F226DF-9DFB-3F35-A70E-9CC7CC468D54}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_intdiv_1.vcxproj">
+      <Project>{4B8E7D7D-4BE1-3EF3-BC3F-000A5E37C139}</Project>
+      <Name>cxx11_tensor_intdiv_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_intdiv_2.vcxproj">
+      <Project>{5AA8CD85-121E-37FB-A5A3-39793DE37B33}</Project>
+      <Name>cxx11_tensor_intdiv_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_intdiv_3.vcxproj">
+      <Project>{5851AFD0-6D1D-3CD8-9A10-0AB97D9450BD}</Project>
+      <Name>cxx11_tensor_intdiv_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_intdiv_4.vcxproj">
+      <Project>{2E45B142-7B03-3D31-A907-91AF6DC42575}</Project>
+      <Name>cxx11_tensor_intdiv_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_intdiv_5.vcxproj">
+      <Project>{1910D032-5D8D-3ABE-ADA9-01A82587D46A}</Project>
+      <Name>cxx11_tensor_intdiv_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_intdiv_6.vcxproj">
+      <Project>{99460FD0-7708-3EDD-8106-C421DC127999}</Project>
+      <Name>cxx11_tensor_intdiv_6</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_intdiv_7.vcxproj">
+      <Project>{03499B61-872F-36AD-9925-5711B5E8917D}</Project>
+      <Name>cxx11_tensor_intdiv_7</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

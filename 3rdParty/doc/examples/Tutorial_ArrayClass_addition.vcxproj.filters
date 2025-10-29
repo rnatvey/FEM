@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\examples\Tutorial_ArrayClass_addition.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\examples\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{5FA07D0F-A243-3D95-9213-56F15977A5F7}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

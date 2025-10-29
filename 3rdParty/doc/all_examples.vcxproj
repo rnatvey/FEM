@@ -1,0 +1,461 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|x64">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|x64">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{3FCE4C49-3E79-3E47-925C-F3D964764C35}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>all_examples</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\CMakeLists.txt">
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule D:/Dipl/FEM/3rdParty/eigen-5.0.0/doc/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/Dipl/FEM/3rdParty/eigen-5.0.0 -BD:/Dipl/FEM/3rdParty --check-stamp-file D:/Dipl/FEM/3rdParty/doc/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\Doxyfile.in;D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\eigendoxy_footer.html.in;D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\eigendoxy_header.html.in;D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\eigendoxy_layout.xml.in;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\doc\eigendoxy_layout.xml.in;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\Dipl\FEM\3rdParty\doc\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule D:/Dipl/FEM/3rdParty/eigen-5.0.0/doc/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/Dipl/FEM/3rdParty/eigen-5.0.0 -BD:/Dipl/FEM/3rdParty --check-stamp-file D:/Dipl/FEM/3rdParty/doc/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\Doxyfile.in;D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\eigendoxy_footer.html.in;D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\eigendoxy_header.html.in;D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\eigendoxy_layout.xml.in;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\doc\eigendoxy_layout.xml.in;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\Dipl\FEM\3rdParty\doc\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule D:/Dipl/FEM/3rdParty/eigen-5.0.0/doc/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/Dipl/FEM/3rdParty/eigen-5.0.0 -BD:/Dipl/FEM/3rdParty --check-stamp-file D:/Dipl/FEM/3rdParty/doc/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\Doxyfile.in;D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\eigendoxy_footer.html.in;D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\eigendoxy_header.html.in;D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\eigendoxy_layout.xml.in;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\doc\eigendoxy_layout.xml.in;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\Dipl\FEM\3rdParty\doc\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule D:/Dipl/FEM/3rdParty/eigen-5.0.0/doc/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/Dipl/FEM/3rdParty/eigen-5.0.0 -BD:/Dipl/FEM/3rdParty --check-stamp-file D:/Dipl/FEM/3rdParty/doc/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\Doxyfile.in;D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\eigendoxy_footer.html.in;D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\eigendoxy_header.html.in;D:\Dipl\FEM\3rdParty\eigen-5.0.0\doc\eigendoxy_layout.xml.in;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\doc\eigendoxy_layout.xml.in;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\Dipl\FEM\3rdParty\doc\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\ZERO_CHECK.vcxproj">
+      <Project>{D4F226DF-9DFB-3F35-A70E-9CC7CC468D54}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\CustomizingEigen_Inheritance.vcxproj">
+      <Project>{89F36624-2E54-3D16-A6CB-99B5E800F24A}</Project>
+      <Name>CustomizingEigen_Inheritance</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Cwise_erf.vcxproj">
+      <Project>{0FBB7B49-B04F-3F9E-A9DE-61C2C00CCF41}</Project>
+      <Name>Cwise_erf</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Cwise_erfc.vcxproj">
+      <Project>{2E9F046A-F160-397E-A5D3-B800C4F0572B}</Project>
+      <Name>Cwise_erfc</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Cwise_lgamma.vcxproj">
+      <Project>{BCBA361A-5BEA-383B-80C7-43BE21210487}</Project>
+      <Name>Cwise_lgamma</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\DenseBase_middleCols_int.vcxproj">
+      <Project>{1B4BC542-CE79-3B8F-A9D0-5F9EE247A6C8}</Project>
+      <Name>DenseBase_middleCols_int</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\DenseBase_middleRows_int.vcxproj">
+      <Project>{ABEEF823-8D19-3DAB-B729-E9ED075F5587}</Project>
+      <Name>DenseBase_middleRows_int</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\DenseBase_template_int_middleCols.vcxproj">
+      <Project>{CDA8461E-AE44-38FE-9733-708C9B232AA2}</Project>
+      <Name>DenseBase_template_int_middleCols</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\DenseBase_template_int_middleRows.vcxproj">
+      <Project>{72A9153B-73CA-3179-8991-5325B9D1433D}</Project>
+      <Name>DenseBase_template_int_middleRows</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\QuickStart_example.vcxproj">
+      <Project>{6AE645D8-76C7-3369-9F69-81E8E3002D23}</Project>
+      <Name>QuickStart_example</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\QuickStart_example2_dynamic.vcxproj">
+      <Project>{D7D8FFE7-5AD3-324D-BA2C-969816FA63A4}</Project>
+      <Name>QuickStart_example2_dynamic</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\QuickStart_example2_fixed.vcxproj">
+      <Project>{E4761511-DC5E-3877-B846-4891CC07A35D}</Project>
+      <Name>QuickStart_example2_fixed</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\TemplateKeyword_flexible.vcxproj">
+      <Project>{10FE2DBA-0C79-34D6-898D-8F1780B4368B}</Project>
+      <Name>TemplateKeyword_flexible</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\TemplateKeyword_simple.vcxproj">
+      <Project>{A8AA4EE2-F6D3-3B95-B054-6B0D65088EA8}</Project>
+      <Name>TemplateKeyword_simple</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\TutorialInplaceLU.vcxproj">
+      <Project>{030A65DD-B75E-398A-AE50-94A783DF5387}</Project>
+      <Name>TutorialInplaceLU</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\TutorialLinAlgComputeTwice.vcxproj">
+      <Project>{4FCE14B8-FAEC-3405-90D6-630892CF43F7}</Project>
+      <Name>TutorialLinAlgComputeTwice</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\TutorialLinAlgExComputeSolveError.vcxproj">
+      <Project>{3414316B-FACC-345A-A31F-4B75E1731935}</Project>
+      <Name>TutorialLinAlgExComputeSolveError</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\TutorialLinAlgExSolveColPivHouseholderQR.vcxproj">
+      <Project>{19012F03-B88B-3DB4-9D3E-1E312C927B2F}</Project>
+      <Name>TutorialLinAlgExSolveColPivHouseholderQR</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\TutorialLinAlgExSolveLDLT.vcxproj">
+      <Project>{24D455FE-A177-3385-91B5-D27452F97870}</Project>
+      <Name>TutorialLinAlgExSolveLDLT</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\TutorialLinAlgInverseDeterminant.vcxproj">
+      <Project>{D7862857-05C0-3CF8-9C45-CFBA3726E6D3}</Project>
+      <Name>TutorialLinAlgInverseDeterminant</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\TutorialLinAlgRankRevealing.vcxproj">
+      <Project>{4147E455-F06D-3E39-8252-B76F25353E92}</Project>
+      <Name>TutorialLinAlgRankRevealing</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\TutorialLinAlgSVDSolve.vcxproj">
+      <Project>{DDAA1413-2D18-357D-8301-EE7F938539F3}</Project>
+      <Name>TutorialLinAlgSVDSolve</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\TutorialLinAlgSelfAdjointEigenSolver.vcxproj">
+      <Project>{13DA113B-C4EC-33E6-B440-82A5ACCAF8D6}</Project>
+      <Name>TutorialLinAlgSelfAdjointEigenSolver</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\TutorialLinAlgSetThreshold.vcxproj">
+      <Project>{D40DDA09-3E9A-311E-B655-C3C4AC8657C4}</Project>
+      <Name>TutorialLinAlgSetThreshold</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_ArrayClass_accessors.vcxproj">
+      <Project>{2C143833-9742-3B36-8017-223C1A4F8787}</Project>
+      <Name>Tutorial_ArrayClass_accessors</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_ArrayClass_addition.vcxproj">
+      <Project>{6BF18197-1A29-329C-8A29-C67C9EA6EEFD}</Project>
+      <Name>Tutorial_ArrayClass_addition</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_ArrayClass_cwise_other.vcxproj">
+      <Project>{3C723AE9-01F0-37BC-9624-C98C589B74B2}</Project>
+      <Name>Tutorial_ArrayClass_cwise_other</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_ArrayClass_interop.vcxproj">
+      <Project>{D5CB46B0-6299-36DF-BAA4-B86A9B2C12C5}</Project>
+      <Name>Tutorial_ArrayClass_interop</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_ArrayClass_interop_matrix.vcxproj">
+      <Project>{52260B26-A685-3DA7-946F-93FEE43D707D}</Project>
+      <Name>Tutorial_ArrayClass_interop_matrix</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_ArrayClass_mult.vcxproj">
+      <Project>{79079BB0-72E4-312B-8B9D-6E17A9321504}</Project>
+      <Name>Tutorial_ArrayClass_mult</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_BlockOperations_block_assignment.vcxproj">
+      <Project>{A1C947ED-7771-3B15-B2B4-6AA12343FF81}</Project>
+      <Name>Tutorial_BlockOperations_block_assignment</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_BlockOperations_colrow.vcxproj">
+      <Project>{9F7A0150-9E34-3DF2-AC94-BC8ABCA144F4}</Project>
+      <Name>Tutorial_BlockOperations_colrow</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_BlockOperations_corner.vcxproj">
+      <Project>{A33CB151-1F20-365F-AF61-FA2300C02A9E}</Project>
+      <Name>Tutorial_BlockOperations_corner</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_BlockOperations_print_block.vcxproj">
+      <Project>{CAF286ED-EDDF-36C0-8C49-6EE6B9CBF93D}</Project>
+      <Name>Tutorial_BlockOperations_print_block</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_BlockOperations_vector.vcxproj">
+      <Project>{741B7BC8-8CB9-3196-9DA2-90D8CFD1FD0D}</Project>
+      <Name>Tutorial_BlockOperations_vector</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_PartialLU_solve.vcxproj">
+      <Project>{49447CE4-9376-30F0-A353-93706F69A3D5}</Project>
+      <Name>Tutorial_PartialLU_solve</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_ReductionsVisitorsBroadcasting_broadcast_1nn.vcxproj">
+      <Project>{502179B5-F64F-376F-AA7E-6FCC7E0CBA53}</Project>
+      <Name>Tutorial_ReductionsVisitorsBroadcasting_broadcast_1nn</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_ReductionsVisitorsBroadcasting_broadcast_simple.vcxproj">
+      <Project>{59AA2E8C-AC03-3206-AE7C-09BA41512BEC}</Project>
+      <Name>Tutorial_ReductionsVisitorsBroadcasting_broadcast_simple</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_ReductionsVisitorsBroadcasting_broadcast_simple_rowwise.vcxproj">
+      <Project>{EE5B6E64-8215-3866-BA72-A571AA02E1EE}</Project>
+      <Name>Tutorial_ReductionsVisitorsBroadcasting_broadcast_simple_rowwise</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_ReductionsVisitorsBroadcasting_colwise.vcxproj">
+      <Project>{50108BE5-7604-3A39-BD36-371EB1856862}</Project>
+      <Name>Tutorial_ReductionsVisitorsBroadcasting_colwise</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_ReductionsVisitorsBroadcasting_maxnorm.vcxproj">
+      <Project>{17B326A8-9EE1-3EB2-B7B6-2FFA4BAEA4FE}</Project>
+      <Name>Tutorial_ReductionsVisitorsBroadcasting_maxnorm</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_ReductionsVisitorsBroadcasting_reductions_bool.vcxproj">
+      <Project>{AA520114-6717-34EB-BB27-AD847E34F036}</Project>
+      <Name>Tutorial_ReductionsVisitorsBroadcasting_reductions_bool</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_ReductionsVisitorsBroadcasting_reductions_norm.vcxproj">
+      <Project>{BE2E1AAA-21E8-3500-8AD6-2E826343EC3A}</Project>
+      <Name>Tutorial_ReductionsVisitorsBroadcasting_reductions_norm</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_ReductionsVisitorsBroadcasting_reductions_operatornorm.vcxproj">
+      <Project>{0D227EEE-7866-3C97-BD9F-4A6A03CE9449}</Project>
+      <Name>Tutorial_ReductionsVisitorsBroadcasting_reductions_operatornorm</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_ReductionsVisitorsBroadcasting_rowwise.vcxproj">
+      <Project>{07A71200-8530-3440-8E0D-8F1438DD71B4}</Project>
+      <Name>Tutorial_ReductionsVisitorsBroadcasting_rowwise</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_ReductionsVisitorsBroadcasting_visitors.vcxproj">
+      <Project>{00773EC7-0ED2-3725-881C-FD5C87B54ABE}</Project>
+      <Name>Tutorial_ReductionsVisitorsBroadcasting_visitors</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_simple_example_dynamic_size.vcxproj">
+      <Project>{771B2B9F-2FA4-3CBC-AA9E-8A11FFCEB6DC}</Project>
+      <Name>Tutorial_simple_example_dynamic_size</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\Tutorial_simple_example_fixed_size.vcxproj">
+      <Project>{45E86D42-4BBD-3EA5-991D-16096BB71D9E}</Project>
+      <Name>Tutorial_simple_example_fixed_size</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\class_Block.vcxproj">
+      <Project>{52FE3271-311F-3B88-966A-3908C02B72BA}</Project>
+      <Name>class_Block</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\class_CwiseBinaryOp.vcxproj">
+      <Project>{59D40CED-D209-3681-88B8-615297DD5C6C}</Project>
+      <Name>class_CwiseBinaryOp</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\class_CwiseUnaryOp.vcxproj">
+      <Project>{EC070978-42CA-3641-B3E6-0F0972A83714}</Project>
+      <Name>class_CwiseUnaryOp</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\class_CwiseUnaryOp_ptrfun.vcxproj">
+      <Project>{2E37C268-40A0-32FB-B7B5-06CB565D86DC}</Project>
+      <Name>class_CwiseUnaryOp_ptrfun</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\class_FixedBlock.vcxproj">
+      <Project>{08797F20-9054-395B-85CF-3196068F878B}</Project>
+      <Name>class_FixedBlock</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\class_FixedReshaped.vcxproj">
+      <Project>{097306B9-48FD-3EBF-B4A9-4681E45D83B4}</Project>
+      <Name>class_FixedReshaped</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\class_FixedVectorBlock.vcxproj">
+      <Project>{AF1DBEA2-9B17-34C0-B97C-022E63C5DA50}</Project>
+      <Name>class_FixedVectorBlock</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\class_Reshaped.vcxproj">
+      <Project>{1A379BD8-F9E4-30AB-87DD-E8668FBE7A2E}</Project>
+      <Name>class_Reshaped</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\class_VectorBlock.vcxproj">
+      <Project>{BB5D6BB5-39CE-32DE-84C3-DF928E8C46D6}</Project>
+      <Name>class_VectorBlock</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\function_taking_eigenbase.vcxproj">
+      <Project>{D5AC22D7-F81D-3A09-AE24-BB6815F1D642}</Project>
+      <Name>function_taking_eigenbase</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\function_taking_ref.vcxproj">
+      <Project>{CD126AC1-1E24-35E7-8041-23FAA5EFB1C4}</Project>
+      <Name>function_taking_ref</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\make_circulant.vcxproj">
+      <Project>{17B5939C-503C-3905-8838-86435B7324FC}</Project>
+      <Name>make_circulant</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\make_circulant2.vcxproj">
+      <Project>{B3F94AAC-8459-36CF-A3CD-D5AF27F1F292}</Project>
+      <Name>make_circulant2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\matrixfree_cg.vcxproj">
+      <Project>{EA2AAA34-9FE1-3445-B5F6-56733FE08438}</Project>
+      <Name>matrixfree_cg</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\nullary_indexing.vcxproj">
+      <Project>{225B4970-17E8-3F2C-AE2D-DF5BBF965333}</Project>
+      <Name>nullary_indexing</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\special_examples\random_cpp11.vcxproj">
+      <Project>{D62B916E-C377-314C-A0DE-4B82A1369078}</Project>
+      <Name>random_cpp11</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\tut_arithmetic_add_sub.vcxproj">
+      <Project>{F067CCED-3FFD-3FC0-8994-E42393C32765}</Project>
+      <Name>tut_arithmetic_add_sub</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\tut_arithmetic_dot_cross.vcxproj">
+      <Project>{348D8213-9BD5-3109-B95A-3608301BEA77}</Project>
+      <Name>tut_arithmetic_dot_cross</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\tut_arithmetic_matrix_mul.vcxproj">
+      <Project>{72DBC3A6-4893-32A9-9954-9CA4722FE9F7}</Project>
+      <Name>tut_arithmetic_matrix_mul</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\tut_arithmetic_redux_basic.vcxproj">
+      <Project>{02514A60-8CD8-37DA-9A8B-DA1A06D01A54}</Project>
+      <Name>tut_arithmetic_redux_basic</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\tut_arithmetic_scalar_mul_div.vcxproj">
+      <Project>{476357DD-D200-31C2-9C26-DA40C6D793EC}</Project>
+      <Name>tut_arithmetic_scalar_mul_div</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\tut_matrix_coefficient_accessors.vcxproj">
+      <Project>{27DF8A8C-D4E3-3EF5-9084-103A08BB2400}</Project>
+      <Name>tut_matrix_coefficient_accessors</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\tut_matrix_resize.vcxproj">
+      <Project>{E2AF8F9D-E982-3674-A567-D77506A6654F}</Project>
+      <Name>tut_matrix_resize</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\doc\examples\tut_matrix_resize_fixed_size.vcxproj">
+      <Project>{BA4BD115-E0DA-3C42-8144-8545636FF8AB}</Project>
+      <Name>tut_matrix_resize_fixed_size</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

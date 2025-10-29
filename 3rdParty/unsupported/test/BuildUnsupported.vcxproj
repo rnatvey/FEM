@@ -1,0 +1,1073 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|x64">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|x64">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{5EEF2255-D3CB-37E0-A0E8-2405323A71FC}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>BuildUnsupported</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\test;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\unsupported;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\Eigen;D:\Dipl\FEM\3rdParty\unsupported\test\..\..\test;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\test;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\unsupported;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\Eigen;D:\Dipl\FEM\3rdParty\unsupported\test\..\..\test;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\test;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\unsupported;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\Eigen;D:\Dipl\FEM\3rdParty\unsupported\test\..\..\test;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\test;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\unsupported;D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\..\..\Eigen;D:\Dipl\FEM\3rdParty\unsupported\test\..\..\test;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\Dipl\FEM\3rdParty\eigen-5.0.0\unsupported\test\CMakeLists.txt">
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule D:/Dipl/FEM/3rdParty/eigen-5.0.0/unsupported/test/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/Dipl/FEM/3rdParty/eigen-5.0.0 -BD:/Dipl/FEM/3rdParty --check-stamp-file D:/Dipl/FEM/3rdParty/unsupported/test/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Program Files\CMake\share\cmake-3.25\Modules\CMakeFindDependencyMacro.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckIncludeFile.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckLibraryExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA\select_compute_arch.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageHandleStandardArgs.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageMessage.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPkgConfig.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindThreads.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindAdolc.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindFFTW.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindGoogleHash.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindMPFR.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindMPREAL.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\Dipl\FEM\3rdParty\unsupported\test\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule D:/Dipl/FEM/3rdParty/eigen-5.0.0/unsupported/test/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/Dipl/FEM/3rdParty/eigen-5.0.0 -BD:/Dipl/FEM/3rdParty --check-stamp-file D:/Dipl/FEM/3rdParty/unsupported/test/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Program Files\CMake\share\cmake-3.25\Modules\CMakeFindDependencyMacro.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckIncludeFile.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckLibraryExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA\select_compute_arch.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageHandleStandardArgs.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageMessage.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPkgConfig.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindThreads.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindAdolc.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindFFTW.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindGoogleHash.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindMPFR.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindMPREAL.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\Dipl\FEM\3rdParty\unsupported\test\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule D:/Dipl/FEM/3rdParty/eigen-5.0.0/unsupported/test/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/Dipl/FEM/3rdParty/eigen-5.0.0 -BD:/Dipl/FEM/3rdParty --check-stamp-file D:/Dipl/FEM/3rdParty/unsupported/test/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Program Files\CMake\share\cmake-3.25\Modules\CMakeFindDependencyMacro.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckIncludeFile.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckLibraryExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA\select_compute_arch.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageHandleStandardArgs.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageMessage.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPkgConfig.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindThreads.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindAdolc.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindFFTW.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindGoogleHash.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindMPFR.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindMPREAL.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\Dipl\FEM\3rdParty\unsupported\test\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule D:/Dipl/FEM/3rdParty/eigen-5.0.0/unsupported/test/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/Dipl/FEM/3rdParty/eigen-5.0.0 -BD:/Dipl/FEM/3rdParty --check-stamp-file D:/Dipl/FEM/3rdParty/unsupported/test/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Program Files\CMake\share\cmake-3.25\Modules\CMakeFindDependencyMacro.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckIncludeFile.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckLibraryExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA\select_compute_arch.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageHandleStandardArgs.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageMessage.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPkgConfig.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindThreads.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindAdolc.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindFFTW.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindGoogleHash.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindMPFR.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindMPREAL.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\Dipl\FEM\3rdParty\unsupported\test\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\ZERO_CHECK.vcxproj">
+      <Project>{D4F226DF-9DFB-3F35-A70E-9CC7CC468D54}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\BVH_1.vcxproj">
+      <Project>{ED9F3A19-9EE3-39D4-92EB-7A48D42BC30E}</Project>
+      <Name>BVH_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\BVH_2.vcxproj">
+      <Project>{8D944CD6-CF00-3E1F-94C3-D84B595C63C2}</Project>
+      <Name>BVH_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\BVH_3.vcxproj">
+      <Project>{5D1C3C8C-D102-3B36-AA5C-2B7559B45D19}</Project>
+      <Name>BVH_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\EulerAngles_1.vcxproj">
+      <Project>{F55840E2-EF5F-337A-870D-1EBC5E29B86C}</Project>
+      <Name>EulerAngles_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\EulerAngles_2.vcxproj">
+      <Project>{D44F62B9-65D0-3E52-89F7-CE46AA680F34}</Project>
+      <Name>EulerAngles_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\EulerAngles_3.vcxproj">
+      <Project>{A8093965-0CC0-3F50-BF10-1287993A96F2}</Project>
+      <Name>EulerAngles_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\EulerAngles_4.vcxproj">
+      <Project>{29EB3ECD-89F5-38DA-8064-F23E76ED0D2B}</Project>
+      <Name>EulerAngles_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\FFT.vcxproj">
+      <Project>{E6061851-2CDD-3BB3-AD0A-C65F363B7227}</Project>
+      <Name>FFT</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\NNLS_1.vcxproj">
+      <Project>{2882E636-6D64-329D-9DE3-E8545474C806}</Project>
+      <Name>NNLS_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\NNLS_2.vcxproj">
+      <Project>{36E2E144-308A-3BD6-960B-A5F3F51C09A4}</Project>
+      <Name>NNLS_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\NNLS_3.vcxproj">
+      <Project>{C101442A-CFE1-3C95-8346-1F96F4DB381C}</Project>
+      <Name>NNLS_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\NNLS_4.vcxproj">
+      <Project>{8D45F0BD-78AC-337C-9B30-653E2D6CDC3D}</Project>
+      <Name>NNLS_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\NNLS_5.vcxproj">
+      <Project>{84B01C7C-1AAC-38EE-A065-2CA6D306587D}</Project>
+      <Name>NNLS_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\NNLS_6.vcxproj">
+      <Project>{A5EDEBA3-1890-3858-9403-C89B5F246186}</Project>
+      <Name>NNLS_6</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\NNLS_7.vcxproj">
+      <Project>{B8A29F4A-64D5-38BE-BA93-EE4351F3304B}</Project>
+      <Name>NNLS_7</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\NNLS_8.vcxproj">
+      <Project>{72D3E8BF-2216-3707-8D8D-339514375972}</Project>
+      <Name>NNLS_8</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\NonLinearOptimization.vcxproj">
+      <Project>{2D2DED0F-95A8-3C99-96AE-8AD9703434C8}</Project>
+      <Name>NonLinearOptimization</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\NumericalDiff.vcxproj">
+      <Project>{E0287F4A-640C-32F2-96B3-CE423002F7C5}</Project>
+      <Name>NumericalDiff</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\alignedvector3.vcxproj">
+      <Project>{E1A01D56-BD0E-3895-8855-2D8736F339B9}</Project>
+      <Name>alignedvector3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\autodiff_1.vcxproj">
+      <Project>{00D5E200-4CB1-39E7-9661-266BF092BEFE}</Project>
+      <Name>autodiff_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\autodiff_2.vcxproj">
+      <Project>{47045F9C-192D-369D-B5FB-E743B3848915}</Project>
+      <Name>autodiff_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\autodiff_3.vcxproj">
+      <Project>{9982CF57-0737-314B-BA8F-7E62BBCFB3BD}</Project>
+      <Name>autodiff_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\autodiff_4.vcxproj">
+      <Project>{B48F101D-2F3A-37A4-8E58-2AE930F57170}</Project>
+      <Name>autodiff_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\autodiff_5.vcxproj">
+      <Project>{B9B1265F-95C3-3D01-83FE-91C4ADF2CF86}</Project>
+      <Name>autodiff_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\autodiff_scalar_1.vcxproj">
+      <Project>{DD5CFCB8-2139-3015-8F6D-E6F87FE1D46B}</Project>
+      <Name>autodiff_scalar_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\autodiff_scalar_2.vcxproj">
+      <Project>{2F7388F7-896B-331B-A38D-442E2622DBC5}</Project>
+      <Name>autodiff_scalar_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\autodiff_scalar_3.vcxproj">
+      <Project>{E4A7F4EF-1E8F-3B04-86C1-CF7B60B1A64A}</Project>
+      <Name>autodiff_scalar_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\autodiff_scalar_4.vcxproj">
+      <Project>{DCD9D8FC-ACB9-3284-8C2B-A96E5B2EEA3F}</Project>
+      <Name>autodiff_scalar_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\autodiff_scalar_5.vcxproj">
+      <Project>{7E407A8E-BD4F-3B90-9F40-FFE3E66D3D72}</Project>
+      <Name>autodiff_scalar_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\bessel_functions_1.vcxproj">
+      <Project>{920EAFD4-4DE6-3DAC-A7C9-71F55AD1AA90}</Project>
+      <Name>bessel_functions_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\bessel_functions_2.vcxproj">
+      <Project>{45B69DC2-88AA-3C4E-925D-5AED58BCFAAC}</Project>
+      <Name>bessel_functions_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\bicgstabl_1.vcxproj">
+      <Project>{D724A14F-EB03-3995-8416-E28373D6F71A}</Project>
+      <Name>bicgstabl_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\bicgstabl_2.vcxproj">
+      <Project>{31AC8FF1-F6EB-345B-AC2E-0415F7E3E6EA}</Project>
+      <Name>bicgstabl_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_argmax.vcxproj">
+      <Project>{8A33E8A1-BED9-374B-AB01-E9B9CB89AF08}</Project>
+      <Name>cxx11_tensor_argmax</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_assign.vcxproj">
+      <Project>{33227E61-E93F-3E0E-A58A-57F5711BD1EB}</Project>
+      <Name>cxx11_tensor_assign</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_block_access.vcxproj">
+      <Project>{4302D280-D7C5-3788-AF4C-D5A49C198BF9}</Project>
+      <Name>cxx11_tensor_block_access</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_block_eval_1.vcxproj">
+      <Project>{307782DB-8647-397E-9B66-A2968F6C965D}</Project>
+      <Name>cxx11_tensor_block_eval_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_block_eval_2.vcxproj">
+      <Project>{C0BE86A7-7409-3A56-B8C3-B0A7F29EA1A2}</Project>
+      <Name>cxx11_tensor_block_eval_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_block_eval_3.vcxproj">
+      <Project>{AC049077-5227-3E39-81A2-DEBC54C8939D}</Project>
+      <Name>cxx11_tensor_block_eval_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_block_eval_4.vcxproj">
+      <Project>{2FBCF093-415F-3688-A1EE-958FE0934ED2}</Project>
+      <Name>cxx11_tensor_block_eval_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_block_eval_5.vcxproj">
+      <Project>{050F5856-CBFD-3673-A142-17D5D1983886}</Project>
+      <Name>cxx11_tensor_block_eval_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_block_eval_6.vcxproj">
+      <Project>{CF523EA2-A468-36F0-B8C0-607CDB5C1D35}</Project>
+      <Name>cxx11_tensor_block_eval_6</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_block_eval_7.vcxproj">
+      <Project>{55A2036D-A587-3DEA-8637-4B9E96443ECC}</Project>
+      <Name>cxx11_tensor_block_eval_7</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_block_eval_8.vcxproj">
+      <Project>{4C338A60-0CF6-3094-9B82-D021460B5E0A}</Project>
+      <Name>cxx11_tensor_block_eval_8</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_block_io.vcxproj">
+      <Project>{A3FC95C5-F684-3BA1-A625-9782196D2EE7}</Project>
+      <Name>cxx11_tensor_block_io</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_broadcasting.vcxproj">
+      <Project>{A2F93B89-1B46-3751-B0CB-C0EABA86AB97}</Project>
+      <Name>cxx11_tensor_broadcasting</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_casts.vcxproj">
+      <Project>{FF13D46F-D6F1-3C7A-A65C-EAB1E868AB90}</Project>
+      <Name>cxx11_tensor_casts</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_chipping.vcxproj">
+      <Project>{D8CA8448-1559-388B-98DF-4FCAC99B6271}</Project>
+      <Name>cxx11_tensor_chipping</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_comparisons.vcxproj">
+      <Project>{8A8D4D33-559D-3710-B326-EE9E2EA3C596}</Project>
+      <Name>cxx11_tensor_comparisons</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_concatenation.vcxproj">
+      <Project>{007C65D4-3FAA-3AD6-8006-80CB6F3A5C68}</Project>
+      <Name>cxx11_tensor_concatenation</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_const.vcxproj">
+      <Project>{F27F5055-7E34-380E-B077-DDFD1A74EA10}</Project>
+      <Name>cxx11_tensor_const</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_contraction_1.vcxproj">
+      <Project>{CA6D2358-0FFB-3934-88AC-05D4ABD2B7A2}</Project>
+      <Name>cxx11_tensor_contraction_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_contraction_2.vcxproj">
+      <Project>{2DA2EC1F-6EE5-3BB5-AE5F-8441457C79A8}</Project>
+      <Name>cxx11_tensor_contraction_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_contraction_3.vcxproj">
+      <Project>{BDFD9669-ACF1-3253-AAAD-C30EB1ACBEC5}</Project>
+      <Name>cxx11_tensor_contraction_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_contraction_4.vcxproj">
+      <Project>{2AED3FB9-CA38-3E9B-9A7F-1F29A87D7461}</Project>
+      <Name>cxx11_tensor_contraction_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_contraction_5.vcxproj">
+      <Project>{337B3B0D-4BC8-3EC0-9E68-B3E9852BCFBE}</Project>
+      <Name>cxx11_tensor_contraction_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_contraction_6.vcxproj">
+      <Project>{A4DE3589-C201-3344-823E-BEE05D7EF72E}</Project>
+      <Name>cxx11_tensor_contraction_6</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_contraction_7.vcxproj">
+      <Project>{1856640D-DF48-3A54-8E81-F6EABBC3AAAA}</Project>
+      <Name>cxx11_tensor_contraction_7</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_contraction_8.vcxproj">
+      <Project>{049293DB-9E21-3159-8F0C-E362FA45892D}</Project>
+      <Name>cxx11_tensor_contraction_8</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_convolution.vcxproj">
+      <Project>{771503CD-93C3-374F-8FAE-B7372D85AC5A}</Project>
+      <Name>cxx11_tensor_convolution</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_custom_index.vcxproj">
+      <Project>{9F8B4CE3-41EE-3D43-81D2-CDF2E2A2143E}</Project>
+      <Name>cxx11_tensor_custom_index</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_custom_op.vcxproj">
+      <Project>{FE2BEDC5-F73E-3ABE-AF77-5B49B84044AF}</Project>
+      <Name>cxx11_tensor_custom_op</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_dimension.vcxproj">
+      <Project>{0394CD35-966B-3C6D-8FC2-759A0A6F6055}</Project>
+      <Name>cxx11_tensor_dimension</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_empty.vcxproj">
+      <Project>{68C72D8A-EB2C-3A87-9564-5D70008DC616}</Project>
+      <Name>cxx11_tensor_empty</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_executor_1.vcxproj">
+      <Project>{1B9CE943-611D-3895-B289-75CDED4F3B0F}</Project>
+      <Name>cxx11_tensor_executor_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_executor_10.vcxproj">
+      <Project>{0623C221-C0F4-3109-A2DB-CD745B448966}</Project>
+      <Name>cxx11_tensor_executor_10</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_executor_11.vcxproj">
+      <Project>{1E4EA850-C614-392B-9142-9DA5AB78F14E}</Project>
+      <Name>cxx11_tensor_executor_11</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_executor_12.vcxproj">
+      <Project>{5AC9A797-8C24-39A3-A4BD-D4C8D8B34184}</Project>
+      <Name>cxx11_tensor_executor_12</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_executor_13.vcxproj">
+      <Project>{9126022B-E654-3F20-B711-27CB6B6C8DFB}</Project>
+      <Name>cxx11_tensor_executor_13</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_executor_14.vcxproj">
+      <Project>{4136945D-386B-3C76-8863-A7B6F0340FF7}</Project>
+      <Name>cxx11_tensor_executor_14</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_executor_15.vcxproj">
+      <Project>{42D7133B-D9B7-350B-BE94-28F04209D17E}</Project>
+      <Name>cxx11_tensor_executor_15</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_executor_16.vcxproj">
+      <Project>{37D87E43-3519-3C43-A1A1-ACB0E13729E6}</Project>
+      <Name>cxx11_tensor_executor_16</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_executor_2.vcxproj">
+      <Project>{26C9A792-DA5E-37AB-A566-98847C4CDBB9}</Project>
+      <Name>cxx11_tensor_executor_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_executor_3.vcxproj">
+      <Project>{9C23BDA7-6832-306D-819D-5FD9B176B2DD}</Project>
+      <Name>cxx11_tensor_executor_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_executor_4.vcxproj">
+      <Project>{AF35A648-A43B-3224-8321-7E0E159C7309}</Project>
+      <Name>cxx11_tensor_executor_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_executor_5.vcxproj">
+      <Project>{DA94DFBD-627C-352C-811D-13EBB6BE6585}</Project>
+      <Name>cxx11_tensor_executor_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_executor_6.vcxproj">
+      <Project>{C2F9D0F7-FC51-37D9-8B27-8A1B50258CE6}</Project>
+      <Name>cxx11_tensor_executor_6</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_executor_7.vcxproj">
+      <Project>{1D233F52-252E-3BD7-95B7-FAE87930C7A4}</Project>
+      <Name>cxx11_tensor_executor_7</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_executor_8.vcxproj">
+      <Project>{BF345E9C-A3D5-3E19-BCE5-BECC7D88C1A4}</Project>
+      <Name>cxx11_tensor_executor_8</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_executor_9.vcxproj">
+      <Project>{BFDF58B0-25C9-3CA8-A4B5-58392760E137}</Project>
+      <Name>cxx11_tensor_executor_9</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_expr.vcxproj">
+      <Project>{A6C27629-0DEC-338C-80D8-D3B9AD035EC7}</Project>
+      <Name>cxx11_tensor_expr</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_fft.vcxproj">
+      <Project>{1F6C30AD-B0E1-3D52-8208-16D8EC7D5ACB}</Project>
+      <Name>cxx11_tensor_fft</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_fixed_size.vcxproj">
+      <Project>{81E14CF3-B384-3E92-8C00-9D160ADDB93F}</Project>
+      <Name>cxx11_tensor_fixed_size</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_forced_eval.vcxproj">
+      <Project>{FEE2B2A8-D0DC-3808-AF65-D9EC3923E5E7}</Project>
+      <Name>cxx11_tensor_forced_eval</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_generator.vcxproj">
+      <Project>{C45DBE96-9B87-3707-B0E8-01A5052F42CD}</Project>
+      <Name>cxx11_tensor_generator</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_ifft.vcxproj">
+      <Project>{5769F2B3-65FF-3C9A-AAAC-16115E504D5A}</Project>
+      <Name>cxx11_tensor_ifft</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_image_patch_1.vcxproj">
+      <Project>{9C7A81C6-01F3-34B7-BB20-1517D7DD01AA}</Project>
+      <Name>cxx11_tensor_image_patch_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_image_patch_2.vcxproj">
+      <Project>{7D945808-80AD-38F6-B946-530301A2DADE}</Project>
+      <Name>cxx11_tensor_image_patch_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_image_patch_3.vcxproj">
+      <Project>{D74F15CA-FC96-3E05-8750-42FDC8B74B20}</Project>
+      <Name>cxx11_tensor_image_patch_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_image_patch_4.vcxproj">
+      <Project>{3536D3A5-389E-3512-AFC2-ACAA3094123F}</Project>
+      <Name>cxx11_tensor_image_patch_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_image_patch_5.vcxproj">
+      <Project>{37BB7F7E-EF40-3094-9D44-20E48F831BA0}</Project>
+      <Name>cxx11_tensor_image_patch_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_image_patch_6.vcxproj">
+      <Project>{23D14328-5940-36B2-BFA7-D2EC9266E12A}</Project>
+      <Name>cxx11_tensor_image_patch_6</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_image_patch_7.vcxproj">
+      <Project>{CA5A6547-72B4-35C7-92E0-7499865D8120}</Project>
+      <Name>cxx11_tensor_image_patch_7</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_index_list.vcxproj">
+      <Project>{B59277D1-90F1-398A-B923-4CFB8945A46C}</Project>
+      <Name>cxx11_tensor_index_list</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_inflation.vcxproj">
+      <Project>{D8CA0554-B19A-3050-9B5B-14ADC7C911B8}</Project>
+      <Name>cxx11_tensor_inflation</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_intdiv_1.vcxproj">
+      <Project>{4B8E7D7D-4BE1-3EF3-BC3F-000A5E37C139}</Project>
+      <Name>cxx11_tensor_intdiv_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_intdiv_2.vcxproj">
+      <Project>{5AA8CD85-121E-37FB-A5A3-39793DE37B33}</Project>
+      <Name>cxx11_tensor_intdiv_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_intdiv_3.vcxproj">
+      <Project>{5851AFD0-6D1D-3CD8-9A10-0AB97D9450BD}</Project>
+      <Name>cxx11_tensor_intdiv_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_intdiv_4.vcxproj">
+      <Project>{2E45B142-7B03-3D31-A907-91AF6DC42575}</Project>
+      <Name>cxx11_tensor_intdiv_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_intdiv_5.vcxproj">
+      <Project>{1910D032-5D8D-3ABE-ADA9-01A82587D46A}</Project>
+      <Name>cxx11_tensor_intdiv_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_intdiv_6.vcxproj">
+      <Project>{99460FD0-7708-3EDD-8106-C421DC127999}</Project>
+      <Name>cxx11_tensor_intdiv_6</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_intdiv_7.vcxproj">
+      <Project>{03499B61-872F-36AD-9925-5711B5E8917D}</Project>
+      <Name>cxx11_tensor_intdiv_7</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_io.vcxproj">
+      <Project>{C8BA219E-ECD5-3A4E-9485-8206915DD933}</Project>
+      <Name>cxx11_tensor_io</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_layout_swap.vcxproj">
+      <Project>{F15CC16A-9F63-319D-A2DA-B91812FFC0D9}</Project>
+      <Name>cxx11_tensor_layout_swap</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_lvalue.vcxproj">
+      <Project>{55DE37A0-F7AB-37ED-80FF-AB0093CE07B5}</Project>
+      <Name>cxx11_tensor_lvalue</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_map.vcxproj">
+      <Project>{30F4D2D8-33E8-3868-8C60-72BBC65C2D40}</Project>
+      <Name>cxx11_tensor_map</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_math.vcxproj">
+      <Project>{9D2A27C1-2A8E-3BD0-87C0-36AB9483C621}</Project>
+      <Name>cxx11_tensor_math</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_mixed_indices.vcxproj">
+      <Project>{56933667-7FED-3906-A6A5-BC0AD527C364}</Project>
+      <Name>cxx11_tensor_mixed_indices</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_morphing_1.vcxproj">
+      <Project>{905BBF70-B2AD-3E07-BFA5-3436D734FD63}</Project>
+      <Name>cxx11_tensor_morphing_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_move.vcxproj">
+      <Project>{06EF4B2D-2B93-37A5-94D1-AF177EB162AD}</Project>
+      <Name>cxx11_tensor_move</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_notification.vcxproj">
+      <Project>{3548A2C5-56F1-3BC8-A456-21DE9071AD9D}</Project>
+      <Name>cxx11_tensor_notification</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_of_complex.vcxproj">
+      <Project>{F9803A62-E419-3058-A429-0DF09D205F4A}</Project>
+      <Name>cxx11_tensor_of_complex</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_of_const_values.vcxproj">
+      <Project>{2166BF2C-3237-30EA-B09D-C7A5828A1759}</Project>
+      <Name>cxx11_tensor_of_const_values</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_of_strings.vcxproj">
+      <Project>{7E3B3B92-6C62-3D01-B624-C8D4AC85EBCA}</Project>
+      <Name>cxx11_tensor_of_strings</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_padding.vcxproj">
+      <Project>{12C905F8-874C-300F-8EFC-3549189420D7}</Project>
+      <Name>cxx11_tensor_padding</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_patch.vcxproj">
+      <Project>{B74DD86D-7D52-397F-959D-1900B0600F40}</Project>
+      <Name>cxx11_tensor_patch</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_random.vcxproj">
+      <Project>{E99908FA-E307-3E67-9CF8-61234FA6495F}</Project>
+      <Name>cxx11_tensor_random</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_reduction.vcxproj">
+      <Project>{A4C97F33-DC8D-3A3B-AAC7-88F7BF420F91}</Project>
+      <Name>cxx11_tensor_reduction</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_ref.vcxproj">
+      <Project>{66E7BDBC-5CD9-3E02-9C4F-F443110A4DD7}</Project>
+      <Name>cxx11_tensor_ref</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_reverse.vcxproj">
+      <Project>{B7640505-C600-3121-AF1B-71FCAACAABA3}</Project>
+      <Name>cxx11_tensor_reverse</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_roll.vcxproj">
+      <Project>{0D100C00-746E-36EA-BA23-9804CCC8812A}</Project>
+      <Name>cxx11_tensor_roll</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_roundings.vcxproj">
+      <Project>{EED6070F-2B50-3A94-8670-2312899AF63C}</Project>
+      <Name>cxx11_tensor_roundings</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_scan.vcxproj">
+      <Project>{0C96BB88-35BD-3A0D-9AA8-798CC3767124}</Project>
+      <Name>cxx11_tensor_scan</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_shuffling.vcxproj">
+      <Project>{95C480E5-0F1F-31E0-B6C4-A7B7D74AF256}</Project>
+      <Name>cxx11_tensor_shuffling</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_simple.vcxproj">
+      <Project>{183E7F59-E9AD-3FB7-A35D-4D08FB894762}</Project>
+      <Name>cxx11_tensor_simple</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_striding.vcxproj">
+      <Project>{7A5C9B94-16AF-3436-AA68-E8260A5E7909}</Project>
+      <Name>cxx11_tensor_striding</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_sugar.vcxproj">
+      <Project>{DF1D8F56-CDE6-34BD-8E82-45435D35500D}</Project>
+      <Name>cxx11_tensor_sugar</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_thread_local.vcxproj">
+      <Project>{A7377948-033F-3BDB-A2F9-BD79EB59A0DD}</Project>
+      <Name>cxx11_tensor_thread_local</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_thread_pool_1.vcxproj">
+      <Project>{1BC66EDA-486A-3909-90E7-0D4BDBD2195C}</Project>
+      <Name>cxx11_tensor_thread_pool_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_thread_pool_10.vcxproj">
+      <Project>{80D547B5-5FC6-370B-961E-F99F362014B4}</Project>
+      <Name>cxx11_tensor_thread_pool_10</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_thread_pool_11.vcxproj">
+      <Project>{49C364A4-8E20-3E2E-9095-99C9D3545CC9}</Project>
+      <Name>cxx11_tensor_thread_pool_11</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_thread_pool_12.vcxproj">
+      <Project>{4F7F2F39-5E34-38BF-8315-EFF1F9560C40}</Project>
+      <Name>cxx11_tensor_thread_pool_12</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_thread_pool_13.vcxproj">
+      <Project>{CBE84D58-B163-363E-A64E-07A1FF52CBC7}</Project>
+      <Name>cxx11_tensor_thread_pool_13</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_thread_pool_2.vcxproj">
+      <Project>{46AA1D42-3BC1-3FB7-8E6F-6E313CBBA297}</Project>
+      <Name>cxx11_tensor_thread_pool_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_thread_pool_3.vcxproj">
+      <Project>{8B3D70E6-790A-35CE-A65B-B4391FDC3292}</Project>
+      <Name>cxx11_tensor_thread_pool_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_thread_pool_4.vcxproj">
+      <Project>{0557E75B-8FB0-34E1-BF33-CA324DF7D4A4}</Project>
+      <Name>cxx11_tensor_thread_pool_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_thread_pool_5.vcxproj">
+      <Project>{224AB828-6494-3ACE-83E0-D449803B1F65}</Project>
+      <Name>cxx11_tensor_thread_pool_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_thread_pool_6.vcxproj">
+      <Project>{FD0368E6-3BE1-3A6C-98AB-3155387B98C9}</Project>
+      <Name>cxx11_tensor_thread_pool_6</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_thread_pool_7.vcxproj">
+      <Project>{BCF0A015-263E-3382-8E73-B99C00E0FEEB}</Project>
+      <Name>cxx11_tensor_thread_pool_7</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_thread_pool_8.vcxproj">
+      <Project>{580E26D7-DF74-3819-83CB-809F16FC9276}</Project>
+      <Name>cxx11_tensor_thread_pool_8</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_thread_pool_9.vcxproj">
+      <Project>{EF30908F-4898-34F6-8A06-83C74E091073}</Project>
+      <Name>cxx11_tensor_thread_pool_9</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_trace.vcxproj">
+      <Project>{FC1E0D47-01ED-3E5C-8661-E23AEA4DF3AB}</Project>
+      <Name>cxx11_tensor_trace</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\cxx11_tensor_volume_patch.vcxproj">
+      <Project>{FAD8D6BC-BF23-3084-BDDD-690069D26547}</Project>
+      <Name>cxx11_tensor_volume_patch</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\dgmres_1.vcxproj">
+      <Project>{22CDCCAA-4A82-3829-8C35-4C87AA28F4CF}</Project>
+      <Name>dgmres_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\dgmres_2.vcxproj">
+      <Project>{1C93A79E-76E7-3485-8B72-54BDEC3DEDF2}</Project>
+      <Name>dgmres_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\gmres_1.vcxproj">
+      <Project>{15AF68CE-1214-3E20-93A7-93986E4D7C92}</Project>
+      <Name>gmres_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\gmres_2.vcxproj">
+      <Project>{2F4E3E95-7432-3EE9-B942-4F509DBBA30D}</Project>
+      <Name>gmres_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\idrs_1.vcxproj">
+      <Project>{53E8115A-3305-30F9-8B60-652561EB0DAB}</Project>
+      <Name>idrs_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\idrs_2.vcxproj">
+      <Project>{D8C63B79-E03B-3B0C-9E33-462F25F7127D}</Project>
+      <Name>idrs_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\idrstabl_1.vcxproj">
+      <Project>{9B9E1916-1549-30B4-A35A-5FE4836B1F97}</Project>
+      <Name>idrstabl_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\idrstabl_2.vcxproj">
+      <Project>{B9102E04-323F-3EBD-958F-1F1076FD4993}</Project>
+      <Name>idrstabl_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\kronecker_product_1.vcxproj">
+      <Project>{63F33492-B83C-3C8F-A936-27AA0F09AF34}</Project>
+      <Name>kronecker_product_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\kronecker_product_2.vcxproj">
+      <Project>{C2B443C8-CB71-3CA5-B00C-DC609FF582C3}</Project>
+      <Name>kronecker_product_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\levenberg_marquardt.vcxproj">
+      <Project>{3DBB9452-D747-342E-8EFE-2CBC19D77D31}</Project>
+      <Name>levenberg_marquardt</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_exponential_1.vcxproj">
+      <Project>{30870D15-A516-3007-BBDB-39EA82E434A1}</Project>
+      <Name>matrix_exponential_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_exponential_2.vcxproj">
+      <Project>{1D3027FC-7C88-36C2-934D-983080EB7B0E}</Project>
+      <Name>matrix_exponential_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_exponential_3.vcxproj">
+      <Project>{59D653F3-8545-3CDA-8433-F734744655AA}</Project>
+      <Name>matrix_exponential_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_exponential_4.vcxproj">
+      <Project>{64E75285-0682-3A43-9D41-EF8F042BE20A}</Project>
+      <Name>matrix_exponential_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_exponential_5.vcxproj">
+      <Project>{D03A6E07-EA55-3ACD-9275-7031F829B3C3}</Project>
+      <Name>matrix_exponential_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_exponential_6.vcxproj">
+      <Project>{0632D199-EECD-3D3B-B450-19C42DB02F21}</Project>
+      <Name>matrix_exponential_6</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_exponential_7.vcxproj">
+      <Project>{B61BA2DA-93D4-3419-91D7-25CADC9A67D2}</Project>
+      <Name>matrix_exponential_7</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_exponential_8.vcxproj">
+      <Project>{28BFF01C-5A3E-31CB-B114-F3D0EFB85E69}</Project>
+      <Name>matrix_exponential_8</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_exponential_9.vcxproj">
+      <Project>{554D31E3-5744-34B4-8B5C-76C2354FC6C9}</Project>
+      <Name>matrix_exponential_9</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_function_1.vcxproj">
+      <Project>{BCF5F38E-1FA5-34A0-8946-D379F7B52D69}</Project>
+      <Name>matrix_function_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_function_2.vcxproj">
+      <Project>{AAC8D420-4557-3B0A-BC42-6C64353CB006}</Project>
+      <Name>matrix_function_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_function_3.vcxproj">
+      <Project>{91C17072-B5ED-3464-838D-CFF514103DF4}</Project>
+      <Name>matrix_function_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_function_4.vcxproj">
+      <Project>{0FD6761F-83AB-37C6-A925-5DCE30098E43}</Project>
+      <Name>matrix_function_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_function_5.vcxproj">
+      <Project>{2C9991D6-180C-3523-985D-39D6F8445DB4}</Project>
+      <Name>matrix_function_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_function_6.vcxproj">
+      <Project>{C713AFC5-3E6F-3367-A2D2-27AA00787368}</Project>
+      <Name>matrix_function_6</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_function_7.vcxproj">
+      <Project>{77C5B91A-1BC8-36C9-98DC-4A1658A79DC3}</Project>
+      <Name>matrix_function_7</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_power_1.vcxproj">
+      <Project>{37F61F2C-6787-3918-B045-4FC59FF3F736}</Project>
+      <Name>matrix_power_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_power_10.vcxproj">
+      <Project>{04738487-C366-39AB-B5DA-041E18A04575}</Project>
+      <Name>matrix_power_10</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_power_11.vcxproj">
+      <Project>{58211543-B43B-3483-9360-386A087CE73A}</Project>
+      <Name>matrix_power_11</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_power_12.vcxproj">
+      <Project>{C449256D-38D6-3A67-A010-917272588069}</Project>
+      <Name>matrix_power_12</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_power_2.vcxproj">
+      <Project>{59E4D291-C7A2-3944-B859-E12257249165}</Project>
+      <Name>matrix_power_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_power_3.vcxproj">
+      <Project>{47D47C56-F146-35A6-9A39-CC2AA684074E}</Project>
+      <Name>matrix_power_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_power_4.vcxproj">
+      <Project>{0FA61C5B-D412-385A-8813-69ACF94E9713}</Project>
+      <Name>matrix_power_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_power_5.vcxproj">
+      <Project>{306CD647-FFC2-3675-8594-B13DFCD98DB1}</Project>
+      <Name>matrix_power_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_power_6.vcxproj">
+      <Project>{6A914B13-C8E9-3FA7-A727-B8CD4CB24AD5}</Project>
+      <Name>matrix_power_6</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_power_7.vcxproj">
+      <Project>{D91AC2FA-69B7-3BEB-A507-A6D61266F449}</Project>
+      <Name>matrix_power_7</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_power_8.vcxproj">
+      <Project>{39544BA3-9CD7-346F-8DFD-175F19251AB5}</Project>
+      <Name>matrix_power_8</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_power_9.vcxproj">
+      <Project>{5777BE56-B40C-3014-809B-847C2211C830}</Project>
+      <Name>matrix_power_9</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_square_root_1.vcxproj">
+      <Project>{D2B47C2E-7BCA-30D9-B32A-DD54DC5564AC}</Project>
+      <Name>matrix_square_root_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_square_root_2.vcxproj">
+      <Project>{F2CCC3C5-0E28-3B8F-B848-C9F38C3FBC33}</Project>
+      <Name>matrix_square_root_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_square_root_3.vcxproj">
+      <Project>{9AC2AFC7-F3D5-3DA2-B9E0-BAD28E1EF186}</Project>
+      <Name>matrix_square_root_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_square_root_4.vcxproj">
+      <Project>{ABE3FD64-E69D-3171-8567-81B9AE09E91A}</Project>
+      <Name>matrix_square_root_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\matrix_square_root_5.vcxproj">
+      <Project>{D060D522-3ABE-3E8F-9189-4CFFACF77A25}</Project>
+      <Name>matrix_square_root_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\minres_1.vcxproj">
+      <Project>{ABB892E7-4F99-3B40-855C-690EA8D4602B}</Project>
+      <Name>minres_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\minres_2.vcxproj">
+      <Project>{677D21E6-CE4F-3748-BB12-959F680FFB72}</Project>
+      <Name>minres_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialsolver_1.vcxproj">
+      <Project>{660E9061-7E5F-32E8-9E34-2C87287AC264}</Project>
+      <Name>polynomialsolver_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialsolver_10.vcxproj">
+      <Project>{81771572-6ED0-3B6B-BA2D-02A620B88F4D}</Project>
+      <Name>polynomialsolver_10</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialsolver_11.vcxproj">
+      <Project>{7DF34FCA-06B2-31CB-A303-80307711D528}</Project>
+      <Name>polynomialsolver_11</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialsolver_12.vcxproj">
+      <Project>{DAFCEF3A-7861-3EF3-B4ED-D85D1BF8A276}</Project>
+      <Name>polynomialsolver_12</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialsolver_2.vcxproj">
+      <Project>{CAC865DC-24EB-3BD3-AF61-FC097BB93D22}</Project>
+      <Name>polynomialsolver_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialsolver_3.vcxproj">
+      <Project>{B21B7779-D126-3F27-AF0C-F4F7FF5D7FF6}</Project>
+      <Name>polynomialsolver_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialsolver_4.vcxproj">
+      <Project>{D5D2F9A0-7CF4-3D8B-AA12-CE89182487EF}</Project>
+      <Name>polynomialsolver_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialsolver_5.vcxproj">
+      <Project>{33DEC756-ECCF-3E0D-A6BC-D1E5422999B0}</Project>
+      <Name>polynomialsolver_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialsolver_6.vcxproj">
+      <Project>{322BF69D-5E63-3D2A-AFF9-53329B832CA2}</Project>
+      <Name>polynomialsolver_6</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialsolver_7.vcxproj">
+      <Project>{F1E0CF43-4DFD-34FA-91A8-5FB2203786FB}</Project>
+      <Name>polynomialsolver_7</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialsolver_8.vcxproj">
+      <Project>{1059C8EA-9EE4-32C3-9FC2-ED76D7517E41}</Project>
+      <Name>polynomialsolver_8</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialsolver_9.vcxproj">
+      <Project>{6FC2D8C6-D72E-3FBE-A6FF-ADDF4507932A}</Project>
+      <Name>polynomialsolver_9</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialutils_2.vcxproj">
+      <Project>{32AAA4D0-7EA8-3C75-99C4-07DD55B48F08}</Project>
+      <Name>polynomialutils_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialutils_3.vcxproj">
+      <Project>{943EE8B1-9B17-3810-93DB-9DF0B108A7FE}</Project>
+      <Name>polynomialutils_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialutils_4.vcxproj">
+      <Project>{AED102D4-A4A2-3A46-AEA9-85C4DDABEF82}</Project>
+      <Name>polynomialutils_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialutils_5.vcxproj">
+      <Project>{83BE5CC1-802E-3EBE-BEAE-1F457701F348}</Project>
+      <Name>polynomialutils_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialutils_6.vcxproj">
+      <Project>{441397C7-0799-31A9-B293-524B4742EC3A}</Project>
+      <Name>polynomialutils_6</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialutils_7.vcxproj">
+      <Project>{9201A574-6848-308D-9512-135D3A5F7769}</Project>
+      <Name>polynomialutils_7</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialutils_8.vcxproj">
+      <Project>{DEA2E9E6-2296-3361-8FCF-E37026260B06}</Project>
+      <Name>polynomialutils_8</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\polynomialutils_9.vcxproj">
+      <Project>{763E9B8B-DDD2-3854-8876-54290473915C}</Project>
+      <Name>polynomialutils_9</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\sparse_extra_1.vcxproj">
+      <Project>{6BE94338-9663-3501-AE3E-85BE94A75555}</Project>
+      <Name>sparse_extra_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\sparse_extra_2.vcxproj">
+      <Project>{4D719562-A6D0-3BA3-914D-61F818B5B556}</Project>
+      <Name>sparse_extra_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\sparse_extra_3.vcxproj">
+      <Project>{7FB276BF-11C5-32FC-9822-73A6F0D7DC9A}</Project>
+      <Name>sparse_extra_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\sparse_extra_4.vcxproj">
+      <Project>{7BEAC379-193F-3E5B-979E-8B31CAE959A3}</Project>
+      <Name>sparse_extra_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\sparse_extra_5.vcxproj">
+      <Project>{722A302E-D22E-3217-B743-D339AA73F67C}</Project>
+      <Name>sparse_extra_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\sparse_extra_6.vcxproj">
+      <Project>{374B3132-DC53-3B06-8C26-FAAAA58DCF30}</Project>
+      <Name>sparse_extra_6</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\special_functions_1.vcxproj">
+      <Project>{AD3536D3-2347-3516-9EE1-FC749788B100}</Project>
+      <Name>special_functions_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\special_functions_2.vcxproj">
+      <Project>{AF1C6834-4380-38CF-9A09-E8AD3C5AF20A}</Project>
+      <Name>special_functions_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\special_functions_3.vcxproj">
+      <Project>{D3415ADC-06B8-3566-BD41-6DACF28D4EFB}</Project>
+      <Name>special_functions_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\special_functions_4.vcxproj">
+      <Project>{0A34F7A1-00E3-35A6-ADDD-E9BDCF8DCD75}</Project>
+      <Name>special_functions_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\special_packetmath_1.vcxproj">
+      <Project>{1DDC26FB-749B-3515-B286-98ACAC3518B5}</Project>
+      <Name>special_packetmath_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\special_packetmath_2.vcxproj">
+      <Project>{D12A00AF-C94E-3307-92B3-9B477B545A9A}</Project>
+      <Name>special_packetmath_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\special_packetmath_3.vcxproj">
+      <Project>{66A7CA57-7CC6-3D24-B3FB-732B02BBA36F}</Project>
+      <Name>special_packetmath_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\special_packetmath_4.vcxproj">
+      <Project>{ED5603C4-B41B-3ECE-B401-D68E94ECF71F}</Project>
+      <Name>special_packetmath_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\unsupported\test\splines.vcxproj">
+      <Project>{271CB64D-836E-3191-9733-664FFC68E3A6}</Project>
+      <Name>splines</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

@@ -2,6 +2,8 @@
 #include "matrix.h"
 #include "ElementData.h"
 
+#include <3rdParty/eigen-5.0.0/Eigen/Dense>
+
 class BaseElement {
 
 private:

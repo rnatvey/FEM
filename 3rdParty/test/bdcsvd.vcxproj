@@ -1,0 +1,373 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|x64">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|x64">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{F548FB43-DF86-35F7-A23D-7240F7ED5688}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>bdcsvd</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\Dipl\FEM\3rdParty\eigen-5.0.0\test\CMakeLists.txt">
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule D:/Dipl/FEM/3rdParty/eigen-5.0.0/test/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/Dipl/FEM/3rdParty/eigen-5.0.0 -BD:/Dipl/FEM/3rdParty --check-stamp-file D:/Dipl/FEM/3rdParty/test/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Program Files\CMake\share\cmake-3.25\Modules\CMakeFindDependencyMacro.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CMakePushCheckState.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCXXSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCXXSymbolExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckFunctionExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckIncludeFile.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckLanguage.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckLibraryExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckStructHasMember.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckSymbolExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindBLAS.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA\select_compute_arch.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindLAPACK.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageHandleStandardArgs.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageMessage.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPkgConfig.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindQt4.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindThreads.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\Internal\CheckSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\MacroAddFileDependencies.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\EigenSmokeTestList.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindAccelerate.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindCHOLMOD.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindHWLOC.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindKLU.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindPASTIX.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindSPQR.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindSuperLU.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindUMFPACK.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\Dipl\FEM\3rdParty\test\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule D:/Dipl/FEM/3rdParty/eigen-5.0.0/test/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/Dipl/FEM/3rdParty/eigen-5.0.0 -BD:/Dipl/FEM/3rdParty --check-stamp-file D:/Dipl/FEM/3rdParty/test/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Program Files\CMake\share\cmake-3.25\Modules\CMakeFindDependencyMacro.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CMakePushCheckState.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCXXSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCXXSymbolExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckFunctionExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckIncludeFile.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckLanguage.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckLibraryExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckStructHasMember.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckSymbolExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindBLAS.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA\select_compute_arch.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindLAPACK.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageHandleStandardArgs.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageMessage.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPkgConfig.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindQt4.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindThreads.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\Internal\CheckSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\MacroAddFileDependencies.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\EigenSmokeTestList.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindAccelerate.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindCHOLMOD.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindHWLOC.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindKLU.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindPASTIX.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindSPQR.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindSuperLU.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindUMFPACK.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\Dipl\FEM\3rdParty\test\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule D:/Dipl/FEM/3rdParty/eigen-5.0.0/test/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/Dipl/FEM/3rdParty/eigen-5.0.0 -BD:/Dipl/FEM/3rdParty --check-stamp-file D:/Dipl/FEM/3rdParty/test/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Program Files\CMake\share\cmake-3.25\Modules\CMakeFindDependencyMacro.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CMakePushCheckState.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCXXSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCXXSymbolExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckFunctionExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckIncludeFile.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckLanguage.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckLibraryExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckStructHasMember.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckSymbolExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindBLAS.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA\select_compute_arch.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindLAPACK.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageHandleStandardArgs.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageMessage.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPkgConfig.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindQt4.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindThreads.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\Internal\CheckSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\MacroAddFileDependencies.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\EigenSmokeTestList.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindAccelerate.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindCHOLMOD.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindHWLOC.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindKLU.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindPASTIX.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindSPQR.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindSuperLU.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindUMFPACK.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\Dipl\FEM\3rdParty\test\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule D:/Dipl/FEM/3rdParty/eigen-5.0.0/test/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/Dipl/FEM/3rdParty/eigen-5.0.0 -BD:/Dipl/FEM/3rdParty --check-stamp-file D:/Dipl/FEM/3rdParty/test/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Program Files\CMake\share\cmake-3.25\Modules\CMakeFindDependencyMacro.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CMakePushCheckState.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCXXSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckCXXSymbolExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckFunctionExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckIncludeFile.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckLanguage.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckLibraryExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckStructHasMember.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\CheckSymbolExists.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindBLAS.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindCUDA\select_compute_arch.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindLAPACK.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageHandleStandardArgs.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPackageMessage.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindPkgConfig.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindQt4.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\FindThreads.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\Internal\CheckSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-3.25\Modules\MacroAddFileDependencies.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\EigenSmokeTestList.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindAccelerate.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindCHOLMOD.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindHWLOC.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindKLU.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindPASTIX.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindSPQR.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindSuperLU.cmake;D:\Dipl\FEM\3rdParty\eigen-5.0.0\cmake\FindUMFPACK.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\Dipl\FEM\3rdParty\test\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\ZERO_CHECK.vcxproj">
+      <Project>{D4F226DF-9DFB-3F35-A70E-9CC7CC468D54}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_1.vcxproj">
+      <Project>{D611D23D-1E0A-3776-A7DB-52FC11301A7D}</Project>
+      <Name>bdcsvd_1</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_10.vcxproj">
+      <Project>{7230FA30-EEF4-3617-9AB0-84FC9024ADC4}</Project>
+      <Name>bdcsvd_10</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_11.vcxproj">
+      <Project>{2A92AFF2-6504-314F-B786-19EFAE1DB44E}</Project>
+      <Name>bdcsvd_11</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_12.vcxproj">
+      <Project>{33959013-B3AC-3F70-BDAE-46339B7B0AC4}</Project>
+      <Name>bdcsvd_12</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_13.vcxproj">
+      <Project>{CA90F93E-C39C-3947-9282-C212E9AF471B}</Project>
+      <Name>bdcsvd_13</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_14.vcxproj">
+      <Project>{5B361D42-4D36-36EB-916F-CE37B69BFAF9}</Project>
+      <Name>bdcsvd_14</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_15.vcxproj">
+      <Project>{409459D1-D097-371B-B679-E2767CC8AA27}</Project>
+      <Name>bdcsvd_15</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_16.vcxproj">
+      <Project>{EF3C907E-67C4-375C-9025-E062CCCFC935}</Project>
+      <Name>bdcsvd_16</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_17.vcxproj">
+      <Project>{C8882B0C-1280-3F74-9BD2-92969CA5DF0A}</Project>
+      <Name>bdcsvd_17</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_18.vcxproj">
+      <Project>{A6641F84-42DA-3FCC-BA44-3164DFF0E3D6}</Project>
+      <Name>bdcsvd_18</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_19.vcxproj">
+      <Project>{0DA26DD5-F3B5-38D4-8FC8-5286566EAEFF}</Project>
+      <Name>bdcsvd_19</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_2.vcxproj">
+      <Project>{B27178B0-F886-3406-8936-1F39AF591C97}</Project>
+      <Name>bdcsvd_2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_20.vcxproj">
+      <Project>{94E9F38D-0787-3A0A-A763-3EB268728726}</Project>
+      <Name>bdcsvd_20</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_21.vcxproj">
+      <Project>{04B2D5D8-B4AA-3502-8CFC-B4750218119C}</Project>
+      <Name>bdcsvd_21</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_22.vcxproj">
+      <Project>{E869B629-15AA-3658-920E-6A50E7835709}</Project>
+      <Name>bdcsvd_22</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_23.vcxproj">
+      <Project>{0689274D-8066-36EB-B0C2-D7352810E9C2}</Project>
+      <Name>bdcsvd_23</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_24.vcxproj">
+      <Project>{85AC1881-5949-3F3D-A555-81202BC03A74}</Project>
+      <Name>bdcsvd_24</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_25.vcxproj">
+      <Project>{2746552C-8F99-3ADC-A614-B755B45579ED}</Project>
+      <Name>bdcsvd_25</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_26.vcxproj">
+      <Project>{5E5F1B03-3721-3B3D-B3A4-D558528E2BAB}</Project>
+      <Name>bdcsvd_26</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_27.vcxproj">
+      <Project>{BE8073BF-0438-3A4E-84D5-BE7015B54F04}</Project>
+      <Name>bdcsvd_27</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_28.vcxproj">
+      <Project>{CBC1014C-A209-34BB-9DCD-C9679CA87209}</Project>
+      <Name>bdcsvd_28</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_29.vcxproj">
+      <Project>{5DF0F2F7-ACFB-383A-9733-F84687A8994F}</Project>
+      <Name>bdcsvd_29</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_3.vcxproj">
+      <Project>{87722EAA-8B1A-3422-86BB-626CA4EDCDE4}</Project>
+      <Name>bdcsvd_3</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_30.vcxproj">
+      <Project>{C6B1AA01-3A45-30EE-A0AE-042780242E66}</Project>
+      <Name>bdcsvd_30</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_31.vcxproj">
+      <Project>{DBE059EE-E42F-3060-BA09-7BA11DD0A037}</Project>
+      <Name>bdcsvd_31</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_32.vcxproj">
+      <Project>{31BCA95F-BBFA-3DAC-8487-836B69D69F2E}</Project>
+      <Name>bdcsvd_32</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_33.vcxproj">
+      <Project>{D303FD23-799D-3289-A517-30AFDA579C94}</Project>
+      <Name>bdcsvd_33</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_34.vcxproj">
+      <Project>{3469D2F2-B3B6-3CA2-8364-6DA47DFFDA9E}</Project>
+      <Name>bdcsvd_34</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_35.vcxproj">
+      <Project>{D4F19604-7330-309C-94FA-9530D421C610}</Project>
+      <Name>bdcsvd_35</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_36.vcxproj">
+      <Project>{4AEF3099-3DC2-3F4B-A55D-CEFFA1E3E1C6}</Project>
+      <Name>bdcsvd_36</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_37.vcxproj">
+      <Project>{218335B0-C3B7-3094-8D0F-DA3151FA9252}</Project>
+      <Name>bdcsvd_37</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_38.vcxproj">
+      <Project>{0B26C93E-31B2-339D-A42E-3CB3BDE5F7CC}</Project>
+      <Name>bdcsvd_38</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_39.vcxproj">
+      <Project>{7646A4A6-6CB6-3E0D-8D1F-D9B4786D775E}</Project>
+      <Name>bdcsvd_39</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_4.vcxproj">
+      <Project>{EEA8C629-205C-35DD-A354-8F56E1AD5EFC}</Project>
+      <Name>bdcsvd_4</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_40.vcxproj">
+      <Project>{C3B097A8-20BA-38E1-AE51-14C288439E2C}</Project>
+      <Name>bdcsvd_40</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_41.vcxproj">
+      <Project>{C13178D4-C947-3015-BC17-AE003F86DB7C}</Project>
+      <Name>bdcsvd_41</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_42.vcxproj">
+      <Project>{6C0969CE-BDB6-3CC9-A27B-95FC78B0EFD9}</Project>
+      <Name>bdcsvd_42</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_43.vcxproj">
+      <Project>{E492D04E-0452-3CF0-A4CC-76B181E8F86F}</Project>
+      <Name>bdcsvd_43</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_44.vcxproj">
+      <Project>{933F50C8-F59E-37AD-9241-266FF3CF110E}</Project>
+      <Name>bdcsvd_44</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_45.vcxproj">
+      <Project>{CB7AB242-AFB7-33C9-8CE9-DDEF18D0D055}</Project>
+      <Name>bdcsvd_45</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_46.vcxproj">
+      <Project>{F4A9652F-E164-37EE-821C-CD1BA6AFE161}</Project>
+      <Name>bdcsvd_46</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_47.vcxproj">
+      <Project>{C8115BD5-D031-3E5C-A855-18862EDAB885}</Project>
+      <Name>bdcsvd_47</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_48.vcxproj">
+      <Project>{1882CD17-A5F2-31F1-BFAE-1E47F6A99011}</Project>
+      <Name>bdcsvd_48</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_49.vcxproj">
+      <Project>{130604CC-6BF2-333A-9D6A-EE29C005608B}</Project>
+      <Name>bdcsvd_49</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_5.vcxproj">
+      <Project>{145CC9CC-3EC0-3308-BA6A-6D918789093A}</Project>
+      <Name>bdcsvd_5</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_6.vcxproj">
+      <Project>{44E80C23-41C7-3A28-9CE5-266C5E54644A}</Project>
+      <Name>bdcsvd_6</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_7.vcxproj">
+      <Project>{7232A91D-10DA-35DE-BE8B-823982A74EF7}</Project>
+      <Name>bdcsvd_7</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_8.vcxproj">
+      <Project>{F82F97EB-122B-3DCD-BFD0-B5351BF7458E}</Project>
+      <Name>bdcsvd_8</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dipl\FEM\3rdParty\test\bdcsvd_9.vcxproj">
+      <Project>{9A882958-8734-3E40-A4FB-7CA27691E035}</Project>
+      <Name>bdcsvd_9</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
