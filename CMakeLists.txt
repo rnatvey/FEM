@@ -11,7 +11,7 @@ endif()
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-
+add_subdirectory(3rdParty/boost)
 add_subdirectory(3rdParty/eigen-5.0.0)
 add_subdirectory(Libs/linalg)
 add_subdirectory(Libs/solver)

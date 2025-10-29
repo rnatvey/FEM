@@ -16,3 +16,4 @@ Makefile
 *.dll
 .DS_Store
 Thumbs.db
+!/3rdParty/boost/
