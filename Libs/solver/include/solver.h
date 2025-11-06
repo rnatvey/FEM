@@ -20,6 +20,10 @@ public:
         const Eigen::SparseMatrix<double>& systemMatrix,
         const Eigen::VectorXd& rightHandSide);
 
+    void applyBoundaryConditions(Eigen::SparseMatrix<double>& systemMatrix,
+        Eigen::VectorXd& rightHandSide,
+        const std::vector<int>& fixedDofs) const;
+
 private:
     struct GaussPoint {
         double xi;

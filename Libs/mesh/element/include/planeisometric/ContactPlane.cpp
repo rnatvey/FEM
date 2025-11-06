@@ -4,7 +4,8 @@
 #include <stdexcept>
 #include <cmath>
 
-LinearSolver solver;
+
+LinearSolver solver_c;
 
 ContactPlaneElement::ContactPlaneElement(int id, const std::vector<int>& nodeIds, int materialId,
     double penaltyParameter, int contactSurface)
@@ -14,14 +15,13 @@ ContactPlaneElement::ContactPlaneElement(int id, const std::vector<int>& nodeIds
 {
 }
 
-Eigen::MatrixXd ContactPlaneElement::computePenaltyStiffnessMatrix(const std::vector<Node>& nodes,
-    const Material& material) const
+Eigen::MatrixXd ContactPlaneElement::computePenaltyStiffnessMatrix(const std::vector<std::shared_ptr<Node>>& nodes,
+    const std::shared_ptr<Material>& material) const
 {
     if (contactSurface_ < 0 || contactSurface_ > 3) {
         throw std::runtime_error("Contact surface not properly set");
     }
 
-    LinearSolver solver;
 
     auto surfaceIntegrand = [this, &nodes, &material](double param, double) -> Eigen::MatrixXd {
         double local_xi, local_eta;
@@ -58,15 +58,15 @@ Eigen::MatrixXd ContactPlaneElement::computePenaltyStiffnessMatrix(const std::ve
         default: surfaceJacobian = 1.0;
         }
 
-        return projection * penaltyParameter_ * surfaceJacobian * material.getThickness();
+        return projection * penaltyParameter_ * surfaceJacobian * material->getThickness();
         };
 
-    return solver.computeGaussIntegral(surfaceIntegrand, 2);
+    return solver_c.computeGaussIntegral(surfaceIntegrand, 2);
 }
 
 Eigen::VectorXd ContactPlaneElement::computePenaltyForces(const Eigen::VectorXd& displacements,
-    const std::vector<Node>& nodes,
-    const Material& material) const
+    const std::vector<std::shared_ptr<Node>>& nodes,
+    const std::shared_ptr<Material>& material) const
 {
     if (contactSurface_ < 0 || contactSurface_ > 3) {
         throw std::runtime_error("Contact surface not properly set");
@@ -112,25 +112,25 @@ Eigen::VectorXd ContactPlaneElement::computePenaltyForces(const Eigen::VectorXd&
         Eigen::VectorXd fe = Eigen::VectorXd::Zero(8);
 
         for (int j = 0; j < 4; ++j) {
-            fe.segment<2>(2 * j) = N(j) * normalForce * surfaceJacobian * material.getThickness();
+            fe.segment<2>(2 * j) = N(j) * normalForce * surfaceJacobian * material->getThickness();
         }
 
         return fe;
         };
 
-    Eigen::MatrixXd forceMatrix = solver.computeGaussIntegral(forceIntegrand, 2);
+    Eigen::MatrixXd forceMatrix = solver_c.computeGaussIntegral(forceIntegrand, 2);
     return forceMatrix.col(0);
 }
 
 bool ContactPlaneElement::checkContact(int surfaceIndex, const Eigen::VectorXd& displacements,
-    const std::vector<Node>& nodes) const
+    const std::vector<std::shared_ptr<Node>>& nodes) const
 {
     double gap = calculateGap(surfaceIndex, displacements, nodes);
     return gap < 0.0; //  онтакт если зазор отрицательный (проникание)
 }
 
 double ContactPlaneElement::calculateGap(int surfaceIndex, const Eigen::VectorXd& displacements,
-    const std::vector<Node>& nodes) const
+    const std::vector<std::shared_ptr<Node>>& nodes) const
 {
     Eigen::Vector2d normal = getSurfaceNormal(surfaceIndex, nodes);
 
@@ -156,8 +156,8 @@ double ContactPlaneElement::calculateGap(int surfaceIndex, const Eigen::VectorXd
     return avgNormalDisp; // ”прощенный расчет зазора
 }
 
-Eigen::MatrixXd ContactPlaneElement::computeSurfaceStiffness(int surfaceIndex, const std::vector<Node>& nodes,
-    const Material& material) const
+Eigen::MatrixXd ContactPlaneElement::computeSurfaceStiffness(int surfaceIndex, const std::vector<std::shared_ptr<Node>>& nodes,
+    const std::shared_ptr<Material>& material) const
 {
     // ¬ременно мен€ем поверхность дл€ расчета
     int oldSurface = contactSurface_;

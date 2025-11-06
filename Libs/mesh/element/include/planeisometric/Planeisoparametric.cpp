@@ -16,8 +16,8 @@ PlaneIsoparametricElement::PlaneIsoparametricElement(int id, const std::vector<i
     }
 }
 
-Eigen::MatrixXd PlaneIsoparametricElement::computeStiffnessMatrix(const std::vector<Node>& nodes,
-    const Material& material) const
+Eigen::MatrixXd PlaneIsoparametricElement::computeStiffnessMatrix(const std::vector<std::shared_ptr<Node>>& nodes,
+    const std::shared_ptr<Material>& material) const
 {
     LinearSolver solver;
 
@@ -30,7 +30,7 @@ Eigen::MatrixXd PlaneIsoparametricElement::computeStiffnessMatrix(const std::vec
             throw std::runtime_error("Negative Jacobian determinant in PlaneIsoparametricElement");
         }
 
-        return B.transpose() * material.getElasticityMatrix() * B * detJ * material.getThickness();
+        return B.transpose() * material->getElasticityMatrix() * B * detJ * material->getThickness();
         };
 
     return solver.computeGaussIntegral(integrand, 2);
@@ -79,7 +79,7 @@ Eigen::MatrixXd PlaneIsoparametricElement::shapeFunctionsDerivativesLocal(double
     return dN;
 }
 
-Eigen::Matrix2d PlaneIsoparametricElement::jacobian(double xi, double eta, const std::vector<Node>& nodes) const {
+Eigen::Matrix2d PlaneIsoparametricElement::jacobian(double xi, double eta, const std::vector<std::shared_ptr<Node>>& nodes) const {
     Eigen::MatrixXd dN = shapeFunctionsDerivativesLocal(xi, eta);
     Eigen::Matrix2d J = Eigen::Matrix2d::Zero();
     Eigen::MatrixXd nodeCoords = getNodalCoordinates(nodes);
@@ -95,8 +95,8 @@ Eigen::Matrix2d PlaneIsoparametricElement::jacobian(double xi, double eta, const
 }
 
 Eigen::MatrixXd PlaneIsoparametricElement::strainDisplacementMatrix(double xi, double eta,
-    const std::vector<Node>& nodes,
-    const Material& material) const
+    const std::vector<std::shared_ptr<Node>>& nodes,
+    const std::shared_ptr<Material>& material) const
 {
     Eigen::MatrixXd B = Eigen::MatrixXd::Zero(3, 8);
     Eigen::MatrixXd dN = shapeFunctionsDerivativesLocal(xi, eta);
@@ -120,25 +120,25 @@ Eigen::MatrixXd PlaneIsoparametricElement::strainDisplacementMatrix(double xi, d
 
 Eigen::Vector3d PlaneIsoparametricElement::computeStress(double xi, double eta,
     const Eigen::VectorXd& displacements,
-    const std::vector<Node>& nodes,
-    const Material& material) const
+    const std::vector<std::shared_ptr<Node>>& nodes,
+    const std::shared_ptr<Material>& material) const
 {
     Eigen::Vector3d strain = computeStrain(xi, eta, displacements, nodes, material);
-    return material.getElasticityMatrix() * strain;
+    return material->getElasticityMatrix() * strain;
 }
 
 Eigen::Vector3d PlaneIsoparametricElement::computeStrain(double xi, double eta,
     const Eigen::VectorXd& displacements,
-    const std::vector<Node>& nodes,
-    const Material& material) const
+    const std::vector<std::shared_ptr<Node>>& nodes,
+    const std::shared_ptr<Material>& material) const
 {
     Eigen::MatrixXd B = strainDisplacementMatrix(xi, eta, nodes, material);
     return B * displacements;
 }
 
 Eigen::VectorXd PlaneIsoparametricElement::computeEquivalentNodalForces(const Eigen::VectorXd& bodyForces,
-    const std::vector<Node>& nodes,
-    const Material& material) const
+    const std::vector<std::shared_ptr<Node>>& nodes,
+    const std::shared_ptr<Material>& material) const
 {
     if (bodyForces.size() != 2) {
         throw std::invalid_argument("Body forces must be 2D vector [fx, fy]");
@@ -154,7 +154,7 @@ Eigen::VectorXd PlaneIsoparametricElement::computeEquivalentNodalForces(const Ei
         }
 
         Eigen::Vector2d b(bodyForces[0], bodyForces[1]);
-        Eigen::VectorXd fe = N.transpose() * b * detJ * material.getThickness();
+        Eigen::VectorXd fe = N.transpose() * b * detJ * material->getThickness();
 
         return fe;
         };
@@ -163,7 +163,7 @@ Eigen::VectorXd PlaneIsoparametricElement::computeEquivalentNodalForces(const Ei
     return forceMatrix.col(0);
 }
 
-bool PlaneIsoparametricElement::isValid(const std::vector<Node>& nodes) const {
+bool PlaneIsoparametricElement::isValid(const std::vector<std::shared_ptr<Node>>& nodes) const {
     try {
         Eigen::Matrix2d J = jacobian(0, 0, nodes);
         return J.determinant() > 0;
@@ -173,7 +173,7 @@ bool PlaneIsoparametricElement::isValid(const std::vector<Node>& nodes) const {
     }
 }
 
-Eigen::Vector2d PlaneIsoparametricElement::getSurfaceNormal(int surfaceIndex, const std::vector<Node>& nodes) const {
+Eigen::Vector2d PlaneIsoparametricElement::getSurfaceNormal(int surfaceIndex, const std::vector<std::shared_ptr<Node>>& nodes) const {
     Eigen::MatrixXd nodeCoords = getNodalCoordinates(nodes);
     Eigen::Vector2d normal = Eigen::Vector2d::Zero();
 
@@ -198,7 +198,7 @@ Eigen::Vector2d PlaneIsoparametricElement::getSurfaceNormal(int surfaceIndex, co
     return normal;
 }
 
-std::vector<Eigen::Vector2d> PlaneIsoparametricElement::getSurfacePoints(int surfaceIndex, const std::vector<Node>& nodes) const {
+std::vector<Eigen::Vector2d> PlaneIsoparametricElement::getSurfacePoints(int surfaceIndex, const std::vector<std::shared_ptr<Node>>& nodes) const {
     Eigen::MatrixXd nodeCoords = getNodalCoordinates(nodes);
     std::vector<Eigen::Vector2d> points;
 
@@ -226,14 +226,14 @@ std::vector<Eigen::Vector2d> PlaneIsoparametricElement::getSurfacePoints(int sur
     return points;
 }
 
-Eigen::MatrixXd PlaneIsoparametricElement::getNodalCoordinates(const std::vector<Node>& nodes) const {
+Eigen::MatrixXd PlaneIsoparametricElement::getNodalCoordinates(const std::vector<std::shared_ptr<Node>>& nodes) const {
     Eigen::MatrixXd coords(4, 2);
     for (int i = 0; i < 4; ++i) {
         int nodeId = nodeIds_[i];
         // Находим узел по ID (здесь нужна оптимизация - кэш или быстрый поиск)
         for (const auto& node : nodes) {
-            if (node.getId() == nodeId) {
-                coords.row(i) = node.getCoordinates().transpose();
+            if (node->getId() == nodeId) {
+                coords.row(i) = node->getCoordinates().transpose();
                 break;
             }
         }

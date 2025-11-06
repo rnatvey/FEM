@@ -1,0 +1,72 @@
+#pragma once
+
+#include <memory>
+#include <vector>
+#include <unordered_map>
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
+#include "node.h"
+#include "material.h"
+#include "BaseElement.h"
+
+class Assembly {
+public:
+    Assembly();
+    ~Assembly() = default;
+
+    // === Управление узлами ===
+    void addNode(std::shared_ptr<Node> node);
+    void addNodes(const std::vector<std::shared_ptr<Node>>& nodes);
+    std::shared_ptr<Node> getNode(int id) const;
+    const std::vector<std::shared_ptr<Node>>& getNodes() const { return nodes_; }
+    int getNodeCount() const { return nodes_.size(); }
+
+    // === Управление материалами ===
+    void addMaterial(std::shared_ptr<Material> material);
+    std::shared_ptr<Material> getMaterial(int id) const;
+    const std::unordered_map<int, std::shared_ptr<Material>>& getMaterials() const { return materials_; }
+
+    // === Управление элементами ===
+    void addElement(std::shared_ptr<BaseElement> element);
+    void addElements(const std::vector<std::shared_ptr<BaseElement>>& elements);
+    std::shared_ptr<BaseElement> getElement(int id) const;
+    const std::vector<std::shared_ptr<BaseElement>>& getElements() const { return elements_; }
+    int getElementCount() const { return elements_.size(); }
+
+    // === Сборка глобальной системы ===
+    void assembleGlobalStiffnessMatrix(Eigen::SparseMatrix<double>& globalK) const;
+    void assembleGlobalForceVector(Eigen::VectorXd& globalF, const Eigen::VectorXd& bodyForces) const;
+
+    // === Граничные условия ===
+    void addFixedNode(int nodeId, bool fixX = true, bool fixY = true);
+    void addPrescribedDisplacement(int nodeId, double dx, double dy);
+    void applyBoundaryConditions(Eigen::SparseMatrix<double>& globalK,
+        Eigen::VectorXd& globalF) const;
+
+    // === Система уравнений ===
+    int getTotalDofCount() const { return nodes_.size() * 2; }
+    std::vector<int> getElementDofIndices(int elementId) const;
+
+    // === Валидация ===
+    bool validate() const;
+
+private:
+    std::vector<std::shared_ptr<Node>> nodes_;
+    std::unordered_map<int, std::shared_ptr<Material>> materials_;
+    std::vector<std::shared_ptr<BaseElement>> elements_;
+
+    // Граничные условия
+    struct BoundaryCondition {
+        int nodeId;
+        bool fixX, fixY;
+        double prescribedDx, prescribedDy;
+        bool hasPrescribedDisplacement;
+    };
+    std::vector<BoundaryCondition> boundaryConditions_;
+
+    // Вспомогательные методы
+    int getGlobalDofIndex(int nodeId, int direction) const; // 0-x, 1-y
+    void buildNodeIndexMap();
+
+    std::unordered_map<int, int> nodeIdToIndex_; // Быстрый поиск узлов по ID
+};

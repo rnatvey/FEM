@@ -15,6 +15,7 @@ add_subdirectory(3rdParty/boost)
 add_subdirectory(3rdParty/eigen-5.0.0)
 add_subdirectory(Libs/linalg)
 add_subdirectory(Libs/solver)
+add_subdirectory(Libs/mesh)
 add_subdirectory(src)
 message(STATUS "C++ compiler: ${CMAKE_CXX_COMPILER}")
 

@@ -49,3 +49,18 @@ std::vector<LinearSolver::GaussPoint> LinearSolver::generateGaussPoints(int orde
 
     return points;
 }
+
+void LinearSolver::applyBoundaryConditions(Eigen::SparseMatrix<double>& systemMatrix,
+    Eigen::VectorXd& rightHandSide,
+    const std::vector<int>& fixedDofs) const {
+    for (int dof : fixedDofs) {
+        // Обнуляем строку и столбец
+        for (int k = 0; k < systemMatrix.outerSize(); ++k) {
+            systemMatrix.coeffRef(dof, k) = 0.0;
+            systemMatrix.coeffRef(k, dof) = 0.0;
+        }
+        // Ставим 1 на диагонали
+        systemMatrix.coeffRef(dof, dof) = 1.0;
+        rightHandSide[dof] = 0.0;
+    }
+}
