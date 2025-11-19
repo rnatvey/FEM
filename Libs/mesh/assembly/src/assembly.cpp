@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <iostream>
 
+
 Assembly::Assembly() {
 }
 
@@ -26,6 +27,20 @@ void Assembly::addNodes(const std::vector<std::shared_ptr<Node>>& nodes) {
     for (const auto& node : nodes) {
         addNode(node);
     }
+}
+
+void Assembly::addLineofNodes(size_t startId, vector2 start_point,  vector2 end_point, int num_of_nodes ) 
+{
+    vector2 direction = end_point - start_point;
+    const double step = Norm(direction)/num_of_nodes;
+    direction.UniVector();
+    
+    for (int i = 0; i < num_of_nodes;i++)
+    {
+        auto current_position = start_point + (direction * step * i);
+        addNode(std::make_shared<Node>(startId + i, current_position.X, current_position.Y));
+    }
+    return;
 }
 
 std::shared_ptr<Node> Assembly::getNode(int id) const {

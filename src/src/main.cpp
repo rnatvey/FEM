@@ -23,7 +23,7 @@ int main() {
         auto assembly = std::make_shared<Assembly>();
 
         // Добавляем материалы
-        auto material = std::make_shared<Material>(1, 2.0e11, 0.3, 0.1);
+        auto material = std::make_shared<Material>(1, 6.0e6, 0.49, 1);
         assembly->addMaterial(material);
 
         // Добавляем узлы
@@ -31,20 +31,21 @@ int main() {
         assembly->addNode(std::make_shared<Node>(2, 1.0, 0.0));
         assembly->addNode(std::make_shared<Node>(3, 1.0, 1.0));
         assembly->addNode(std::make_shared<Node>(4, 0.0, 1.0));
-
-        // Добавляем элемент
         std::vector<int> nodeIds = { 1, 2, 3, 4 };
         auto element = std::make_shared<PlaneIsoparametricElement>(1, nodeIds, 1);
+        //std::cout << element->getNodeCount() << std::endl;
         assembly->addElement(element);
-
+        std::cout << assembly->getElementCount() << std::endl;
         // Валидация
         if (assembly->validate()) {
             std::cout << "Assembly validation passed!" << std::endl;
+           
 
             // Сборка матрицы жесткости
             Eigen::SparseMatrix<double> globalK;
             assembly->assembleGlobalStiffnessMatrix(globalK);
             std::cout << "Global stiffness matrix size: " << globalK.rows() << "x" << globalK.cols() << std::endl;
+            std::cout << globalK << std::endl;
         }
 
     }

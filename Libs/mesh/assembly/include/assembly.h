@@ -8,6 +8,9 @@
 #include "node.h"
 #include "material.h"
 #include "BaseElement.h"
+#include "vector.h"
+
+class vector2;
 
 class Assembly {
 public:
@@ -17,9 +20,11 @@ public:
     // === Управление узлами ===
     void addNode(std::shared_ptr<Node> node);
     void addNodes(const std::vector<std::shared_ptr<Node>>& nodes);
+    void addLineofNodes(size_t startId,  vector2 start_point, vector2 end_point, int num_of_nodes);
     std::shared_ptr<Node> getNode(int id) const;
     const std::vector<std::shared_ptr<Node>>& getNodes() const { return nodes_; }
     int getNodeCount() const { return nodes_.size(); }
+
 
     // === Управление материалами ===
     void addMaterial(std::shared_ptr<Material> material);

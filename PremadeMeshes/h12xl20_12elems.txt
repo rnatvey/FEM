@@ -1,0 +1,32 @@
+vector2 st1(0.0, 0.0);
+        vector2 en1(20.0, 0.0);
+        vector2 st2(0.0, 4.0);
+        vector2 en2(20.0, 4.0);
+        vector2 st3(0.0, 8.0);
+        vector2 en3(20.0, 8.0);
+        vector2 st4(0.0, 12.0);
+        vector2 en4(20.0, 12.0);
+        assembly->addLineofNodes(1, st1, en1, 5);
+        assembly->addLineofNodes(6, st2, en2, 5);
+        assembly->addLineofNodes(11, st3, en3, 5);
+        assembly->addLineofNodes(16, st4, en4, 5);
+        std::cout << "==========================================" << std::endl;
+        // Добавляем элементы
+        for (int i = 1; i < 5; i++)
+        {
+            std::vector<int> nodeIds = { i, i+1, i+6, i+5 };
+            auto element = std::make_shared<PlaneIsoparametricElement>(i, nodeIds, 1);
+            assembly->addElement(element);
+        }
+        for (int i = 6; i < 10; i++)
+        {
+            std::vector<int> nodeIds = { i, i + 1, i + 6, i + 5 };
+            auto element = std::make_shared<PlaneIsoparametricElement>(i, nodeIds, 1);
+            assembly->addElement(element);
+        }
+        for (int i = 11; i < 15; i++)
+        {
+            std::vector<int> nodeIds = { i, i + 1, i + 6, i + 5 };
+            auto element = std::make_shared<PlaneIsoparametricElement>(i, nodeIds, 1);
+            assembly->addElement(element);
+        }

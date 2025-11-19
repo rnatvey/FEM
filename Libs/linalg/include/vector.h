@@ -50,7 +50,7 @@ public:
 		return vector2(this->X * mul, this->Y * mul);
 	}
 
-	vector2& operator += (const vector2& add)
+	vector2& operator += (const vector2 add)
 	{
 		vector2::assign(this->X + add.X, this->Y + add.Y);
 		return *this;
@@ -80,7 +80,8 @@ public:
 		return *this;
 	}
 };
-
+inline double VxV(const vector2& a, const  vector2& b) { return (a.X * b.X + a.Y * b.Y); } const
+inline double Norm(const vector2& a) { return std::sqrt(VxV(a, a)); } const
 //**********************************************************************************
 //**********************************************************************************
 
