@@ -1,0 +1,19 @@
+        // Добавляем узлы
+        assembly->addNode(std::make_shared<Node>(1, 0.0, 0.0));
+        assembly->addFixedNode(1,1,1);
+        assembly->addNode(std::make_shared<Node>(2, 20.0, 0.0));
+        assembly->addFixedNode(2,0,1);
+        assembly->addNode(std::make_shared<Node>(3, 20.0, 12.0));
+        assembly->addFixedNode(3, 0, 1);
+        assembly->addNode(std::make_shared<Node>(4, 0.0, 12.0));
+        assembly->addFixedNode(4,1,1);
+
+        auto ndforc1 = std::make_shared<ConcentratedForce>(2, 11843663.639952626079, 0.0);
+        auto ndforc2 = std::make_shared<ConcentratedForce>(3, 11843663.639952627942, 0.0);
+        assembly->addConcentratedForce(ndforc1);
+        assembly->addConcentratedForce(ndforc2);
+ 
+        std::vector<int> nodeIds = { 1, 2, 3, 4 };
+        auto element = std::make_shared<PlaneIsoparametricElement>(1, nodeIds, 1);
+        std::cout << element->getNodeCount() << std::endl;
+        assembly->addElement(element);

@@ -5,6 +5,7 @@
 #include "material.h"
 #include <stdexcept>
 #include <cmath>
+#include <iostream>
 
 LinearSolver solver;
 
@@ -101,12 +102,26 @@ Eigen::MatrixXd PlaneIsoparametricElement::strainDisplacementMatrix(double xi, d
     Eigen::MatrixXd B = Eigen::MatrixXd::Zero(3, 8);
     Eigen::MatrixXd dN = shapeFunctionsDerivativesLocal(xi, eta);
     Eigen::Matrix2d J = jacobian(xi, eta, nodes);
+
+  /*  std::cout << "=== B-matrix Debug ===" << std::endl;
+    std::cout << "xi=" << xi << ", eta=" << eta << std::endl;
+    std::cout << "dN_local:\n" << dN << std::endl;
+    std::cout << "Jacobian:\n" << J << std::endl;
+    std::cout << "det(J)=" << J.determinant() << std::endl;*/
+
+    if (J.determinant() <= 0) {
+        throw std::runtime_error("Negative Jacobian determinant");
+    }
+
     Eigen::Matrix2d invJ = J.inverse();
+    /*std::cout << "inv(J):\n" << invJ << std::endl;*/
 
     // Преобразование производных в глобальные координаты
     for (int i = 0; i < 4; ++i) {
         double dNdx = invJ(0, 0) * dN(i, 0) + invJ(0, 1) * dN(i, 1);
         double dNdy = invJ(1, 0) * dN(i, 0) + invJ(1, 1) * dN(i, 1);
+
+       /* std::cout << "Node " << i << ": dNdx=" << dNdx << ", dNdy=" << dNdy << std::endl;*/
 
         int col = 2 * i;
         B(0, col) = dNdx;        // epsilon_xx
@@ -114,6 +129,9 @@ Eigen::MatrixXd PlaneIsoparametricElement::strainDisplacementMatrix(double xi, d
         B(2, col) = dNdy;        // gamma_xy
         B(2, col + 1) = dNdx;
     }
+
+    //std::cout << "B-matrix:\n" << B << std::endl;
+    //std::cout << "B-matrix norm: " << B.norm() << std::endl;
 
     return B;
 }

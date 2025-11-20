@@ -24,6 +24,25 @@ public:
         Eigen::VectorXd& rightHandSide,
         const std::vector<int>& fixedDofs) const;
 
+    void reduceSystem(const Eigen::SparseMatrix<double>& fullK,
+        const Eigen::VectorXd& fullF,
+        const std::vector<int>& fixedDofs,
+        Eigen::SparseMatrix<double>& reducedK,
+        Eigen::VectorXd& reducedF,
+        std::vector<int>& activeDofs) const;
+
+    // ¬осстановление полного вектора перемещений
+    void expandSolution(const Eigen::VectorXd& reducedU,
+        const std::vector<int>& fixedDofs,
+        const std::vector<int>& activeDofs,
+        Eigen::VectorXd& fullU) const;
+
+    void applyPrescribedDisplacements(Eigen::SparseMatrix<double>& K,
+        Eigen::VectorXd& F,
+        const std::vector<int>& prescribedDofs,
+        const std::vector<double>& prescribedValues,
+        Eigen::VectorXd& reactions) const;
+
 private:
     struct GaussPoint {
         double xi;
@@ -32,4 +51,8 @@ private:
     };
 
     std::vector<GaussPoint> generateGaussPoints(int order);
+
+
+
+
 };

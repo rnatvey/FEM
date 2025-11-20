@@ -9,7 +9,8 @@
 #include "material.h"
 #include "BaseElement.h"
 #include "vector.h"
-
+#include "ConcentratedForce.h"
+//class ConcentratedForce;
 class vector2;
 
 class Assembly {
@@ -52,14 +53,40 @@ public:
     int getTotalDofCount() const { return nodes_.size() * 2; }
     std::vector<int> getElementDofIndices(int elementId) const;
 
+    // Для сборки матрицы жесткости (до граничных условий) - использует полные индексы
+    std::vector<int> getElementFullDofIndices(int elementId) const;
+
+    // Для работы с решениями (после граничных условий) - использует сокращенные индексы
+    std::vector<int> getElementReducedDofIndices(int elementId) const;
+
+
     // === Валидация ===
     bool validate() const;
+
+    int getGlobalDofIndex(int nodeId, int direction) const; // 0-x, 1-y
+
+    struct DofMapping {
+        std::vector<int> fullToReduced;  // fullDof -> reducedDof (-1 если закреплен)
+        std::vector<int> reducedToFull;  // reducedDof -> fullDof
+        std::vector<int> prescribedDofs; // Индексы DOF с предписанными перемещениями
+        std::vector<double> prescribedValues; // Значения предписанных перемещений
+    };
+
+    void addConcentratedForce(std::shared_ptr<ConcentratedForce> force);
+    void addConcentratedForces(const std::vector<std::shared_ptr<ConcentratedForce>>& forces);
+    const std::vector<std::shared_ptr<ConcentratedForce>>& getConcentratedForces() const { return concentratedForces_; }
+
+    // Сборка вектора сосредоточенных сил
+    void assembleConcentratedForces(Eigen::VectorXd& globalF) const;
+
+    const DofMapping& getDofMapping() const { return dofMapping_; }
 
 private:
     std::vector<std::shared_ptr<Node>> nodes_;
     std::unordered_map<int, std::shared_ptr<Material>> materials_;
     std::vector<std::shared_ptr<BaseElement>> elements_;
-
+    std::vector<std::shared_ptr<ConcentratedForce>> concentratedForces_;
+    std::vector<int> getElementDofIndicesInternal(int elementId) const;
     // Граничные условия
     struct BoundaryCondition {
         int nodeId;
@@ -70,8 +97,12 @@ private:
     std::vector<BoundaryCondition> boundaryConditions_;
 
     // Вспомогательные методы
-    int getGlobalDofIndex(int nodeId, int direction) const; // 0-x, 1-y
+   
     void buildNodeIndexMap();
 
     std::unordered_map<int, int> nodeIdToIndex_; // Быстрый поиск узлов по ID
+
+    mutable DofMapping dofMapping_;
+
 };
+

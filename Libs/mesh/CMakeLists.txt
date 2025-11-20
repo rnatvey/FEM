@@ -16,12 +16,16 @@ target_sources(mesh PUBLIC
     "assembly/src/assembly.cpp"
     "element/src/BaseElement.cpp"
     "element/src/material.cpp"
-)
+    "model/include/FEMModel.h"
+    "model/src/FEMModel.cpp"
+    "model/include/ConcentratedForce.h" 
+    "model/src/ConcentratedForce.cpp")
 
 target_include_directories(mesh PUBLIC
  ${CMAKE_CURRENT_SOURCE_DIR}/element/include
  ${CMAKE_CURRENT_SOURCE_DIR}/meshing/include
  ${CMAKE_CURRENT_SOURCE_DIR}/assembly/include
+ ${CMAKE_CURRENT_SOURCE_DIR}/model/include
 )
 
 target_include_directories(solver PRIVATE
