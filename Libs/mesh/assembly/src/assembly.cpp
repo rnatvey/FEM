@@ -190,6 +190,24 @@ void Assembly::addPrescribedDisplacement(int nodeId, double dx, double dy) {
     boundaryConditions_.push_back(bc);
 }
 
+void Assembly::addPrescribedDisplacementX(int nodeId, double dx) {
+    BoundaryCondition bc;
+    bc.nodeId = nodeId;
+    bc.fixX = true;  // Для предписанных перемещений фиксируем обе степени свободы
+    bc.hasPrescribedDisplacement = true;
+    bc.prescribedDx = dx;
+    boundaryConditions_.push_back(bc);
+}
+
+void Assembly::addPrescribedDisplacementY(int nodeId,  double dy) {
+    BoundaryCondition bc;
+    bc.nodeId = nodeId;
+    bc.fixY = true;
+    bc.hasPrescribedDisplacement = true;
+    bc.prescribedDy = dy;
+    boundaryConditions_.push_back(bc);
+}
+
 void Assembly::applyBoundaryConditions(Eigen::SparseMatrix<double>& globalK,
     Eigen::VectorXd& globalF) const {
     LinearSolver solver;

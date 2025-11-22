@@ -1,0 +1,77 @@
+        // Добавляем узлы
+        vector2 st1(0.0, 0.0);
+        vector2 en1(20.0, 0.0);
+        vector2 st2(0.0, 4.0);
+        vector2 en2(20.0, 4.0);
+        vector2 st3(0.0, 8.0);
+        vector2 en3(20.0, 8.0);
+        vector2 st4(0.0, 12.0);
+        vector2 en4(20.0, 12.0);
+        assembly->addLineofNodes(1, st1, en1, 5);
+        assembly->addLineofNodes(6, st2, en2, 5);
+        assembly->addLineofNodes(11, st3, en3, 5);
+        assembly->addLineofNodes(16, st4, en4, 5);
+        std::cout << "==========================================" << std::endl;
+        // Добавляем элементы
+        for (int i = 1; i < 5; i++)
+        {
+            std::vector<int> nodeIds = { i, i + 1, i + 6, i + 5 };
+            auto element = std::make_shared<PlaneIsoparametricElement>(i, nodeIds, 1);
+            assembly->addElement(element);
+        }
+        for (int i = 6; i < 10; i++)
+        {
+            std::vector<int> nodeIds = { i, i + 1, i + 6, i + 5 };
+            auto element = std::make_shared<PlaneIsoparametricElement>(i-1, nodeIds, 1);
+            assembly->addElement(element);
+        }
+        for (int i = 11; i < 15; i++)
+        {
+            std::vector<int> nodeIds = { i, i + 1, i + 6, i + 5 };
+            auto element = std::make_shared<PlaneIsoparametricElement>(i-2, nodeIds, 1);
+            assembly->addElement(element);
+        }
+        assembly->addFixedNode(1, 1, 1);
+        assembly->addFixedNode(2, 0, 1);
+        assembly->addFixedNode(3, 0, 1);
+        assembly->addFixedNode(4, 0, 1);
+        assembly->addFixedNode(5, 0, 1);
+        assembly->addFixedNode(6, 1, 0);
+        assembly->addFixedNode(11, 1, 0);
+        assembly->addFixedNode(16, 1, 0);
+
+
+
+        auto ndforc1 = std::make_shared<ConcentratedForce>(3, -11.481773917620746062, 0.0);
+        assembly->addConcentratedForce(ndforc1);
+        auto ndforc2 = std::make_shared<ConcentratedForce>(4, 24.772996446900915402, 0.0);
+        assembly->addConcentratedForce(ndforc2);
+        auto ndforc3 = std::make_shared<ConcentratedForce>(5, -8.257665482300305726, 0.0);
+        assembly->addConcentratedForce(ndforc3);
+
+        auto ndforc4 = std::make_shared<ConcentratedForce>(8, -8.2576654823003021733, 7.3529411764705887578);
+        assembly->addConcentratedForce(ndforc4);
+        auto ndforc5 = std::make_shared<ConcentratedForce>(9, -24.772996446900908296, -7.3529411764705896459);
+        assembly->addConcentratedForce(ndforc5);
+        auto ndforc6 = std::make_shared<ConcentratedForce>(10, 27.997104882221353961, -9.6723253059613085725);
+        assembly->addConcentratedForce(ndforc6);
+
+        auto ndforc7 = std::make_shared<ConcentratedForce>(14, -39.478878799842078706, -2.664535259100375697e-15);
+        assembly->addConcentratedForce(ndforc7);
+        auto ndforc8 = std::make_shared<ConcentratedForce>(15, 39.478878799842078706, 0.0);
+        assembly->addConcentratedForce(ndforc8);
+
+        auto ndforc9 = std::make_shared<ConcentratedForce>(19, -19.739439399921039353, 9.6723253059613103488);
+        assembly->addConcentratedForce(ndforc9);
+        auto ndforc10 = std::make_shared<ConcentratedForce>(20, 19.739439399921039353, 9.6723253059613121252);
+        assembly->addConcentratedForce(ndforc10);
+
+         std::cout << "===============================sila========================================" << std::endl;
+                Eigen::VectorXd Force = Eigen::VectorXd::Zero(31);
+                Force[2] = 5.0;
+                Force[11] = 5.0;
+                Force[20] = 5.0;
+                Force[29] = 5.0;
+                auto sila = globalK * Force;
+                std::cout << std::setprecision(20) << sila<< std::endl;
+                std::cout << "=======================================================================" << std::endl;

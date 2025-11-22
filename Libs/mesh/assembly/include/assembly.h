@@ -46,6 +46,8 @@ public:
     // === Граничные условия ===
     void addFixedNode(int nodeId, bool fixX = true, bool fixY = true);
     void addPrescribedDisplacement(int nodeId, double dx, double dy);
+    void addPrescribedDisplacementX(int nodeId, double dx);
+    void addPrescribedDisplacementY(int nodeId, double dy);
     void applyBoundaryConditions(Eigen::SparseMatrix<double>& globalK,
         Eigen::VectorXd& globalF) const;
 

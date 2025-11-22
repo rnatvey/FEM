@@ -101,28 +101,56 @@ int main() {
         auto assembly = std::make_shared<Assembly>();
         auto model = std::make_shared<FEModel>();
         // Добавляем материалы
-        auto material = std::make_shared<Material>(1, 6.0e6, 0.49, 1);
+        auto material = std::make_shared<Material>(1, 6.0, 0.49, 1);
         assembly->addMaterial(material);
 
         // Добавляем узлы
-        assembly->addNode(std::make_shared<Node>(1, 0.0, 0.0));
+        vector2 st1(0.0, 0.0);
+        vector2 en1(20.0, 0.0);
+        vector2 st2(0.0, 4.0);
+        vector2 en2(20.0, 4.0);
+        vector2 st3(0.0, 8.0);
+        vector2 en3(20.0, 8.0);
+        vector2 st4(0.0, 12.0);
+        vector2 en4(20.0, 12.0);
+        assembly->addLineofNodes(1, st1, en1, 5);
+        assembly->addLineofNodes(6, st2, en2, 5);
+        assembly->addLineofNodes(11, st3, en3, 5);
+        assembly->addLineofNodes(16, st4, en4, 5);
+        std::cout << "==========================================" << std::endl;
+        // Добавляем элементы
+        for (int i = 1; i < 5; i++)
+        {
+            std::vector<int> nodeIds = { i, i + 1, i + 6, i + 5 };
+            auto element = std::make_shared<PlaneIsoparametricElement>(i, nodeIds, 1);
+            assembly->addElement(element);
+        }
+        for (int i = 6; i < 10; i++)
+        {
+            std::vector<int> nodeIds = { i, i + 1, i + 6, i + 5 };
+            auto element = std::make_shared<PlaneIsoparametricElement>(i-1, nodeIds, 1);
+            assembly->addElement(element);
+        }
+        for (int i = 11; i < 15; i++)
+        {
+            std::vector<int> nodeIds = { i, i + 1, i + 6, i + 5 };
+            auto element = std::make_shared<PlaneIsoparametricElement>(i-2, nodeIds, 1);
+            assembly->addElement(element);
+        }
         assembly->addFixedNode(1, 1, 1);
-        assembly->addNode(std::make_shared<Node>(2, 20.0, 0.0));
-        assembly->addFixedNode(2, 0, 1);
-        assembly->addNode(std::make_shared<Node>(3, 20.0, 12.0));
-        assembly->addFixedNode(3, 0, 1);
-        assembly->addNode(std::make_shared<Node>(4, 0.0, 12.0));
-        assembly->addFixedNode(4, 1, 1);
+        assembly->addFixedNode(6, 1, 0);
+        assembly->addFixedNode(11, 1, 0);
+        assembly->addFixedNode(16, 1, 0);
 
-        auto ndforc1 = std::make_shared<ConcentratedForce>(2, 11843663.639952626079, 0.0);
-        auto ndforc2 = std::make_shared<ConcentratedForce>(3, 11843663.639952627942, 0.0);
+        auto ndforc1 = std::make_shared<ConcentratedForce>(3, 0.0, -50.0);
         assembly->addConcentratedForce(ndforc1);
-        assembly->addConcentratedForce(ndforc2);
 
-        std::vector<int> nodeIds = { 1, 2, 3, 4 };
-        auto element = std::make_shared<PlaneIsoparametricElement>(1, nodeIds, 1);
-        std::cout << element->getNodeCount() << std::endl;
-        assembly->addElement(element);
+   
+
+
+
+
+
         //Валидация
             if (assembly->validate()) {
                 std::cout << "Assembly validation passed!" << std::endl;
@@ -138,24 +166,32 @@ int main() {
                 assembly->assembleGlobalStiffnessMatrix(globalK);
                 assembly->assembleConcentratedForces(globalF);
                 std::cout << "Global stiffness matrix size: " << globalK.rows() << "x" << globalK.cols() << std::endl;
-                std::cout << globalK << std::endl;
+               // std::cout << globalK << std::endl;
                 std::cout << "===========================globalK============================================" << std::endl;
                 assembly->applyBoundaryConditions(globalK, globalF);
-                std::cout << globalK << std::endl;
+                //std::cout << globalK << std::endl;
                 std::cout << "=========================globalF==============================================" << std::endl;
-                std::cout << globalF << std::endl;
+                //std::cout << globalF << std::endl;
                 std::cout << "============================Force===========================================" << std::endl;
                // std::cout << Force << std::endl;
                 std::cout << "============================DofCount===========================================" << std::endl;
                 std::cout << assembly->getTotalDofCount() << std::endl;
                 std::cout << "===============================k*F========================================" << std::endl;
-                //Eigen::Vector3d Force{ 0.0, 5.0,5.0 };
-                //cout.precision(15);
-                //auto sila = globalK * Force;
-               // std::cout << std::setprecision(20) << sila<< std::endl;
-                //1.18437e+07
+                std::cout << "===============================4========================================" << std::endl;
+                for (int i = 0; i < 8; i++) {
+                    std::cout << assembly->getElementReducedDofIndices(4)[i] << std::endl;
+                }
+                std::cout << "===============================8========================================" << std::endl;
+                for (int i = 0; i < 8; i++) {
+                    std::cout << assembly->getElementReducedDofIndices(8)[i] << std::endl;
+                }
+                std::cout << "===============================12========================================" << std::endl;
+                for (int i = 0; i < 8; i++) {
+                    std::cout << assembly->getElementReducedDofIndices(12)[i] << std::endl;
+                }
+
             }
-        
+
         model->setAssembly(assembly);
 
         
@@ -189,10 +225,11 @@ int main() {
         std::cout << "=======================================================================" << std::endl;
         //std::cout << model->getDisplacements() << std::endl;
         
-        std::cout << model->getDisplacements() << std::endl;
+        //std::cout << model->getDisplacements() << std::endl;
         std::cout << "=======================================================================" << std::endl;
-        std::cout << model->getElementStress(1, 0.0, 0.0) << std::endl;
+        std::cout << model->getElementStress(5, 0.0, 0.0) << std::endl;
         std::cout << "=======================================================================" << std::endl;
+        std::cout << model->getElementStress(6, 0.0, 0.0) << std::endl;
        // testStressCalculation();
         
     }
