@@ -24,6 +24,8 @@ public:
         double rx, double ry,
         double startAngle, double endAngle);
 
+
+
     // Сплайн (позже можно добавить NURBS по Бате, стр. 410)
     static ParametricCurve createSpline(const std::vector<Eigen::Vector2d>& controlPoints);
 

@@ -3,6 +3,7 @@
 #include <functional>
 #include <memory>
 #include "geometry.h"
+#include "assembly.h"
 
 class LoadFunction {
 public:
@@ -20,7 +21,6 @@ public:
     static LoadFunction linearPressure(double p0, double gradient); // Нарастающее давление
     static LoadFunction hertzianPressure(double maxPressure, double contactWidth, double x0);
     static LoadFunction sinusoidalLoad(double amplitude, double wavelength);
-
-private:
+    static LoadFunction parabolicPressure(double maxPressure, double contactHalfWidth, double x0);
     Distribution distribution_;
 };

@@ -95,7 +95,7 @@ LoadFunction LoadFunction::constantLoad(double fx, double fy) {
 LoadFunction LoadFunction::linearPressure(double p0, double gradient) {
     return LoadFunction([p0, gradient](double x, double y, const Eigen::Vector2d& normal) {
         double pressure = p0 + gradient * x; // Линейная зависимость от x
-        return pressure * normal; // Давление действует по нормали
+        return Eigen::Vector2d(pressure * normal); // Давление действует по нормали
         });
 }
 
@@ -109,16 +109,34 @@ LoadFunction LoadFunction::hertzianPressure(double maxPressure, double contactWi
         }
 
         // Эллиптическое распределение Герца
-        double relativeX = dx / contactHalfWidth;  // x/a
+        double relativeX = dx / contactWidth;  // x/a
         double pressure = maxPressure * std::sqrt(1.0 - relativeX * relativeX);
 
         // Давление действует по нормали к поверхности
-        return pressure * normal;
-    });
+        return Eigen::Vector2d(pressure * normal);
+        });
+}
 
 LoadFunction LoadFunction::sinusoidalLoad(double amplitude, double wavelength) {
     return LoadFunction([amplitude, wavelength](double x, double y, const Eigen::Vector2d& normal) {
         double pressure = amplitude * std::sin(2 * M_PI * x / wavelength);
-        return pressure * normal;
+        return Eigen::Vector2d(pressure * normal);
         });
 }
+
+LoadFunction LoadFunction::parabolicPressure(double maxPressure, double contactHalfWidth, double x0) {
+    return LoadFunction([maxPressure, contactHalfWidth, x0](double x, double y, const Eigen::Vector2d& normal) {
+        double dx = x - x0;
+
+        if (std::abs(dx) > contactHalfWidth) {
+            return Eigen::Vector2d(0, 0);
+        }
+
+        // Параболическое распределение: p(x) = p0 * (1 - (x/a)^2)
+        double relativeX = dx / contactHalfWidth;
+        double pressure = maxPressure * (1.0 - relativeX * relativeX);
+
+        return Eigen::Vector2d(pressure * normal);
+        });
+}
+

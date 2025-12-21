@@ -23,6 +23,7 @@ target_include_directories(src PRIVATE
     ${CMAKE_SOURCE_DIR}/Libs/linalg/include 
     ${CMAKE_SOURCE_DIR}/Libs/mesh/element/include 
     ${CMAKE_SOURCE_DIR}/Libs/mesh/assembly/include 
+    ${CMAKE_SOURCE_DIR}/Libs/mesh/meshGenerator/include 
     ${CMAKE_SOURCE_DIR}/3rdParty/eigen-5.0.0 
     ${CMAKE_SOURCE_DIR}/3rdParty/boost/libs/math/include
 )

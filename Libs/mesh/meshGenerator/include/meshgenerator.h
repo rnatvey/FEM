@@ -35,6 +35,18 @@ public:
     // === Управление нумерацией ===
     void setNodeIdStart(int startId) { nextNodeId_ = startId; }
     void setElementIdStart(int startId) { nextElementId_ = startId; }
+    void createAnnulusSimple(const Eigen::Vector2d& center,
+        double innerRadius, double outerRadius,
+        double startAngle, double endAngle,
+        int radialLayers, int circumferentialNodes,
+        int materialId);
+    std::vector<int> findContactNodes(double contactCenterX,
+        double contactHalfWidth,
+        double maxYtolerance) const;
+    void applyParabolicContactToNodes(double maxPressure,
+        double contactHalfWidth,
+        double contactCenterX,
+        double totalForce);
 
 private:
     std::shared_ptr<Assembly> assembly_;

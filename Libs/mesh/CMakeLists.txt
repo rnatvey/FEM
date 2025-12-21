@@ -21,10 +21,11 @@ target_sources(mesh PUBLIC
     "model/include/ConcentratedForce.h" 
     "model/src/ConcentratedForce.cpp"
     "model/include/geometry.h"
-    "meshGenerator/include/meshgenerator.h"
+    "meshGenerator/include/meshgenerator.h"#
     "meshGenerator/src/meshgenerator.cpp"
     "model/src/geometry.cpp" 
-    "model/src/loadFunction.cpp")
+    "model/src/loadFunction.cpp" 
+    "model/include/constants.h")
 
 target_include_directories(mesh PUBLIC
  ${CMAKE_CURRENT_SOURCE_DIR}/element/include
@@ -38,6 +39,7 @@ target_include_directories(solver PRIVATE
     ${CMAKE_SOURCE_DIR}/Libs/mesh/element/include 
     ${CMAKE_SOURCE_DIR}/Libs/mesh/assembly/include
     ${CMAKE_SOURCE_DIR}/Libs/mesh/meshing/include 
+    ${CMAKE_SOURCE_DIR}/Libs/mesh/meshGenerator/include 
     ${CMAKE_SOURCE_DIR}/Libs/solver/include
     ${CMAKE_SOURCE_DIR}/3rdParty/eigen-5.0.0 
     ${CMAKE_SOURCE_DIR}/3rdParty/boost/libs/math/include
