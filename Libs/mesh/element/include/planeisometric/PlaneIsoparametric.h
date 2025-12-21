@@ -39,12 +39,11 @@ public:
     // Дополнительные методы для контакта
     Eigen::Vector2d getSurfaceNormal(int surfaceIndex, const std::vector<std::shared_ptr<Node>>& nodes) const;
     std::vector<Eigen::Vector2d> getSurfacePoints(int surfaceIndex, const std::vector<std::shared_ptr<Node>>& nodes) const;
+    // Получение координат узлов элемента
+    Eigen::MatrixXd getNodalCoordinates(const std::vector<std::shared_ptr<Node>>& nodes) const;
 
 protected:
     // Локальные вспомогательные методы
     Eigen::Vector4d shapeFunctionsLocal(double xi, double eta) const;
     Eigen::MatrixXd shapeFunctionsDerivativesLocal(double xi, double eta) const;
-    
-    // Получение координат узлов элемента
-    Eigen::MatrixXd getNodalCoordinates(const std::vector<std::shared_ptr<Node>>& nodes) const;
 };

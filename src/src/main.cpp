@@ -128,13 +128,13 @@ int main() {
         for (int i = 6; i < 10; i++)
         {
             std::vector<int> nodeIds = { i, i + 1, i + 6, i + 5 };
-            auto element = std::make_shared<PlaneIsoparametricElement>(i-1, nodeIds, 1);
+            auto element = std::make_shared<PlaneIsoparametricElement>(i - 1, nodeIds, 1);
             assembly->addElement(element);
         }
         for (int i = 11; i < 15; i++)
         {
             std::vector<int> nodeIds = { i, i + 1, i + 6, i + 5 };
-            auto element = std::make_shared<PlaneIsoparametricElement>(i-2, nodeIds, 1);
+            auto element = std::make_shared<PlaneIsoparametricElement>(i - 2, nodeIds, 1);
             assembly->addElement(element);
         }
         assembly->addFixedNode(1, 1, 1);
@@ -142,14 +142,8 @@ int main() {
         assembly->addFixedNode(11, 1, 0);
         assembly->addFixedNode(16, 1, 0);
 
-        auto ndforc1 = std::make_shared<ConcentratedForce>(3, 0.0, -50.0);
+        auto ndforc1 = std::make_shared<ConcentratedForce>(5, 0.0, -50e-3);
         assembly->addConcentratedForce(ndforc1);
-
-   
-
-
-
-
 
         //Валидация
             if (assembly->validate()) {
@@ -177,23 +171,13 @@ int main() {
                 std::cout << "============================DofCount===========================================" << std::endl;
                 std::cout << assembly->getTotalDofCount() << std::endl;
                 std::cout << "===============================k*F========================================" << std::endl;
-                std::cout << "===============================4========================================" << std::endl;
-                for (int i = 0; i < 8; i++) {
-                    std::cout << assembly->getElementReducedDofIndices(4)[i] << std::endl;
-                }
-                std::cout << "===============================8========================================" << std::endl;
-                for (int i = 0; i < 8; i++) {
-                    std::cout << assembly->getElementReducedDofIndices(8)[i] << std::endl;
-                }
-                std::cout << "===============================12========================================" << std::endl;
-                for (int i = 0; i < 8; i++) {
-                    std::cout << assembly->getElementReducedDofIndices(12)[i] << std::endl;
-                }
+                //Eigen::Vector2d sila (5.0,5.0);
+                //std::cout << globalK*sila << std::endl;
 
             }
 
         model->setAssembly(assembly);
-
+       // Eigen::MatrixXd B = PlaneIsoparametricElement::strainDisplacementMatrix(xi, eta, nodes, material);
         
         if (model->solve()) {
             std::cout << "Solution successful!" << std::endl;
@@ -227,9 +211,9 @@ int main() {
         
         //std::cout << model->getDisplacements() << std::endl;
         std::cout << "=======================================================================" << std::endl;
-        std::cout << model->getElementStress(5, 0.0, 0.0) << std::endl;
+       // std::cout << model->getElementStress(5, 0.0, 0.0) << std::endl;
         std::cout << "=======================================================================" << std::endl;
-        std::cout << model->getElementStress(6, 0.0, 0.0) << std::endl;
+      //  std::cout << model->getElementStress(6, 0.0, 0.0) << std::endl;
        // testStressCalculation();
         
     }

@@ -41,9 +41,9 @@ std::vector<LinearSolver::GaussPoint> LinearSolver::generateGaussPoints(int orde
 
         points = {
             {-pos, -pos, w * w},
-            {-pos,  pos, w * w},
-            { pos, -pos, w * w},
-            { pos,  pos, w * w}
+            {pos,  -pos, w * w},
+            { pos, pos, w * w},
+            { -pos,  pos, w * w}
         };
     }
 

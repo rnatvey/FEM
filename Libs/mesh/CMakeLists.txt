@@ -19,13 +19,19 @@ target_sources(mesh PUBLIC
     "model/include/FEMModel.h"
     "model/src/FEMModel.cpp"
     "model/include/ConcentratedForce.h" 
-    "model/src/ConcentratedForce.cpp")
+    "model/src/ConcentratedForce.cpp"
+    "model/include/geometry.h"
+    "meshGenerator/include/meshgenerator.h"
+    "meshGenerator/src/meshgenerator.cpp"
+    "model/src/geometry.cpp" 
+    "model/src/loadFunction.cpp")
 
 target_include_directories(mesh PUBLIC
  ${CMAKE_CURRENT_SOURCE_DIR}/element/include
  ${CMAKE_CURRENT_SOURCE_DIR}/meshing/include
  ${CMAKE_CURRENT_SOURCE_DIR}/assembly/include
  ${CMAKE_CURRENT_SOURCE_DIR}/model/include
+ ${CMAKE_CURRENT_SOURCE_DIR}/meshGenerator/include
 )
 
 target_include_directories(solver PRIVATE

@@ -51,10 +51,10 @@ Eigen::MatrixXd PlaneIsoparametricElement::shapeFunctions(double xi, double eta)
 
 Eigen::Vector4d PlaneIsoparametricElement::shapeFunctionsLocal(double xi, double eta) const {
     Eigen::Vector4d N;
-    N(0) = 0.25 * (1 - xi) * (1 - eta);
-    N(1) = 0.25 * (1 + xi) * (1 - eta);
-    N(2) = 0.25 * (1 + xi) * (1 + eta);
-    N(3) = 0.25 * (1 - xi) * (1 + eta);
+    N(0) = 0.25 * (1 + xi) * (1 + eta);
+    N(1) = 0.25 * (1 - xi) * (1 + eta);
+    N(2) = 0.25 * (1 - xi) * (1 - eta);
+    N(3) = 0.25 * (1 + xi) * (1 - eta);
     return N;
 }
 
@@ -66,16 +66,16 @@ Eigen::MatrixXd PlaneIsoparametricElement::shapeFunctionsDerivativesLocal(double
     Eigen::MatrixXd dN = Eigen::MatrixXd::Zero(4, 2);
 
     // dN/dxi
-    dN(0, 0) = -0.25 * (1 - eta);
-    dN(1, 0) = 0.25 * (1 - eta);
-    dN(2, 0) = 0.25 * (1 + eta);
-    dN(3, 0) = -0.25 * (1 + eta);
+    dN(0, 0) = 0.25 * (1 + eta);
+    dN(1, 0) = -0.25 * (1 + eta);
+    dN(2, 0) = -0.25 * (1 - eta);
+    dN(3, 0) = 0.25 * (1 - eta);
 
     // dN/deta
-    dN(0, 1) = -0.25 * (1 - xi);
-    dN(1, 1) = -0.25 * (1 + xi);
-    dN(2, 1) = 0.25 * (1 + xi);
-    dN(3, 1) = 0.25 * (1 - xi);
+    dN(0, 1) = 0.25 * (1 + xi);
+    dN(1, 1) = 0.25 * (1 - xi);
+    dN(2, 1) = -0.25 * (1 - xi);
+    dN(3, 1) = -0.25 * (1 + xi);
 
     return dN;
 }
