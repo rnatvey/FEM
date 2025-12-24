@@ -127,8 +127,14 @@ void Assembly::assembleGlobalStiffnessMatrix(Eigen::SparseMatrix<double>& global
             continue;
         }
 
+        std::vector<std::shared_ptr<Node>> elementNodes;
+        for (int nodeId : element->getNodeIds()) {
+            auto node = getNode(nodeId);
+            if (node) elementNodes.push_back(node);
+        }
+
         // Вычисляем матрицу жесткости элемента
-        Eigen::MatrixXd ke = element->computeStiffnessMatrix(nodes_, material);
+        Eigen::MatrixXd ke = element->computeStiffnessMatrix(elementNodes, material);
 
         // Используем ПОЛНЫЕ индексы DOF (до граничных условий)
         std::vector<int> dofIndices = getElementFullDofIndices(element->getId());
@@ -155,7 +161,13 @@ void Assembly::assembleGlobalForceVector(Eigen::VectorXd& globalF, const Eigen::
         auto material = getMaterial(element->getMaterialId());
         if (!material) continue;
 
-        Eigen::VectorXd fe = element->computeEquivalentNodalForces(bodyForces, nodes_, material);
+        std::vector<std::shared_ptr<Node>> elementNodes;
+        for (int nodeId : element->getNodeIds()) {
+            auto node = getNode(nodeId);
+            if (node) elementNodes.push_back(node);
+        }
+
+        Eigen::VectorXd fe = element->computeEquivalentNodalForces(bodyForces, elementNodes, material);
 
         // Используем ПОЛНЫЕ индексы
         auto dofIndices = getElementFullDofIndices(element->getId());
@@ -322,24 +334,32 @@ bool Assembly::validate() const {
         return false;
     }
 
-    // Проверяем корректность элементов
+    // Проверяем корректность элементов - передаем ТОЛЬКО узлы элемента
     for (const auto& element : elements_) {
-        if (!element->isValid(nodes_)) {
-            std::cerr << "Assembly validation failed: Element " << element->getId() << " is invalid" << std::endl;
-            return false;
-        }
-    }
-
-    // Проверяем, что все элементы ссылаются на существующие узлы и материалы
-    for (const auto& element : elements_) {
+        // Получаем узлы конкретного элемента
+        std::vector<std::shared_ptr<Node>> elementNodes;
         for (int nodeId : element->getNodeIds()) {
-            if (!getNode(nodeId)) {
+            auto node = getNode(nodeId);
+            if (node) {
+                elementNodes.push_back(node);
+            }
+            else {
                 std::cerr << "Assembly validation failed: Element " << element->getId()
                     << " references non-existent node " << nodeId << std::endl;
                 return false;
             }
         }
 
+        // Проверяем элемент с его собственными узлами
+        if (!element->isValid(elementNodes)) {
+            std::cerr << "Assembly validation failed: Element " << element->getId()
+                << " is invalid (negative Jacobian or other issue)" << std::endl;
+            return false;
+        }
+    }
+
+    // Проверяем, что все элементы ссылаются на существующие материалы
+    for (const auto& element : elements_) {
         if (!getMaterial(element->getMaterialId())) {
             std::cerr << "Assembly validation failed: Element " << element->getId()
                 << " references non-existent material " << element->getMaterialId() << std::endl;

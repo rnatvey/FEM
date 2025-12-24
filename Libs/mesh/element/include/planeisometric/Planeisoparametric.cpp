@@ -51,10 +51,10 @@ Eigen::MatrixXd PlaneIsoparametricElement::shapeFunctions(double xi, double eta)
 
 Eigen::Vector4d PlaneIsoparametricElement::shapeFunctionsLocal(double xi, double eta) const {
     Eigen::Vector4d N;
-    N(0) = 0.25 * (1 + xi) * (1 + eta);
-    N(1) = 0.25 * (1 - xi) * (1 + eta);
-    N(2) = 0.25 * (1 - xi) * (1 - eta);
-    N(3) = 0.25 * (1 + xi) * (1 - eta);
+    N(0) = 0.25 * (1 - xi) * (1 - eta);
+    N(1) = 0.25 * (1 + xi) * (1 - eta);
+    N(2) = 0.25 * (1 + xi) * (1 + eta);
+    N(3) = 0.25 * (1 - xi) * (1 + eta);
     return N;
 }
 
@@ -66,16 +66,16 @@ Eigen::MatrixXd PlaneIsoparametricElement::shapeFunctionsDerivativesLocal(double
     Eigen::MatrixXd dN = Eigen::MatrixXd::Zero(4, 2);
 
     // dN/dxi
-    dN(0, 0) = 0.25 * (1 + eta);
-    dN(1, 0) = -0.25 * (1 + eta);
-    dN(2, 0) = -0.25 * (1 - eta);
-    dN(3, 0) = 0.25 * (1 - eta);
+    dN(0, 0) = -0.25 * (1 - eta);
+    dN(1, 0) = 0.25 * (1 - eta);
+    dN(2, 0) = 0.25 * (1 + eta);
+    dN(3, 0) = -0.25 * (1 + eta);
 
     // dN/deta
-    dN(0, 1) = 0.25 * (1 + xi);
-    dN(1, 1) = 0.25 * (1 - xi);
-    dN(2, 1) = -0.25 * (1 - xi);
-    dN(3, 1) = -0.25 * (1 + xi);
+    dN(0, 1) = -0.25 * (1 - xi);
+    dN(1, 1) = -0.25 * (1 + xi);
+    dN(2, 1) = 0.25 * (1 + xi);
+    dN(3, 1) = 0.25 * (1 - xi);
 
     return dN;
 }
@@ -182,11 +182,51 @@ Eigen::VectorXd PlaneIsoparametricElement::computeEquivalentNodalForces(const Ei
 }
 
 bool PlaneIsoparametricElement::isValid(const std::vector<std::shared_ptr<Node>>& nodes) const {
-    try {
-        Eigen::Matrix2d J = jacobian(0, 0, nodes);
-        return J.determinant() > 0;
+    // nodes должны быть узлами ЭТОГО элемента (4 узла), а не все узлы сборки
+
+    // Проверяем, что передано ровно 4 узла (для Quad4 элемента)
+    if (nodes.size() != 4) {
+        std::cout << "WARNING: isValid called with " << nodes.size()
+            << " nodes, expected 4 for Quad4 element" << std::endl;
+        return false;
     }
-    catch (...) {
+
+    try {
+        // Проверяем якобиан в центре элемента
+        Eigen::Matrix2d J = jacobian(0, 0, nodes);
+        double detJ = J.determinant();
+
+        //std::cout << "Element " << id_ << " Jacobian det at center: " << detJ << std::endl;
+
+        if (detJ <= 0) {
+            std::cout << "ERROR: Negative or zero Jacobian determinant: " << detJ << std::endl;
+            return false;
+        }
+
+        // Дополнительная проверка: якобиан в углах
+        std::vector<std::pair<double, double>> corners = {
+            {-1, -1}, {1, -1}, {1, 1}, {-1, 1}
+        };
+
+        for (const auto& corner : corners) {
+            double xi = corner.first;
+            double eta = corner.second;
+
+            Eigen::Matrix2d Jcorner = jacobian(xi, eta, nodes);
+            double detJcorner = Jcorner.determinant();
+
+            if (detJcorner <= 0) {
+                std::cout << "ERROR: Negative Jacobian at corner ("
+                    << xi << ", " << eta << "): " << detJcorner << std::endl;
+                return false;
+            }
+        }
+
+        return true;
+
+    }
+    catch (const std::exception& e) {
+        std::cout << "ERROR in element validation: " << e.what() << std::endl;
         return false;
     }
 }
@@ -244,17 +284,21 @@ std::vector<Eigen::Vector2d> PlaneIsoparametricElement::getSurfacePoints(int sur
     return points;
 }
 
-Eigen::MatrixXd PlaneIsoparametricElement::getNodalCoordinates(const std::vector<std::shared_ptr<Node>>& nodes) const {
-    Eigen::MatrixXd coords(4, 2);
-    for (int i = 0; i < 4; ++i) {
-        int nodeId = nodeIds_[i];
-        // Находим узел по ID (здесь нужна оптимизация - кэш или быстрый поиск)
-        for (const auto& node : nodes) {
-            if (node->getId() == nodeId) {
-                coords.row(i) = node->getCoordinates().transpose();
-                break;
-            }
-        }
+Eigen::MatrixXd PlaneIsoparametricElement::getNodalCoordinates(
+    const std::vector<std::shared_ptr<Node>>& nodes) const {
+
+    // nodes должны быть 4 узлами этого элемента
+    if (nodes.size() != 4) {
+        throw std::invalid_argument("PlaneIsoparametricElement requires exactly 4 nodes");
     }
+
+    Eigen::MatrixXd coords(4, 2);
+
+    // Просто берем координаты из переданных узлов
+    // Предполагаем, что nodes переданы в правильном порядке
+    for (int i = 0; i < 4; ++i) {
+        coords.row(i) = nodes[i]->getCoordinates().transpose();
+    }
+
     return coords;
 }

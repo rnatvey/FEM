@@ -44,6 +44,31 @@ public:
         const std::vector<std::shared_ptr<Node>>& nodes,
         const std::shared_ptr<Material>& material) const = 0;
 
+    virtual std::vector<std::shared_ptr<Node>> getElementNodes(
+        const std::vector<std::shared_ptr<Node>>& allNodes) const {
+
+        std::vector<std::shared_ptr<Node>> elementNodes;
+
+        // Ищем узлы по их ID
+        for (int nodeId : nodeIds_) {
+            bool found = false;
+            for (const auto& node : allNodes) {
+                if (node->getId() == nodeId) {
+                    elementNodes.push_back(node);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                throw std::runtime_error("Node " + std::to_string(nodeId) +
+                    " not found for element " +
+                    std::to_string(id_));
+            }
+        }
+
+        return elementNodes;
+    }
+
 protected:
     int id_;
     std::vector<int> nodeIds_;  // Только ID узлов, не координаты!

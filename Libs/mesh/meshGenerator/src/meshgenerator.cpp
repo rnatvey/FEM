@@ -314,10 +314,10 @@ void MeshGenerator::createAnnulusSimple(const Eigen::Vector2d& center,
         for (int segment = 0; segment < circumferentialNodes - 1; ++segment) {
             // Четырехугольный элемент между двумя радиальными слоями
             std::vector<int> nodeIds = {
-                nodeGrid[layer][segment],           // Внутренний-левый
-                nodeGrid[layer][segment + 1],       // Внутренний-правый
-                nodeGrid[layer + 1][segment + 1],   // Внешний-правый
-                nodeGrid[layer + 1][segment]        // Внешний-левый
+               nodeGrid[layer + 1][segment],       // Внешний-левый
+               nodeGrid[layer + 1][segment + 1],   // Внешний-правый
+               nodeGrid[layer][segment + 1],       // Внутренний-правый
+               nodeGrid[layer][segment]          // Внутренний-левый
             };
 
             // Создаем элемент
