@@ -10,13 +10,24 @@
 #include "BaseElement.h"
 #include "vector.h"
 #include "ConcentratedForce.h"
+#include "loadFunction.h"
 //class ConcentratedForce;
 class vector2;
-
-class Assembly {
+class LoadFunction;
+class Assembly : public std::enable_shared_from_this<Assembly> {
 public:
     Assembly();
     ~Assembly() = default;
+
+    struct SurfaceLoad
+    {
+        int elementId;
+        int surfaceIndex; // 0-нижн€€, 1-права€, 2-верхн€€, 3-лева€
+        std::shared_ptr<LoadFunction> loadFunction;
+        SurfaceLoad(int elemId, int surfIdx, std::shared_ptr<LoadFunction> loadFunc)
+            : elementId(elemId), surfaceIndex(surfIdx), loadFunction(std::move(loadFunc)) {
+        }
+    };
 
     // === ”правление узлами ===
     void addNode(std::shared_ptr<Node> node);
@@ -73,13 +84,17 @@ public:
         std::vector<int> prescribedDofs; // »ндексы DOF с предписанными перемещени€ми
         std::vector<double> prescribedValues; // «начени€ предписанных перемещений
     };
-
+    // —илы
     void addConcentratedForce(std::shared_ptr<ConcentratedForce> force);
     void addConcentratedForces(const std::vector<std::shared_ptr<ConcentratedForce>>& forces);
     const std::vector<std::shared_ptr<ConcentratedForce>>& getConcentratedForces() const { return concentratedForces_; }
-
+    void addSurfaceLoad(int elementId, int surfaceIndex, std::shared_ptr<LoadFunction> loadFunction);
+    const std::vector<SurfaceLoad>& getSurfaceLoads() const { return surfaceLoads_; }
     // —борка вектора сосредоточенных сил
     void assembleConcentratedForces(Eigen::VectorXd& globalF) const;
+    void assembleSurfaceLoads(Eigen::VectorXd& globalF) const;
+
+    //=========================================
 
     const DofMapping& getDofMapping() const { return dofMapping_; }
 
@@ -97,7 +112,7 @@ private:
         bool hasPrescribedDisplacement;
     };
     std::vector<BoundaryCondition> boundaryConditions_;
-
+    std::vector<SurfaceLoad> surfaceLoads_;
     // ¬спомогательные методы
    
     void buildNodeIndexMap();

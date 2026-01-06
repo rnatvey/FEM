@@ -5,7 +5,7 @@
 #include <iostream>
 
 Eigen::VectorXd LoadFunction::applyToElementSurface(int elementId, int surfaceIndex,
-    const std::shared_ptr<Assembly>& assembly) const {
+     const std::shared_ptr<const Assembly>& assembly)  {
     auto element = assembly->getElement(elementId);
     auto material = assembly->getMaterial(element->getMaterialId());
     auto nodes = assembly->getNodes();

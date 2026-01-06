@@ -279,13 +279,13 @@ void MeshGenerator::createAnnulusSimple(const Eigen::Vector2d& center,
     double angularStep = totalAngle / (circumferentialNodes - 1);
 
     // Вычисляем радиальный шаг
-    double radialStep = (outerRadius - innerRadius) / radialLayers;
+    double radialStep = (outerRadius - innerRadius) / (radialLayers - 1.0);
 
     // 1. СОЗДАНИЕ УЗЛОВ по слоям (от внутреннего радиуса к внешнему)
     std::vector<std::vector<int>> nodeGrid(radialLayers + 1,
         std::vector<int>(circumferentialNodes, 0));
 
-    for (int layer = 0; layer <= radialLayers-1; ++layer) {
+    for (int layer = 0; layer < radialLayers; ++layer) {
         double currentRadius = innerRadius + layer * radialStep;
 
         for (int node = 0; node < circumferentialNodes; ++node) {
@@ -310,7 +310,7 @@ void MeshGenerator::createAnnulusSimple(const Eigen::Vector2d& center,
     // 2. СОЗДАНИЕ ЭЛЕМЕНТОВ (четырехугольников между слоями)
     int elementsCreated = 0;
 
-    for (int layer = 0; layer < radialLayers-1; ++layer) {
+    for (int layer = 0; layer < radialLayers - 1 ; ++layer) {
         for (int segment = 0; segment < circumferentialNodes - 1; ++segment) {
             // Четырехугольный элемент между двумя радиальными слоями
             std::vector<int> nodeIds = {

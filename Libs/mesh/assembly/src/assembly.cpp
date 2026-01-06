@@ -2,7 +2,7 @@
 #include "solver.h"
 #include <stdexcept>
 #include <iostream>
-
+#include "planeisometric/Planeisoparametric.h"
 
 Assembly::Assembly() {
 }
@@ -486,3 +486,52 @@ void Assembly::addConcentratedForces(const std::vector<std::shared_ptr<Concentra
     }
 }
 
+void Assembly::addSurfaceLoad(int elementId, int surfaceIndex,
+    std::shared_ptr<LoadFunction> loadFunction) {
+    if (!loadFunction) {
+        throw std::invalid_argument("Cannot add null load function");
+    }
+
+    // Проверяем существование элемента
+    if (!getElement(elementId)) {
+        throw std::invalid_argument("Element with ID " + std::to_string(elementId) + " not found");
+    }
+
+    // Проверяем корректность номера поверхности
+    if (surfaceIndex < 0 || surfaceIndex > 3) {
+        throw std::invalid_argument("Surface index must be between 0 and 3");
+    }
+
+    // Используем emplace_back с конструктором
+    surfaceLoads_.emplace_back(elementId, surfaceIndex, std::move(loadFunction));
+}
+
+void Assembly::assembleSurfaceLoads(Eigen::VectorXd& globalF) const {
+    for (const auto& surfaceLoad : surfaceLoads_) {
+        try {
+            if (!surfaceLoad.loadFunction) continue;
+
+            // Применяем нагрузку к поверхности элемента
+            Eigen::VectorXd surfaceForces = surfaceLoad.loadFunction->applyToElementSurface(
+                surfaceLoad.elementId,
+                surfaceLoad.surfaceIndex,
+                shared_from_this()
+            );
+
+            // Получаем индексы DOF элемента
+            auto dofIndices = getElementDofIndices(surfaceLoad.elementId);
+
+            // Добавляем в глобальный вектор сил
+            for (size_t i = 0; i < dofIndices.size(); ++i) {
+                if (dofIndices[i] >= 0 && dofIndices[i] < globalF.size()) {
+                    globalF(dofIndices[i]) += surfaceForces(i);
+                }
+            }
+
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Error applying surface load to element "
+                << surfaceLoad.elementId << ": " << e.what() << std::endl;
+        }
+    }
+}

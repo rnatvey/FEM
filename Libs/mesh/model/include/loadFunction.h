@@ -5,6 +5,8 @@
 #include "geometry.h"
 #include "assembly.h"
 
+class Assembly;
+
 class LoadFunction {
 public:
     // Функция распределения нагрузки: нагрузка = f(x, y, нормаль)
@@ -14,7 +16,7 @@ public:
 
     // Применение к поверхности элемента
     Eigen::VectorXd applyToElementSurface(int elementId, int surfaceIndex,
-        const std::shared_ptr<Assembly>& assembly) const;
+        const std::shared_ptr<const Assembly>& assembly);
 
     // Стандартные распределения
     static LoadFunction constantLoad(double fx, double fy);

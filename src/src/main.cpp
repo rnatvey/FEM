@@ -108,48 +108,25 @@ int main() {
         // Добавляем материалы
         auto material = std::make_shared<Material>(1, 6.0, 0.49, 1);
         assembly->addMaterial(material);
-        Eigen::Vector2d center(0.0, 0.0);      // Центр колеса
-        double innerRadius = 30;              // Внутренний радиус (обод), м
-        double outerRadius = 50;              // Внешний радиус (протектор), м
-        double contactAngle = 15.0 * DEG_TO_RAD; // Угол контакта (±15° от вертикали)
+        //
+        assembly->addNode(std::make_shared<Node>(1, 0.0, 0.0));
+        assembly->addFixedNode(1, 1, 1);
+        assembly->addNode(std::make_shared<Node>(2, 20.0, 0.0));
+        assembly->addFixedNode(2, 0, 1);
+        assembly->addNode(std::make_shared<Node>(3, 20.0, 12.0));
+        assembly->addFixedNode(3, 0, 1);
+        assembly->addNode(std::make_shared<Node>(4, 0.0, 12.0));
+        assembly->addFixedNode(4, 1, 1);
 
-        // Создаем кольцевое сечение (90° дуга)
-        double startAngle = (PI + contactAngle * 3.0);                    // -45°
-        double endAngle = startAngle + PI/2.0;                 // -135° (90° дуга)
+        auto ndforc1 = std::make_shared<ConcentratedForce>(2, 11843663.639952626079, 0.0);
+        auto ndforc2 = std::make_shared<ConcentratedForce>(3, 11843663.639952627942, 0.0);
+        assembly->addConcentratedForce(ndforc1);
+        assembly->addConcentratedForce(ndforc2);
 
-        int radialLayers = 5;          // Слоев по толщине
-        int circumferentialNodes = 10;  // Узлов по окружности
-
-        meshGen->createAnnulusSimple(center, innerRadius, outerRadius,
-            startAngle, endAngle,
-            radialLayers, circumferentialNodes,
-            1);
-        std::cout << "   mesh done: " << assembly->getElementCount() << " elements, "
-            << assembly->getNodeCount() << " nodes" << std::endl;
-
-       //////////////////////
-
-        auto nodes = assembly->getNodes();
-        int innerNodesCount = 0;
-
-        for (const auto& node : nodes) {
-            Eigen::Vector2d coords = node->getCoordinates();
-            double radius = coords.norm();
-
-            // Узлы на внутреннем радиусе (с допуском)
-            if (std::abs(radius - innerRadius) < 0.5) {
-                assembly->addFixedNode(node->getId(), true, true); // Закрепляем X и Y
-                innerNodesCount++;
-                //std::cout << "   node was fixed: " << node->getId() <<"cords:" << node->getCoordinates() << std::endl;
-
-            }
-        }
-        std::cout << "   nodes fixed: " << innerNodesCount << std::endl;
-
-        double maxContactPressure = 1;     // 1.5 МПа максимальное давление
-        double contactHalfWidth = 50*std::sin(contactAngle);        // 4 см полуширина контакта
-        double contactCenterX = 0.0;           // Центр контакта
-
+        std::vector<int> nodeIds = { 1, 2, 3, 4 };
+        auto element = std::make_shared<PlaneIsoparametricElement>(1, nodeIds, 1);
+        std::cout << element->getNodeCount() << std::endl;
+        assembly->addElement(element);
 
         //Валидация
             if (assembly->validate()) {
@@ -178,8 +155,8 @@ int main() {
 
             }
 
-        model->setAssembly(assembly);
-       // Eigen::MatrixXd B = PlaneIsoparametricElement::strainDisplacementMatrix(xi, eta, nodes, material);
+       model->setAssembly(assembly);
+       
         
         if (model->solve()) {
             std::cout << "Solution successful!" << std::endl;
