@@ -1,11 +1,11 @@
-Eigen::Vector2d center(0.0, 0.0);      // Центр колеса
+     Eigen::Vector2d center(0.0, 0.0);      // Центр колеса
         double innerRadius = 30;              // Внутренний радиус (обод), м
         double outerRadius = 50;              // Внешний радиус (протектор), м
         double contactAngle = 15.0 * DEG_TO_RAD; // Угол контакта (±15° от вертикали)
 
         // Создаем кольцевое сечение (90° дуга)
-        double startAngle = (PI + contactAngle * 3.0);                    // -45°
-        double endAngle = startAngle + PI/2.0;                 // -135° (90° дуга)
+        double startAngle = (PI + 15.0 * DEG_TO_RAD * 3.0);                    // -45°
+        double endAngle = startAngle + PI / 2.0;                 // -135° (90° дуга)
 
         int radialLayers = 5;          // Слоев по толщине
         int circumferentialNodes = 10;  // Узлов по окружности
@@ -17,7 +17,7 @@ Eigen::Vector2d center(0.0, 0.0);      // Центр колеса
         std::cout << "   mesh done: " << assembly->getElementCount() << " elements, "
             << assembly->getNodeCount() << " nodes" << std::endl;
 
-       //////////////////////
+        //////////////////////
 
         auto nodes = assembly->getNodes();
         int innerNodesCount = 0;
@@ -37,47 +37,47 @@ Eigen::Vector2d center(0.0, 0.0);      // Центр колеса
         std::cout << "   nodes fixed: " << innerNodesCount << std::endl;
 
         double maxContactPressure = 1;     // 1 МПа максимальное давление
-        double contactHalfWidth = 50*std::sin(contactAngle);        // 4 см полуширина контакта
+        double contactHalfWidth = 50 * std::sin(contactAngle);        //  полуширина контакта
         double contactCenterX = 0.0;           // Центр контакта
         auto hertzLoad = std::make_shared<LoadFunction>(LoadFunction::parabolicPressure(maxContactPressure, contactHalfWidth, contactCenterX));
         auto elements = assembly->getElements();
         int loadedElements = 0;
 
-        //for (const auto& element : elements) {
-        //    auto planeElement = std::dynamic_pointer_cast<PlaneIsoparametricElement>(element);
-        //    if (!planeElement) continue;
+        for (const auto& element : elements) {
+            auto planeElement = std::dynamic_pointer_cast<PlaneIsoparametricElement>(element);
+            if (!planeElement) continue;
 
-        //    // Получаем координаты узлов элемента
-        //    
-        //    std::vector<std::shared_ptr<Node>> elementNodes;
-        //    for (int nodeId : element->getNodeIds()) {
-        //        auto node = assembly->getNode(nodeId);
-        //        if (node) {
-        //            elementNodes.push_back(node);
-        //        }
-        //        else {
-        //            std::cerr << "Assembly validation failed: Element " << element->getId()
-        //                << " references non-existent node " << nodeId << std::endl;
-        //            return false;
-        //        }
-        //    }
-        //    auto nodeCoords = planeElement->getNodalCoordinates(elementNodes);
-        //    // Проверяем радиусы узлов элемента
-        //    bool isOuterElement = true;
-        //    for (int i = 0; i < 4; ++i) {
-        //        double radius = nodeCoords.row(i).norm();
-        //        if (std::abs(radius - outerRadius) > 0.5) { // Допуск 0.5 м
-        //            isOuterElement = false;
-        //            break;
-        //        }
-        //    }
+            // Получаем координаты узлов элемента
+            
+            std::vector<std::shared_ptr<Node>> elementNodes;
+            for (int nodeId : element->getNodeIds()) {
+                auto node = assembly->getNode(nodeId);
+                if (node) {
+                    elementNodes.push_back(node);
+                }
+                else {
+                    std::cerr << "Assembly validation failed: Element " << element->getId()
+                        << " references non-existent node " << nodeId << std::endl;
+                    return false;
+                }
+            }
+            auto nodeCoords = planeElement->getNodalCoordinates(elementNodes);
+            // Проверяем радиусы узлов элемента
+            bool isOuterElement = false;
+            for (int i = 0; i < 4; ++i) {
+                double radius = nodeCoords.row(i).norm();
+                if (std::abs(radius - outerRadius) < 0.5) { // Допуск 0.5 м
+                    isOuterElement = true;
+                    break;
+                }
+            }
+            elementNodes.clear();
+            if (isOuterElement) {
+                // Для кольцевой сетки нижняя грань обычно surfaceIndex = 0
+                // (между узлами 0-1 в локальных координатах)
+                assembly->addSurfaceLoad(element->getId(), 0, hertzLoad);
+                loadedElements++;
+            }
+        }
 
-        //    if (isOuterElement) {
-        //        // Для кольцевой сетки нижняя грань обычно surfaceIndex = 0
-        //        // (между узлами 0-1 в локальных координатах)
-        //        assembly->addSurfaceLoad(element->getId(), 0, hertzLoad);
-        //        loadedElements++;
-        //    }
-        //}
-
-        //std::cout << "Pressure applied to " << loadedElements << " outer elements" << std::endl;
+        std::cout << "Pressure applied to " << loadedElements << " outer elements" << std::endl;

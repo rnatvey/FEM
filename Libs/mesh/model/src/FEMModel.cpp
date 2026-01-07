@@ -46,6 +46,7 @@ bool FEModel::solve() {
 
         // 3. Добавляем сосредоточенные силы
         assembly_->assembleConcentratedForces(globalF_);
+        assembly_->assembleSurfaceLoads(globalF_);
 
         // 4. Применение граничных условий
         assembly_->applyBoundaryConditions(globalK_, globalF_);
@@ -224,6 +225,7 @@ void FEModel::calculateReactionForces() {
     Eigen::VectorXd bodyForces = Eigen::VectorXd::Zero(2);
     assembly_->assembleGlobalForceVector(fullF, bodyForces);
     assembly_->assembleConcentratedForces(fullF);
+    assembly_->assembleSurfaceLoads(fullF);
 
     std::cout << "Full K size: " << fullK.rows() << "x" << fullK.cols() << std::endl;
     std::cout << "Full F size: " << fullF.size() << std::endl;
@@ -428,6 +430,25 @@ void FEModel::calculateNodalAverages() const {
         auto material = assembly_->getMaterial(element->getMaterialId());
         if (!material) continue;
 
+        // Получаем узлы элемента
+        std::vector<std::shared_ptr<Node>> elementNodes;
+        std::vector<int> nodeIds = element->getNodeIds();
+
+        for (int nodeId : nodeIds) {
+            auto node = assembly_->getNode(nodeId);
+            if (node) {
+                elementNodes.push_back(node);
+            }
+            else {
+                std::cerr << "Error: Element " << element->getId()
+                    << " references non-existent node " << nodeId << std::endl;
+                elementNodes.clear();
+                break;
+            }
+        }
+
+        if (elementNodes.empty()) continue;
+
         // Получаем перемещения элемента
         auto dofIndices = assembly_->getElementDofIndices(element->getId());
         Eigen::VectorXd elementDisplacements = Eigen::VectorXd::Zero(dofIndices.size());
@@ -449,22 +470,21 @@ void FEModel::calculateNodalAverages() const {
 
             // Вычисляем напряжения и деформации в точке
             Eigen::Vector3d stress = element->computeStress(xi, eta, elementDisplacements,
-                nodes, material);
+                elementNodes, material);
             Eigen::Vector3d strain = element->computeStrain(xi, eta, elementDisplacements,
-                nodes, material);
+                elementNodes, material);
 
             // Находим соответствующий узел элемента
-            auto nodeIds = element->getNodeIds();
             if (pt < nodeIds.size()) {
-                int nodeId = nodeIds[pt];
+                int targetNodeId = nodeIds[pt];
 
-                // Находим индекс узла в глобальном списке
-                for (int i = 0; i < nodeCount; ++i) {
-                    if (nodes[i]->getId() == nodeId) {
-                        nodalStresses_[i] += stress;
-                        nodalStrains_[i] += strain;
-                        stressCount[i]++;
-                        strainCount[i]++;
+                // Ищем узел в глобальном списке nodes, а не в elementNodes!
+                for (int globalIdx = 0; globalIdx < nodeCount; ++globalIdx) {
+                    if (nodes[globalIdx]->getId() == targetNodeId) {
+                        nodalStresses_[globalIdx] += stress;
+                        nodalStrains_[globalIdx] += strain;
+                        stressCount[globalIdx]++;
+                        strainCount[globalIdx]++;
                         break;
                     }
                 }
@@ -481,6 +501,25 @@ void FEModel::calculateNodalAverages() const {
             nodalStrains_[i] /= strainCount[i];
         }
     }
+
+    // Отладка: выводим статистику
+   /* std::cout << "=== Nodal Averages Debug ===" << std::endl;
+    std::cout << "Total nodes: " << nodeCount << std::endl;
+    std::cout << "Nodes with stress data: ";*/
+ /*   int nodesWithData = 0;
+    for (int i = 0; i < nodeCount; ++i) {
+        if (stressCount[i] > 0) nodesWithData++;
+    }
+    std::cout << nodesWithData << std::endl;*/
+
+    // Выводим первые 10 узлов для проверки
+ /*   for (int i = 0; i < std::min(10, nodeCount); ++i) {
+        std::cout << "Node " << nodes[i]->getId()
+            << ": stress count=" << stressCount[i]
+            << ", strain count=" << strainCount[i]
+            << ", displacement=(" << nodalDisplacements_[i].x()
+            << ", " << nodalDisplacements_[i].y() << ")" << std::endl;
+    }*/
 
     nodalDataCalculated_ = true;
 }

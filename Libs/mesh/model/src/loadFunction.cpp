@@ -1,4 +1,4 @@
-#include "loadFunction.h"
+п»ї#include "loadFunction.h"
 #include "assembly.h"
 #include "planeisometric/Planeisoparametric.h"
 #include <cmath>
@@ -8,57 +8,83 @@ Eigen::VectorXd LoadFunction::applyToElementSurface(int elementId, int surfaceIn
      const std::shared_ptr<const Assembly>& assembly)  {
     auto element = assembly->getElement(elementId);
     auto material = assembly->getMaterial(element->getMaterialId());
-    auto nodes = assembly->getNodes();
+    std::vector<std::shared_ptr<Node>> nodes;
+
+    for (int nodeId : element->getNodeIds()) {
+        auto node = assembly->getNode(nodeId);
+        if (node) {
+            nodes.push_back(node);
+        }
+        else {
+            std::cerr << "Assembly validation failed: Element " << element->getId()
+                << " references non-existent node " << nodeId << std::endl;
+           break;
+        }
+    }
 
     if (!element || !material) {
         throw std::invalid_argument("Invalid element or material");
     }
 
-    // Преобразуем в PlaneIsoparametricElement для доступа к методам поверхности
+    // РџСЂРµРѕР±СЂР°Р·СѓРµРј РІ PlaneIsoparametricElement РґР»СЏ РґРѕСЃС‚СѓРїР° Рє РјРµС‚РѕРґР°Рј РїРѕРІРµСЂС…РЅРѕСЃС‚Рё
     auto planeElement = std::dynamic_pointer_cast<PlaneIsoparametricElement>(element);
     if (!planeElement) {
         throw std::runtime_error("Element is not a PlaneIsoparametricElement");
     }
 
-    // Точки Гаусса для интегрирования по поверхности
-    const double gp = 0.577350269189626;
-    const std::vector<double> gaussPoints = { -gp, gp };
-    const std::vector<double> weights = { 1.0, 1.0 };
+    // РўРѕС‡РєРё Р“Р°СѓСЃСЃР° РґР»СЏ РёРЅС‚РµРіСЂРёСЂРѕРІР°РЅРёСЏ РїРѕ РїРѕРІРµСЂС…РЅРѕСЃС‚Рё
+    //const double gp = 0.577350269189626;
+    //const std::vector<double> gaussPoints = { -gp, gp };
+    //const std::vector<double> weights = { 1.0, 1.0 };
+
+    const std::vector<double> gaussPoints3 = {
+     -0.774596669241483,  // -в€љ(3/5)
+     0.0,                 // 0
+     0.774596669241483    // в€љ(3/5)
+    };
+    const std::vector<double> weights3 = {
+        5.0 / 9.0,            // 5/9
+        8.0 / 9.0,            // 8/9  
+        5.0 / 9.0             // 5/9
+    };
+
+    const auto& gaussPoints = gaussPoints3;
+    const auto& weights = weights3;
 
     Eigen::VectorXd surfaceForces = Eigen::VectorXd::Zero(element->getDofCount());
 
-    for (int i = 0; i < 2; ++i) {
+    for (int i = 0; i < gaussPoints.size(); ++i) {
         double param = gaussPoints[i];
         double weight = weights[i];
 
-        // Определяем локальные координаты на поверхности
+        // РћРїСЂРµРґРµР»СЏРµРј Р»РѕРєР°Р»СЊРЅС‹Рµ РєРѕРѕСЂРґРёРЅР°С‚С‹ РЅР° РїРѕРІРµСЂС…РЅРѕСЃС‚Рё
         double xi, eta;
         switch (surfaceIndex) {
-        case 0: xi = param; eta = -1.0; break; // нижняя
-        case 1: xi = 1.0; eta = param; break;  // правая
-        case 2: xi = param; eta = 1.0; break;  // верхняя
-        case 3: xi = -1.0; eta = param; break; // левая
+        case 0: xi = param; eta = -1.0; break; // РЅРёР¶РЅСЏСЏ
+        case 1: xi = 1.0; eta = param; break;  // РїСЂР°РІР°СЏ
+        case 2: xi = param; eta = 1.0; break;  // РІРµСЂС…РЅСЏСЏ
+        case 3: xi = -1.0; eta = param; break; // Р»РµРІР°СЏ
         default:
             throw std::invalid_argument("Invalid surface index");
         }
 
-        // Вычисляем глобальные координаты точки
+        // Р’С‹С‡РёСЃР»СЏРµРј РіР»РѕР±Р°Р»СЊРЅС‹Рµ РєРѕРѕСЂРґРёРЅР°С‚С‹ С‚РѕС‡РєРё
         Eigen::MatrixXd N = planeElement->shapeFunctions(xi, eta);
         Eigen::Vector2d point(0, 0);
         auto nodeCoords = planeElement->getNodalCoordinates(nodes);
 
         for (int nodeIdx = 0; nodeIdx < 4; ++nodeIdx) {
-            double shapeFunc = N(0, nodeIdx * 2); // N_x или N_y одинаковы
+            double shapeFunc = N(0, nodeIdx * 2); // N_x РёР»Рё N_y РѕРґРёРЅР°РєРѕРІС‹
             point += shapeFunc * nodeCoords.row(nodeIdx).transpose();
         }
 
-        // Нормаль к поверхности
+        // РќРѕСЂРјР°Р»СЊ Рє РїРѕРІРµСЂС…РЅРѕСЃС‚Рё
         Eigen::Vector2d normal = planeElement->getSurfaceNormal(surfaceIndex, nodes);
-
-        // Вычисляем нагрузку в точке
+        normal = Eigen::Vector2d(0.0, 1.0);
+        // Р’С‹С‡РёСЃР»СЏРµРј РЅР°РіСЂСѓР·РєСѓ РІ С‚РѕС‡РєРµ
         Eigen::Vector2d load = distribution_(point.x(), point.y(), normal);
 
-        // Длина сегмента (якобиан преобразования на поверхности)
+        // Р”Р»РёРЅР° СЃРµРіРјРµРЅС‚Р° (СЏРєРѕР±РёР°РЅ РїСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёСЏ РЅР° РїРѕРІРµСЂС…РЅРѕСЃС‚Рё)
         Eigen::Matrix2d J = planeElement->jacobian(xi, eta, nodes);
         double surfaceJacobian;
         switch (surfaceIndex) {
@@ -72,7 +98,7 @@ Eigen::VectorXd LoadFunction::applyToElementSurface(int elementId, int surfaceIn
             surfaceJacobian = 1.0;
         }
 
-        // Добавляем вклад в узловые силы
+        // Р”РѕР±Р°РІР»СЏРµРј РІРєР»Р°Рґ РІ СѓР·Р»РѕРІС‹Рµ СЃРёР»С‹
         for (int nodeIdx = 0; nodeIdx < 4; ++nodeIdx) {
             double shapeFunc = N(0, nodeIdx * 2);
             int dofX = nodeIdx * 2;
@@ -94,25 +120,25 @@ LoadFunction LoadFunction::constantLoad(double fx, double fy) {
 
 LoadFunction LoadFunction::linearPressure(double p0, double gradient) {
     return LoadFunction([p0, gradient](double x, double y, const Eigen::Vector2d& normal) {
-        double pressure = p0 + gradient * x; // Линейная зависимость от x
-        return Eigen::Vector2d(pressure * normal); // Давление действует по нормали
+        double pressure = p0 + gradient * x; // Р›РёРЅРµР№РЅР°СЏ Р·Р°РІРёСЃРёРјРѕСЃС‚СЊ РѕС‚ x
+        return Eigen::Vector2d(pressure * normal); // Р”Р°РІР»РµРЅРёРµ РґРµР№СЃС‚РІСѓРµС‚ РїРѕ РЅРѕСЂРјР°Р»Рё
         });
 }
 
 LoadFunction LoadFunction::hertzianPressure(double maxPressure, double contactWidth, double x0) {
     return LoadFunction([maxPressure, contactWidth, x0](double x, double y, const Eigen::Vector2d& normal) {
-        double dx = x - x0;  // Расстояние от центра контакта
+        double dx = x - x0;  // Р Р°СЃСЃС‚РѕСЏРЅРёРµ РѕС‚ С†РµРЅС‚СЂР° РєРѕРЅС‚Р°РєС‚Р°
 
-        // Если точка вне зоны контакта
+        // Р•СЃР»Рё С‚РѕС‡РєР° РІРЅРµ Р·РѕРЅС‹ РєРѕРЅС‚Р°РєС‚Р°
         if (std::abs(dx) > contactWidth) {
             return Eigen::Vector2d(0, 0);
         }
 
-        // Эллиптическое распределение Герца
+        // Р­Р»Р»РёРїС‚РёС‡РµСЃРєРѕРµ СЂР°СЃРїСЂРµРґРµР»РµРЅРёРµ Р“РµСЂС†Р°
         double relativeX = dx / contactWidth;  // x/a
         double pressure = maxPressure * std::sqrt(1.0 - relativeX * relativeX);
 
-        // Давление действует по нормали к поверхности
+        // Р”Р°РІР»РµРЅРёРµ РґРµР№СЃС‚РІСѓРµС‚ РїРѕ РЅРѕСЂРјР°Р»Рё Рє РїРѕРІРµСЂС…РЅРѕСЃС‚Рё
         return Eigen::Vector2d(pressure * normal);
         });
 }
@@ -132,7 +158,7 @@ LoadFunction LoadFunction::parabolicPressure(double maxPressure, double contactH
             return Eigen::Vector2d(0, 0);
         }
 
-        // Параболическое распределение: p(x) = p0 * (1 - (x/a)^2)
+        // РџР°СЂР°Р±РѕР»РёС‡РµСЃРєРѕРµ СЂР°СЃРїСЂРµРґРµР»РµРЅРёРµ: p(x) = p0 * (1 - (x/a)^2)
         double relativeX = dx / contactHalfWidth;
         double pressure = maxPressure * (1.0 - relativeX * relativeX);
 

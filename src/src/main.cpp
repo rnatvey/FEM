@@ -109,24 +109,45 @@ int main() {
         auto material = std::make_shared<Material>(1, 6.0, 0.49, 1);
         assembly->addMaterial(material);
         //
-        assembly->addNode(std::make_shared<Node>(1, 0.0, 0.0));
+        vector2 st1(0.0, 0.0);
+        vector2 en1(20.0, 0.0);
+        vector2 st2(0.0, 4.0);
+        vector2 en2(20.0, 4.0);
+        vector2 st3(0.0, 8.0);
+        vector2 en3(20.0, 8.0);
+        vector2 st4(0.0, 12.0);
+        vector2 en4(20.0, 12.0);
+        assembly->addLineofNodes(1, st1, en1, 5);
+        assembly->addLineofNodes(6, st2, en2, 5);
+        assembly->addLineofNodes(11, st3, en3, 5);
+        assembly->addLineofNodes(16, st4, en4, 5);
+        std::cout << "==========================================" << std::endl;
+        // Добавляем элементы
+        for (int i = 1; i < 5; i++)
+        {
+            std::vector<int> nodeIds = { i, i + 1, i + 6, i + 5 };
+            auto element = std::make_shared<PlaneIsoparametricElement>(i, nodeIds, 1);
+            assembly->addElement(element);
+        }
+        for (int i = 6; i < 10; i++)
+        {
+            std::vector<int> nodeIds = { i, i + 1, i + 6, i + 5 };
+            auto element = std::make_shared<PlaneIsoparametricElement>(i - 1, nodeIds, 1);
+            assembly->addElement(element);
+        }
+        for (int i = 11; i < 15; i++)
+        {
+            std::vector<int> nodeIds = { i, i + 1, i + 6, i + 5 };
+            auto element = std::make_shared<PlaneIsoparametricElement>(i - 2, nodeIds, 1);
+            assembly->addElement(element);
+        }
         assembly->addFixedNode(1, 1, 1);
-        assembly->addNode(std::make_shared<Node>(2, 20.0, 0.0));
-        assembly->addFixedNode(2, 0, 1);
-        assembly->addNode(std::make_shared<Node>(3, 20.0, 12.0));
-        assembly->addFixedNode(3, 0, 1);
-        assembly->addNode(std::make_shared<Node>(4, 0.0, 12.0));
-        assembly->addFixedNode(4, 1, 1);
+        assembly->addFixedNode(6, 1, 0);
+        assembly->addFixedNode(11, 1, 0);
+        assembly->addFixedNode(16, 1, 0);
 
-        auto ndforc1 = std::make_shared<ConcentratedForce>(2, 11843663.639952626079, 0.0);
-        auto ndforc2 = std::make_shared<ConcentratedForce>(3, 11843663.639952627942, 0.0);
+        auto ndforc1 = std::make_shared<ConcentratedForce>(3, 0.0, -50.0);
         assembly->addConcentratedForce(ndforc1);
-        assembly->addConcentratedForce(ndforc2);
-
-        std::vector<int> nodeIds = { 1, 2, 3, 4 };
-        auto element = std::make_shared<PlaneIsoparametricElement>(1, nodeIds, 1);
-        std::cout << element->getNodeCount() << std::endl;
-        assembly->addElement(element);
 
         //Валидация
             if (assembly->validate()) {
@@ -134,24 +155,25 @@ int main() {
 
 
                 // Сборка матрицы жесткости
-                Eigen::SparseMatrix<double> globalK;
-                Eigen::VectorXd globalF;
-                assembly->assembleGlobalStiffnessMatrix(globalK);
-                assembly->assembleConcentratedForces(globalF);
-                std::cout << "Global stiffness matrix size: " << globalK.rows() << "x" << globalK.cols() << std::endl;
-               // std::cout << globalK << std::endl;
-                std::cout << "===========================globalK============================================" << std::endl;
-                assembly->applyBoundaryConditions(globalK, globalF);
-                //std::cout << globalK << std::endl;
-                std::cout << "=========================globalF==============================================" << std::endl;
-                //std::cout << globalF << std::endl;
-                std::cout << "============================Force===========================================" << std::endl;
-               // std::cout << Force << std::endl;
-                std::cout << "============================DofCount===========================================" << std::endl;
-                std::cout << assembly->getTotalDofCount() << std::endl;
-                std::cout << "===============================k*F========================================" << std::endl;
-                //Eigen::Vector2d sila (5.0,5.0);
-                //std::cout << globalK*sila << std::endl;
+               // Eigen::SparseMatrix<double> globalK;
+               // Eigen::VectorXd globalF;
+               // assembly->assembleGlobalStiffnessMatrix(globalK);
+               // assembly->assembleConcentratedForces(globalF);
+               // assembly->assembleSurfaceLoads(globalF);
+               // std::cout << "Global stiffness matrix size: " << globalK.rows() << "x" << globalK.cols() << std::endl;
+               //// std::cout << globalK << std::endl;
+               // std::cout << "===========================globalK============================================" << std::endl;
+               // assembly->applyBoundaryConditions(globalK, globalF);
+               // //std::cout << globalK << std::endl;
+               // std::cout << "=========================globalF==============================================" << std::endl;
+               // std::cout << globalF << std::endl;
+               // std::cout << "============================Force===========================================" << std::endl;
+               //// std::cout << Force << std::endl;
+               // std::cout << "============================DofCount===========================================" << std::endl;
+               // std::cout << assembly->getTotalDofCount() << std::endl;
+               // std::cout << "===============================k*F========================================" << std::endl;
+               // //Eigen::Vector2d sila (5.0,5.0);
+               // //std::cout << globalK*sila << std::endl;
 
             }
 
