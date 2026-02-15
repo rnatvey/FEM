@@ -328,9 +328,9 @@ void MeshGenerator::createAnnulusSimple(const Eigen::Vector2d& center,
             assembly_->addElement(element);
             elementsCreated++;
 
-            std::cout << "Element " << nextElementId_ - 1 << ": nodes "
+          /*  std::cout << "Element " << nextElementId_ - 1 << ": nodes "
                 << nodeIds[0] << "-" << nodeIds[1] << "-"
-                << nodeIds[2] << "-" << nodeIds[3] << std::endl;
+                << nodeIds[2] << "-" << nodeIds[3] << std::endl;*/
         }
     }
 

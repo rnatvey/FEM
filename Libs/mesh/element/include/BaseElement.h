@@ -49,7 +49,7 @@ public:
 
         std::vector<std::shared_ptr<Node>> elementNodes;
 
-        // Ищем узлы по их ID
+        // 
         for (int nodeId : nodeIds_) {
             bool found = false;
             for (const auto& node : allNodes) {
@@ -71,6 +71,6 @@ public:
 
 protected:
     int id_;
-    std::vector<int> nodeIds_;  // Только ID узлов, не координаты!
+    std::vector<int> nodeIds_;  
     int materialId_;
 };

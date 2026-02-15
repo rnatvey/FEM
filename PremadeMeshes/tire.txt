@@ -81,3 +81,91 @@
         }
 
         std::cout << "Pressure applied to " << loadedElements << " outer elements" << std::endl;
+        ++++++++++++++++++++++++++++++++
+         // Добавляем материалы
+        auto material = std::make_shared<Material>(1, 14.828, 0.4876, 1);
+        assembly->addMaterial(material);
+        //
+        Eigen::Vector2d center(0.0, 0.0);      // Центр колеса
+        double innerRadius = 272.75;              // Внутренний радиус (обод), м
+        double outerRadius = 312.75;              // Внешний радиус (протектор), м
+        double contactAngle = 0.08249400479616308; // Угол контакта (±15° от вертикали)
+
+        // Создаем кольцевое сечение (90° дуга)
+        double startAngle = (PI + 60 * DEG_TO_RAD );                    // -45°
+        double endAngle = startAngle + 60 * DEG_TO_RAD;                 // -135° (90° дуга)
+
+        int radialLayers = 50;          // Слоев по толщине
+        int circumferentialNodes = 51;  // Узлов по окружности
+
+        meshGen->createAnnulusSimple(center, innerRadius, outerRadius,
+            startAngle, endAngle,
+            radialLayers, circumferentialNodes,
+            1);
+        std::cout << "   mesh done: " << assembly->getElementCount() << " elements, "
+            << assembly->getNodeCount() << " nodes" << std::endl;
+
+        //////////////////////
+
+        auto nodes = assembly->getNodes();
+        int innerNodesCount = 0;
+
+        for (const auto& node : nodes) {
+            Eigen::Vector2d coords = node->getCoordinates();
+            double radius = coords.norm();
+
+            // Узлы на внутреннем радиусе (с допуском)
+            if (std::abs(radius - innerRadius) < 0.005) {
+                assembly->addFixedNode(node->getId(), true, true); // Закрепляем X и Y
+                innerNodesCount++;
+                //std::cout << "   node was fixed: " << node->getId() <<"cords:" << node->getCoordinates() << std::endl;
+
+            }
+        }
+        std::cout << "   nodes fixed: " << innerNodesCount << std::endl;
+
+        double maxContactPressure = 1.3662;     // 1 МПа максимальное давление
+        double contactHalfWidth = outerRadius * std::sin(contactAngle);        //  полуширина контакта
+        double contactCenterX = 0.0;           // Центр контакта
+        auto hertzLoad = std::make_shared<LoadFunction>(LoadFunction::parabolicPressure(maxContactPressure, contactHalfWidth, contactCenterX));
+        auto elements = assembly->getElements();
+        int loadedElements = 0;
+
+        for (const auto& element : elements) {
+            auto planeElement = std::dynamic_pointer_cast<PlaneIsoparametricElement>(element);
+            if (!planeElement) continue;
+
+            // Получаем координаты узлов элемента
+
+            std::vector<std::shared_ptr<Node>> elementNodes;
+            for (int nodeId : element->getNodeIds()) {
+                auto node = assembly->getNode(nodeId);
+                if (node) {
+                    elementNodes.push_back(node);
+                }
+                else {
+                    std::cerr << "Assembly validation failed: Element " << element->getId()
+                        << " references non-existent node " << nodeId << std::endl;
+                    return false;
+                }
+            }
+            auto nodeCoords = planeElement->getNodalCoordinates(elementNodes);
+            // Проверяем радиусы узлов элемента
+            bool isOuterElement = false;
+            for (int i = 0; i < 4; ++i) {
+                double radius = nodeCoords.row(i).norm();
+                if (std::abs(radius - outerRadius) < 0.005) { // Допуск 0.5 м
+                    isOuterElement = true;
+                    break;
+                }
+            }
+            elementNodes.clear();
+            if (isOuterElement) {
+                // Для кольцевой сетки нижняя грань обычно surfaceIndex = 0
+                // (между узлами 0-1 в локальных координатах)
+                assembly->addSurfaceLoad(element->getId(), 0, hertzLoad);
+                loadedElements++;
+            }
+        }
+
+        std::cout << "Pressure applied to " << loadedElements << " outer elements" << std::endl;

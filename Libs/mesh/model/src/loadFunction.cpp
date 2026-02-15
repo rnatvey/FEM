@@ -32,24 +32,24 @@ Eigen::VectorXd LoadFunction::applyToElementSurface(int elementId, int surfaceIn
         throw std::runtime_error("Element is not a PlaneIsoparametricElement");
     }
 
-    // Точки Гаусса для интегрирования по поверхности
-    //const double gp = 0.577350269189626;
-    //const std::vector<double> gaussPoints = { -gp, gp };
-    //const std::vector<double> weights = { 1.0, 1.0 };
+     //Точки Гаусса для интегрирования по поверхности
+    const double gp = 0.577350269189626;
+    const std::vector<double> gaussPoints = { -gp, gp };
+    const std::vector<double> weights = { 1.0, 1.0 };
 
-    const std::vector<double> gaussPoints3 = {
-     -0.774596669241483,  // -√(3/5)
-     0.0,                 // 0
-     0.774596669241483    // √(3/5)
-    };
-    const std::vector<double> weights3 = {
-        5.0 / 9.0,            // 5/9
-        8.0 / 9.0,            // 8/9  
-        5.0 / 9.0             // 5/9
-    };
+    //const std::vector<double> gaussPoints3 = {
+    // -0.774596669241483,  // -√(3/5)
+    // 0.0,                 // 0
+    // 0.774596669241483    // √(3/5)
+    //};
+    //const std::vector<double> weights3 = {
+    //    5.0 / 9.0,            // 5/9
+    //    8.0 / 9.0,            // 8/9  
+    //    5.0 / 9.0             // 5/9
+    //};
 
-    const auto& gaussPoints = gaussPoints3;
-    const auto& weights = weights3;
+    //const auto& gaussPoints = gaussPoints3;
+    //const auto& weights = weights3;
 
     Eigen::VectorXd surfaceForces = Eigen::VectorXd::Zero(element->getDofCount());
 

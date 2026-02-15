@@ -125,3 +125,54 @@
 
 
 
+   +++++++++++++++++++++++++++++++
+
+      // Добавляем узлы
+        int num_horizontal_elements = 50;  
+        int num_vertical_layers = 40;       
+        double total_length = 20.0;        
+        double total_height = 12.0;        
+
+        // Создание узлов по слоям
+        for (int layer = 0; layer < num_vertical_layers; layer++) {
+            double y = (total_height / (num_vertical_layers - 1)) * layer;
+            vector2 start(0.0, y);
+            vector2 end(total_length, y);
+
+            // ID первого узла в слое
+            int first_node_id = 1 + layer * num_horizontal_elements;
+
+            assembly->addLineofNodes(first_node_id, start, end, num_horizontal_elements);
+        }
+
+        std::cout << "==========================================" << std::endl;
+
+        // Добавление элементов (четырехугольников)
+        int element_id = 1;
+        for (int layer = 0; layer < num_vertical_layers - 1; layer++) {
+            for (int i = 0; i < num_horizontal_elements - 1; i++) {
+                int base_node = 1 + layer * num_horizontal_elements + i;
+
+                
+                std::vector<int> nodeIds = {
+                    base_node + num_horizontal_elements + 1,  // верхний правый
+                    base_node + num_horizontal_elements,      // верхний левый
+                    base_node,                                // нижний левый
+                    base_node + 1                             // нижний правый
+                };
+
+                auto element = std::make_shared<PlaneIsoparametricElement>(
+                    element_id, nodeIds, 1);
+                assembly->addElement(element);
+                element_id++;
+            }
+        }
+
+        // Добавление закрепленных узлов (левый край)
+        for (int layer = 0; layer < num_vertical_layers; layer++) {
+            int fixed_node_id = 1 + layer * num_horizontal_elements;
+            assembly->addFixedNode(fixed_node_id, 1, 1);
+        }
+
+        auto ndforc1 = std::make_shared<ConcentratedForce>(50, 0.0, -0.5);
+        assembly->addConcentratedForce(ndforc1);

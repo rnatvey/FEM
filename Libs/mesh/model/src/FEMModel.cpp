@@ -243,7 +243,7 @@ void FEModel::calculateReactionForces() {
     }
 
     //  Выводим реакции в закрепленных узлах
-    std::cout << "Reaction forces:" << std::endl;
+   /* std::cout << "Reaction forces:" << std::endl;
     auto nodes = assembly_->getNodes();
     for (size_t i = 0; i < nodes.size(); ++i) {
         int nodeId = nodes[i]->getId();
@@ -254,7 +254,7 @@ void FEModel::calculateReactionForces() {
             std::cout << "Node " << nodeId << ": Rx = " << reactionForces_(dofX)
                 << ", Ry = " << reactionForces_(dofY) << std::endl;
         }
-    }
+    }*/
 
 }
 
@@ -460,8 +460,9 @@ void FEModel::calculateNodalAverages() const {
         }
 
         // Точки интегрирования для усреднения (углы элемента)
+        const double pos = 0.577350269189626;
         std::vector<std::pair<double, double>> integrationPoints = {
-            {-0.5, -0.5}, {0.5, -0.5}, {0.5, 0.5}, {-0.5, 0.5}  // Приближенно к узлам
+            {-pos, -pos}, {pos, -pos}, {pos, pos}, {-pos, pos}  // Приближенно к узлам
         };
 
         for (size_t pt = 0; pt < integrationPoints.size(); ++pt) {

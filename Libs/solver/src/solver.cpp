@@ -1,4 +1,4 @@
-#include "solver.h"
+п»ї#include "solver.h"
 #include <stdexcept>
 
 Eigen::MatrixXd LinearSolver::computeGaussIntegral(
@@ -47,6 +47,34 @@ std::vector<LinearSolver::GaussPoint> LinearSolver::generateGaussPoints(int orde
         };
     }
 
+    if (order == 3) {
+
+        
+       const auto p1 = -0.774596669241483;  // -в€љ(3/5)
+       const auto p2 = 0.0;                 // 0
+       const auto p3 = 0.774596669241483;    // в€љ(3/5)
+        
+        
+        const auto w1 = 5.0 / 9.0;            // 5/9
+        const auto w2 = 8.0 / 9.0;            // 8/9  
+        const auto w3 = 5.0 / 9.0;             // 5/9
+        
+  
+
+        points = {
+            {p1, p1, w1 * w1},
+            {p1,  p2, w1 * w2},
+            { p1, p3, w1 * w3},
+            { p2, p1, w2 * w1},
+            { p2,  p2, w2 * w2},
+            { p2,  p3, w2 * w3},
+            { p3, p1, w3 * w1},
+            { p3,  p2, w3 * w2},
+            { p3,  p3, w3 * w3}
+
+        };
+    }
+
     return points;
 }
 
@@ -54,13 +82,13 @@ void LinearSolver::applyBoundaryConditions(Eigen::SparseMatrix<double>& systemMa
     Eigen::VectorXd& rightHandSide,
     const std::vector<int>& fixedDofs) const {
     for (int dof : fixedDofs) {
-        // Обнуляем строку и столбец
+        // РћР±РЅСѓР»СЏРµРј СЃС‚СЂРѕРєСѓ Рё СЃС‚РѕР»Р±РµС†
         for (int k = 0; k < systemMatrix.outerSize(); ++k) {
             systemMatrix.coeffRef(dof, k) = 0.0;
             systemMatrix.coeffRef(k, dof) = 0.0;
         }
-        // Ставим 1 на диагонали
-        systemMatrix.coeffRef(dof, dof) = 1.0;
+        // РЎС‚Р°РІРёРј 1 РЅР° РґРёР°РіРѕРЅР°Р»Рё
+        systemMatrix.coeffRef(dof, dof) = 0.0;
         rightHandSide[dof] = 0.0;
     }
 }
@@ -75,7 +103,7 @@ void LinearSolver::reduceSystem(const Eigen::SparseMatrix<double>& fullK,
 
     int totalDof = fullK.rows();
 
-    // Проверки безопасности
+    // РџСЂРѕРІРµСЂРєРё Р±РµР·РѕРїР°СЃРЅРѕСЃС‚Рё
     if (totalDof == 0) {
         throw std::runtime_error("Empty matrix in reduceSystem");
     }
@@ -84,7 +112,7 @@ void LinearSolver::reduceSystem(const Eigen::SparseMatrix<double>& fullK,
         throw std::runtime_error("Matrix and vector size mismatch in reduceSystem");
     }
 
-    // Определяем активные степени свободы
+    // РћРїСЂРµРґРµР»СЏРµРј Р°РєС‚РёРІРЅС‹Рµ СЃС‚РµРїРµРЅРё СЃРІРѕР±РѕРґС‹
     activeDofs.clear();
     for (int i = 0; i < totalDof; ++i) {
         if (std::find(fixedDofs.begin(), fixedDofs.end(), i) == fixedDofs.end()) {
@@ -94,7 +122,7 @@ void LinearSolver::reduceSystem(const Eigen::SparseMatrix<double>& fullK,
 
     int activeDofCount = activeDofs.size();
 
-    // Проверка на пустую систему
+    // РџСЂРѕРІРµСЂРєР° РЅР° РїСѓСЃС‚СѓСЋ СЃРёСЃС‚РµРјСѓ
     if (activeDofCount == 0) {
         throw std::runtime_error("No active DOFs after applying boundary conditions");
     }
@@ -102,13 +130,13 @@ void LinearSolver::reduceSystem(const Eigen::SparseMatrix<double>& fullK,
     reducedK.resize(activeDofCount, activeDofCount);
     reducedF.resize(activeDofCount);
 
-    // Строим матрицу перестановок с проверками границ
+    // РЎС‚СЂРѕРёРј РјР°С‚СЂРёС†Сѓ РїРµСЂРµСЃС‚Р°РЅРѕРІРѕРє СЃ РїСЂРѕРІРµСЂРєР°РјРё РіСЂР°РЅРёС†
     std::vector<Eigen::Triplet<double>> triplets;
 
     for (int i = 0; i < activeDofCount; ++i) {
         int global_i = activeDofs[i];
 
-        // Проверка границ
+        // РџСЂРѕРІРµСЂРєР° РіСЂР°РЅРёС†
         if (global_i < 0 || global_i >= totalDof) {
             throw std::runtime_error("Invalid global DOF index: " + std::to_string(global_i));
         }
@@ -137,13 +165,13 @@ void LinearSolver::expandSolution(const Eigen::VectorXd& reducedU,
     int totalDof = fullU.size();
     fullU.setZero();
 
-    // Заполняем активные степени свободы
+    // Р—Р°РїРѕР»РЅСЏРµРј Р°РєС‚РёРІРЅС‹Рµ СЃС‚РµРїРµРЅРё СЃРІРѕР±РѕРґС‹
     for (size_t i = 0; i < activeDofs.size(); ++i) {
         fullU(activeDofs[i]) = reducedU(i);
     }
 
-    // Закрепленные DOF остаются нулевыми (или предписанными значениями)
-    // Предписанные перемещения будут установлены отдельно
+    // Р—Р°РєСЂРµРїР»РµРЅРЅС‹Рµ DOF РѕСЃС‚Р°СЋС‚СЃСЏ РЅСѓР»РµРІС‹РјРё (РёР»Рё РїСЂРµРґРїРёСЃР°РЅРЅС‹РјРё Р·РЅР°С‡РµРЅРёСЏРјРё)
+    // РџСЂРµРґРїРёСЃР°РЅРЅС‹Рµ РїРµСЂРµРјРµС‰РµРЅРёСЏ Р±СѓРґСѓС‚ СѓСЃС‚Р°РЅРѕРІР»РµРЅС‹ РѕС‚РґРµР»СЊРЅРѕ
 }
 
 void LinearSolver::applyPrescribedDisplacements(Eigen::SparseMatrix<double>& K,
@@ -157,7 +185,7 @@ void LinearSolver::applyPrescribedDisplacements(Eigen::SparseMatrix<double>& K,
 
     int totalDof = K.rows();
 
-    // Проверки безопасности
+    // РџСЂРѕРІРµСЂРєРё Р±РµР·РѕРїР°СЃРЅРѕСЃС‚Рё
     if (totalDof == 0) {
         throw std::runtime_error("Empty matrix in applyPrescribedDisplacements");
     }
@@ -169,20 +197,20 @@ void LinearSolver::applyPrescribedDisplacements(Eigen::SparseMatrix<double>& K,
     reactions.resize(totalDof);
     reactions.setZero();
 
-    // 1. Модифицируем правую часть: F_modified = F - K?? u?
+    // 1. РњРѕРґРёС„РёС†РёСЂСѓРµРј РїСЂР°РІСѓСЋ С‡Р°СЃС‚СЊ: F_modified = F - K?? u?
     for (size_t i = 0; i < prescribedDofs.size(); ++i) {
         int prescribedDof = prescribedDofs[i];
         double prescribedValue = prescribedValues[i];
 
-        // Проверка границ
+        // РџСЂРѕРІРµСЂРєР° РіСЂР°РЅРёС†
         if (prescribedDof < 0 || prescribedDof >= totalDof) {
             throw std::runtime_error("Invalid prescribed DOF index: " + std::to_string(prescribedDof));
         }
 
         for (int j = 0; j < totalDof; ++j) {
-            // Если j не предписанный DOF, модифицируем F[j]
+            // Р•СЃР»Рё j РЅРµ РїСЂРµРґРїРёСЃР°РЅРЅС‹Р№ DOF, РјРѕРґРёС„РёС†РёСЂСѓРµРј F[j]
             if (std::find(prescribedDofs.begin(), prescribedDofs.end(), j) == prescribedDofs.end()) {
-                // Проверяем, что индексы в пределах
+                // РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ РёРЅРґРµРєСЃС‹ РІ РїСЂРµРґРµР»Р°С…
                 if (j >= 0 && j < totalDof && prescribedDof >= 0 && prescribedDof < totalDof) {
                     F(j) -= K.coeff(j, prescribedDof) * prescribedValue;
                 }
@@ -190,17 +218,17 @@ void LinearSolver::applyPrescribedDisplacements(Eigen::SparseMatrix<double>& K,
         }
     }
 
-    // 2. Обнуляем строки и столбцы для предписанных DOF, ставим 1 на диагонали
+    // 2. РћР±РЅСѓР»СЏРµРј СЃС‚СЂРѕРєРё Рё СЃС‚РѕР»Р±С†С‹ РґР»СЏ РїСЂРµРґРїРёСЃР°РЅРЅС‹С… DOF, СЃС‚Р°РІРёРј 1 РЅР° РґРёР°РіРѕРЅР°Р»Рё
     for (size_t i = 0; i < prescribedDofs.size(); ++i) {
         int prescribedDof = prescribedDofs[i];
         double prescribedValue = prescribedValues[i];
 
-        // Проверка границ
+        // РџСЂРѕРІРµСЂРєР° РіСЂР°РЅРёС†
         if (prescribedDof < 0 || prescribedDof >= totalDof) {
             throw std::runtime_error("Invalid prescribed DOF index: " + std::to_string(prescribedDof));
         }
 
-        // Обнуляем строку и столбец
+        // РћР±РЅСѓР»СЏРµРј СЃС‚СЂРѕРєСѓ Рё СЃС‚РѕР»Р±РµС†
         for (int j = 0; j < totalDof; ++j) {
             if (j >= 0 && j < totalDof) {
                 K.coeffRef(prescribedDof, j) = 0.0;
@@ -208,7 +236,7 @@ void LinearSolver::applyPrescribedDisplacements(Eigen::SparseMatrix<double>& K,
             }
         }
 
-        // Ставим 1 на диагонали
+        // РЎС‚Р°РІРёРј 1 РЅР° РґРёР°РіРѕРЅР°Р»Рё
         if (prescribedDof >= 0 && prescribedDof < totalDof) {
             K.coeffRef(prescribedDof, prescribedDof) = 1.0;
             F(prescribedDof) = prescribedValue;

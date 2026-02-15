@@ -32,7 +32,7 @@ void Assembly::addNodes(const std::vector<std::shared_ptr<Node>>& nodes) {
 void Assembly::addLineofNodes(size_t startId, vector2 start_point,  vector2 end_point, int num_of_nodes ) 
 {
     vector2 direction = end_point - start_point;
-    const double step = Norm(direction)/num_of_nodes;
+    const double step = Norm(direction)/(num_of_nodes-1);
     direction.UniVector();
     
     for (int i = 0; i < num_of_nodes;i++)
@@ -136,7 +136,7 @@ void Assembly::assembleGlobalStiffnessMatrix(Eigen::SparseMatrix<double>& global
         // Вычисляем матрицу жесткости элемента
         Eigen::MatrixXd ke = element->computeStiffnessMatrix(elementNodes, material);
 
-        // Используем ПОЛНЫЕ индексы DOF (до граничных условий)
+        
         std::vector<int> dofIndices = getElementFullDofIndices(element->getId());
 
         // Добавляем в глобальную матрицу
