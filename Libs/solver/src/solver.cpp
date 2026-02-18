@@ -1,6 +1,7 @@
 ﻿#include "solver.h"
 #include <stdexcept>
 
+
 Eigen::MatrixXd LinearSolver::computeGaussIntegral(
     const std::function<Eigen::MatrixXd(double, double)>& matFunc,
     int numGaussPoints)
@@ -20,17 +21,50 @@ Eigen::MatrixXd LinearSolver::computeGaussIntegral(
     return integral;
 }
 
+//Eigen::VectorXd LinearSolver::solveSystem(
+//    const Eigen::SparseMatrix<double>& systemMatrix,
+//    const Eigen::VectorXd& rightHandSide)
+//{
+//   // Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
+//    Eigen::PardisoLLT<Eigen::SparseMatrix<double>, Eigen::Lower> solver;
+//    solver.compute(systemMatrix);
+//    if (solver.info() != Eigen::Success) {
+//        throw std::runtime_error("Matrix decomposition failed");
+//    }
+//    return solver.solve(rightHandSide);
+//}
+
+
 Eigen::VectorXd LinearSolver::solveSystem(
     const Eigen::SparseMatrix<double>& systemMatrix,
     const Eigen::VectorXd& rightHandSide)
 {
-    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
+    // Итеративный решатель ConjugateGradient с предобуславливателем IncompleteCholesky
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<double>,
+        Eigen::Lower,
+        Eigen::IncompleteCholesky<double>> solver;
+
+    // Настройка параметров (опционально)
+    solver.setTolerance(1e-10);        // Желаемая точность
+    solver.setMaxIterations(2000);    // Максимум итераций
+
+    // Вычисление
     solver.compute(systemMatrix);
     if (solver.info() != Eigen::Success) {
         throw std::runtime_error("Matrix decomposition failed");
     }
+
+    // Проверка решения
+    if (solver.info() != Eigen::Success) {
+        throw std::runtime_error("Solving failed");
+    }
+
+
+
     return solver.solve(rightHandSide);
 }
+
+
 
 std::vector<LinearSolver::GaussPoint> LinearSolver::generateGaussPoints(int order) {
     std::vector<GaussPoint> points;

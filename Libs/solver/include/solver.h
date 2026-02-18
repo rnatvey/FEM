@@ -1,7 +1,10 @@
 #pragma once
-
+#define EIGEN_USE_MKL_ALL
+#define EIGEN_USE_MKL
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+#include <Eigen/PardisoSupport>
+#include <Eigen/IterativeLinearSolvers>
 #include <functional>
 #include <vector>
 

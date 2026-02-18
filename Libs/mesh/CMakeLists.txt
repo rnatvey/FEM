@@ -42,13 +42,16 @@ target_include_directories(solver PRIVATE
     ${CMAKE_SOURCE_DIR}/Libs/mesh/meshGenerator/include 
     ${CMAKE_SOURCE_DIR}/Libs/solver/include
     ${CMAKE_SOURCE_DIR}/3rdParty/eigen-5.0.0 
-    ${CMAKE_SOURCE_DIR}/3rdParty/boost/libs/math/include
 )
 
-target_link_libraries(mesh
+if(USE_INTEL_MKL)
+    target_link_libraries(mesh PUBLIC IntelMKL)  # PUBLIC, чтобы зависимость передавалась дальше
+    target_compile_definitions(mesh PUBLIC SOLVER_USE_MKL)
+endif()
+
+target_link_libraries(mesh PUBLIC
 solver
 Eigen3::Eigen
-Boost::math
 )
 
 target_compile_features(mesh PUBLIC cxx_std_23)

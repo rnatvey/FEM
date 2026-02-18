@@ -12,10 +12,9 @@ target_sources(solver PUBLIC
     "include/solver.h"
 )
 
-target_link_libraries(solver 
+target_link_libraries(solver PUBLIC
 linalg
 Eigen3::Eigen
-Boost::math
 )
 
 target_include_directories(solver PUBLIC
@@ -25,8 +24,29 @@ target_include_directories(solver PUBLIC
 target_include_directories(solver PRIVATE
     ${CMAKE_SOURCE_DIR}/Libs/solver/include  
     ${CMAKE_SOURCE_DIR}/3rdParty/eigen-5.0.0 
-    ${CMAKE_SOURCE_DIR}/3rdParty/boost/libs/math/include
 )
 
+if(USE_INTEL_MKL)
+    target_link_libraries(solver PUBLIC IntelMKL)  # PUBLIC, чтобы зависимость передавалась дальше
+    target_compile_definitions(solver PUBLIC SOLVER_USE_MKL)
+endif()
+
+
+set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type")
+
+# Оптимизации для Eigen
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_compile_options(solver PRIVATE 
+        $<$<CXX_COMPILER_ID:GNU>:-O3 -march=native -mtune=native>
+        $<$<CXX_COMPILER_ID:Clang>:-O3 -march=native -mtune=native>
+        $<$<CXX_COMPILER_ID:MSVC>:/O2 /arch:AVX2>
+    )
+endif()
+
+# Для отладки (можно добавить опцию)
+option(ENABLE_EIGEN_DEBUG "Enable Eigen debugging" OFF)
+if(ENABLE_EIGEN_DEBUG)
+    target_compile_definitions(solver PRIVATE EIGEN_NO_DEBUG)
+endif()
 target_compile_features(solver PUBLIC cxx_std_23)
 target_compile_definitions(solver PUBLIC SOLVER_EXPORT)

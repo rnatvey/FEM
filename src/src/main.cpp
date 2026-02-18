@@ -120,7 +120,7 @@ int main() {
         double startAngle = (PI + 60 * DEG_TO_RAD );                    // -45°
         double endAngle = startAngle + 60 * DEG_TO_RAD;                 // -135° (90° дуга)
 
-        int radialLayers = 50;          // Слоев по толщине
+        int radialLayers = 40;          // Слоев по толщине
         int circumferentialNodes = 101;  // Узлов по окружности
 
         meshGen->createAnnulusSimple(center, innerRadius, outerRadius,
@@ -149,7 +149,7 @@ int main() {
         }
         std::cout << "   nodes fixed: " << innerNodesCount << std::endl;
 
-        double maxContactPressure = 858716.234090089e-6*1.4;     // 1 МПа максимальное давление
+        double maxContactPressure = 858716.234090089e-6;     // 1 МПа максимальное давление
         double contactHalfWidth = outerRadius * std::sin(contactAngle);        //  полуширина контакта
         double contactCenterX = 0.0;           // Центр контакта
         auto hertzLoad = std::make_shared<LoadFunction>(LoadFunction::parabolicPressure(maxContactPressure, contactHalfWidth, contactCenterX));
@@ -200,25 +200,25 @@ int main() {
 
 
                  //Сборка матрицы жесткости
-                Eigen::SparseMatrix<double> globalK;
-                Eigen::VectorXd globalF;
-                assembly->assembleGlobalStiffnessMatrix(globalK);
-                assembly->assembleConcentratedForces(globalF);
-                assembly->assembleSurfaceLoads(globalF);
-                std::cout << "Global stiffness matrix size: " << globalK.rows() << "x" << globalK.cols() << std::endl;
-               // std::cout << globalK << std::endl;
-                std::cout << "===========================globalK============================================" << std::endl;
-                assembly->applyBoundaryConditions(globalK, globalF);
-                //std::cout << globalK << std::endl;
-                std::cout << "=========================globalF==============================================" << std::endl;
-                //std::cout << globalF << std::endl;
-                std::cout << "============================Force===========================================" << std::endl;
-               // std::cout << Force << std::endl;
-                std::cout << "============================DofCount===========================================" << std::endl;
-                std::cout << assembly->getTotalDofCount() << std::endl;
-                std::cout << "===============================k*F========================================" << std::endl;
-                //Eigen::Vector2d sila (5.0,5.0);
-                //std::cout << globalK*sila << std::endl;
+               // Eigen::SparseMatrix<double> globalK;
+               // Eigen::VectorXd globalF;
+               // assembly->assembleGlobalStiffnessMatrix(globalK);
+               // assembly->assembleConcentratedForces(globalF);
+               // assembly->assembleSurfaceLoads(globalF);
+               // std::cout << "Global stiffness matrix size: " << globalK.rows() << "x" << globalK.cols() << std::endl;
+               //// std::cout << globalK << std::endl;
+               // std::cout << "===========================globalK============================================" << std::endl;
+               // assembly->applyBoundaryConditions(globalK, globalF);
+               // //std::cout << globalK << std::endl;
+               // std::cout << "=========================globalF==============================================" << std::endl;
+               // //std::cout << globalF << std::endl;
+               // std::cout << "============================Force===========================================" << std::endl;
+               //// std::cout << Force << std::endl;
+               // std::cout << "============================DofCount===========================================" << std::endl;
+               // std::cout << assembly->getTotalDofCount() << std::endl;
+               // std::cout << "===============================k*F========================================" << std::endl;
+               // //Eigen::Vector2d sila (5.0,5.0);
+               // //std::cout << globalK*sila << std::endl;
 
             }
 
@@ -229,21 +229,21 @@ int main() {
             std::cout << "Solution successful!" << std::endl;
          
             
-            //auto nodalDisp = model->getNodalDisplacements();
-            //std::cout << "Nodal Displacements:" << std::endl;
-            //for (size_t i = 0; i < nodalDisp.size(); ++i) {
-            //    std::cout << "Node " << (i + 1) << ": ("
-            //        << nodalDisp[i].x() << ", " << nodalDisp[i].y() << ")" << std::endl;
-            //}
+            auto nodalDisp = model->getNodalDisplacements();
+            std::cout << "Nodal Displacements:" << std::endl;
+            for (size_t i = 0; i < nodalDisp.size(); ++i) {
+                std::cout << "Node " << (i + 1) << ": ("
+                    << nodalDisp[i].x() << ", " << nodalDisp[i].y() << ")" << std::endl;
+            }
 
-            // //Выводим узловые напряжения
-            //auto nodalStress = model->getNodalStresses();
-            //std::cout << "Nodal Stresses (sigma_xx, sigma_yy, tau_xy):" << std::endl;
-            //for (size_t i = 0; i < nodalStress.size(); ++i) {
-            //    std::cout << "Node " << (i + 1) << ": ("
-            //        << nodalStress[i].x() << ", " << nodalStress[i].y() << ", "
-            //        << nodalStress[i].z() << ")" << std::endl;
-            //}
+             //Выводим узловые напряжения
+            auto nodalStress = model->getNodalStresses();
+            std::cout << "Nodal Stresses (sigma_xx, sigma_yy, tau_xy):" << std::endl;
+            for (size_t i = 0; i < nodalStress.size(); ++i) {
+                std::cout << "Node " << (i + 1) << ": ("
+                    << nodalStress[i].x() << ", " << nodalStress[i].y() << ", "
+                    << nodalStress[i].z() << ")" << std::endl;
+            }
 
             std::cout << "Solution time: " << model->getSolutionTime() << " seconds" << std::endl;
         }
@@ -264,7 +264,7 @@ int main() {
     //    
 
         // далее попытка  портировать 
-        std::ofstream file("tire47.csv");
+      /*  std::ofstream file("tireTest.csv");
         if (!file.is_open()) {
             std::cerr << "cont open this file!" << std::endl;
             return 1;
@@ -297,7 +297,7 @@ int main() {
                 << std::get<7>(row) << "\n";
         }
         file.close();
-        std::cout << "data saved as tire47.csv" << std::endl;
+        std::cout << "data saved as tireTest.csv" << std::endl;*/
     }
     catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

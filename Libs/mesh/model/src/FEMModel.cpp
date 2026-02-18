@@ -39,7 +39,7 @@ bool FEModel::solve() {
     try {
         // 1. Сборка глобальной матрицы жесткости
         assembly_->assembleGlobalStiffnessMatrix(globalK_);
-
+        std::cout << "K assembled" << std::endl;
         // 2. Сборка вектора нагрузок
         //Eigen::VectorXd bodyForces = Eigen::VectorXd::Zero(2); // Объемные силы
         //assembly_->assembleGlobalForceVector(globalF_, bodyForces);
@@ -47,10 +47,10 @@ bool FEModel::solve() {
         // 3. Добавляем сосредоточенные силы
         assembly_->assembleConcentratedForces(globalF_);
         assembly_->assembleSurfaceLoads(globalF_);
-
+        std::cout << "F assembled" << std::endl;
         // 4. Применение граничных условий
         assembly_->applyBoundaryConditions(globalK_, globalF_);
-
+        std::cout << "BC assembled" << std::endl;
         // 5. Решение системы
         if (!solveLinearSystem()) {
             std::cerr << "FEModel: Linear system solution failed" << std::endl;
@@ -460,7 +460,8 @@ void FEModel::calculateNodalAverages() const {
         }
 
         // Точки интегрирования для усреднения (углы элемента)
-        const double pos = 0.577350269189626;
+        /*const double pos = 0.577350269189626;*/
+        const double pos = 0.0;
         std::vector<std::pair<double, double>> integrationPoints = {
             {-pos, -pos}, {pos, -pos}, {pos, pos}, {-pos, pos}  // Приближенно к узлам
         };
