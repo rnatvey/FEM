@@ -286,8 +286,8 @@ void Assembly::applyBoundaryConditions(Eigen::SparseMatrix<double>& globalK,
         std::vector<int> activeDofs;
 
         solver.reduceSystem(globalK, globalF, fixedDofs, reducedK, reducedF, activeDofs);
-        globalK = reducedK;
-        globalF = reducedF;
+        globalK = std::move(reducedK);
+        globalF = std::move(reducedF);
     }
 
     // Применяем предписанные перемещения

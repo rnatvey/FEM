@@ -250,99 +250,104 @@ void MeshGenerator::createAnnulusSimple(const Eigen::Vector2d& center,
     double startAngle, double endAngle,
     int radialLayers, int circumferentialNodes,
     int materialId) {
+
     std::cout << "Creating annulus mesh (simple method): "
         << radialLayers << " radial layers, "
         << circumferentialNodes << " nodes per layer" << std::endl;
-
-    
 
     // Проверка параметров
     if (radialLayers < 1 || circumferentialNodes < 3) {
         throw std::invalid_argument("Invalid mesh parameters");
     }
-
     if (innerRadius >= outerRadius) {
         throw std::invalid_argument("Inner radius must be less than outer radius");
     }
 
-    // Преобразуем углы в радианы, если нужно
-    if (startAngle > TWO_PI || endAngle > TWO_PI) {
-        startAngle *= DEG_TO_RAD;
-        endAngle *= DEG_TO_RAD;
-    }
+    // Оптимизация 1: Предвычисляем углы и тригонометрические функции
+    double startRad = (startAngle > TWO_PI) ? startAngle * DEG_TO_RAD : startAngle;
+    double endRad = (endAngle > TWO_PI) ? endAngle * DEG_TO_RAD : endAngle;
 
-    // Вычисляем угловой шаг
-    double totalAngle = endAngle - startAngle;
+    double totalAngle = endRad - startRad;
     if (totalAngle <= 0) {
         totalAngle += TWO_PI;
     }
+
+    // Предвычисляем sin/cos для всех углов
+    std::vector<double> cosAngles(circumferentialNodes);
+    std::vector<double> sinAngles(circumferentialNodes);
+
     double angularStep = totalAngle / (circumferentialNodes - 1);
+    for (int i = 0; i < circumferentialNodes; ++i) {
+        double angle = startRad + i * angularStep;
+        cosAngles[i] = std::cos(angle);
+        sinAngles[i] = std::sin(angle);
+    }
 
-    // Вычисляем радиальный шаг
+    // Оптимизация 2: Предвычисляем радиусы
+    std::vector<double> radii(radialLayers);
     double radialStep = (outerRadius - innerRadius) / (radialLayers - 1.0);
+    for (int i = 0; i < radialLayers; ++i) {
+        radii[i] = innerRadius + i * radialStep;
+    }
 
-    // 1. СОЗДАНИЕ УЗЛОВ по слоям (от внутреннего радиуса к внешнему)
-    std::vector<std::vector<int>> nodeGrid(radialLayers + 1,
+    // Оптимизация 3: Создаем узлы с предвычисленными координатами
+    std::vector<std::vector<int>> nodeGrid(radialLayers,
         std::vector<int>(circumferentialNodes, 0));
 
     for (int layer = 0; layer < radialLayers; ++layer) {
-        double currentRadius = innerRadius + layer * radialStep;
+        double currentRadius = radii[layer];
+        double xBase = center.x();
+        double yBase = center.y();
 
         for (int node = 0; node < circumferentialNodes; ++node) {
-            double angle = startAngle + node * angularStep;
+            // Используем предвычисленные sin/cos
+            double x = xBase + currentRadius * cosAngles[node];
+            double y = yBase + currentRadius * sinAngles[node];
 
-            // Вычисляем координаты
-            double x = center.x() + currentRadius * std::cos(angle);
-            double y = center.y() + currentRadius * std::sin(angle);
-
-            // Создаем узел
             int nodeId = nextNodeId_++;
             assembly_->addNode(std::make_shared<Node>(nodeId, x, y));
             nodeGrid[layer][node] = nodeId;
-
-            std::cout << "Node " << nodeId << ": layer=" << layer
-                << ", angle=" << angle * RAD_TO_DEG << "°, "
-                << "r=" << currentRadius << " -> ("
-                << x << ", " << y << ")" << std::endl;
         }
     }
 
-    // 2. СОЗДАНИЕ ЭЛЕМЕНТОВ (четырехугольников между слоями)
+    // Оптимизация 4: Создаем элементы
     int elementsCreated = 0;
+    bool isFullCircle = (std::abs(totalAngle - TWO_PI) < 1e-6);
 
-    for (int layer = 0; layer < radialLayers - 1 ; ++layer) {
+    // Основные элементы
+    for (int layer = 0; layer < radialLayers - 1; ++layer) {
+        const auto& currentLayer = nodeGrid[layer];
+        const auto& nextLayer = nodeGrid[layer + 1];
+
         for (int segment = 0; segment < circumferentialNodes - 1; ++segment) {
-            // Четырехугольный элемент между двумя радиальными слоями
-            std::vector<int> nodeIds = {
-              
-               nodeGrid[layer][segment + 1],       // Внутренний-правый
-               nodeGrid[layer][segment],        // Внутренний-левый
-               nodeGrid[layer + 1][segment],       // Внешний-левый
-               nodeGrid[layer + 1][segment + 1]   // Внешний-правый
-            };
+            // Оптимизация 5: Создаем вектор один раз и заполняем
+            std::vector<int> nodeIds(4);
+            nodeIds[0] = currentLayer[segment + 1];      // внутренний-правый
+            nodeIds[1] = currentLayer[segment];          // внутренний-левый
+            nodeIds[2] = nextLayer[segment];             // внешний-левый
+            nodeIds[3] = nextLayer[segment + 1];         // внешний-правый
 
-            // Создаем элемент
             auto element = std::make_shared<PlaneIsoparametricElement>(
                 nextElementId_++, nodeIds, materialId);
 
             assembly_->addElement(element);
             elementsCreated++;
-
-          /*  std::cout << "Element " << nextElementId_ - 1 << ": nodes "
-                << nodeIds[0] << "-" << nodeIds[1] << "-"
-                << nodeIds[2] << "-" << nodeIds[3] << std::endl;*/
         }
     }
 
-    // 3. ЗАМЫКАНИЕ ПОСЛЕДНЕГО СЕГМЕНТА (если полный круг)
-    if (std::abs(totalAngle - TWO_PI) < 1e-6) {
-        for (int layer = 0; layer < radialLayers; ++layer) {
-            std::vector<int> nodeIds = {
-                nodeGrid[layer][circumferentialNodes - 1],  // Последний узел слоя
-                nodeGrid[layer][0],                         // Первый узел слоя
-                nodeGrid[layer + 1][0],                     // Первый узел след. слоя
-                nodeGrid[layer + 1][circumferentialNodes - 1] // Последний узел след. слоя
-            };
+    // Замыкающие элементы для полного круга
+    if (isFullCircle) {
+        for (int layer = 0; layer < radialLayers - 1; ++layer) {
+            const auto& currentLayer = nodeGrid[layer];
+            const auto& nextLayer = nodeGrid[layer + 1];
+
+            int lastNode = circumferentialNodes - 1;
+
+            std::vector<int> nodeIds(4);
+            nodeIds[0] = currentLayer[lastNode];     // последний текущего слоя
+            nodeIds[1] = currentLayer[0];            // первый текущего слоя
+            nodeIds[2] = nextLayer[0];                // первый следующего слоя
+            nodeIds[3] = nextLayer[lastNode];         // последний следующего слоя
 
             auto element = std::make_shared<PlaneIsoparametricElement>(
                 nextElementId_++, nodeIds, materialId);
@@ -353,7 +358,7 @@ void MeshGenerator::createAnnulusSimple(const Eigen::Vector2d& center,
     }
 
     std::cout << "Annulus mesh created: " << elementsCreated << " elements, "
-        << (radialLayers ) * circumferentialNodes << " nodes" << std::endl;
+        << radialLayers * circumferentialNodes << " nodes" << std::endl;
 }
 
 std::vector<int> MeshGenerator::findContactNodes(double contactCenterX,

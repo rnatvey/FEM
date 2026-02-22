@@ -23,81 +23,6 @@
 #include <fstream>
 
 using namespace Constants;
-
-void testStressCalculation() {
-    std::cout << "=== Stress Calculation Test ===" << std::endl;
-
-    // Простой квадратный элемент 1x1
-    Eigen::MatrixXd nodeCoords(4, 2);
-    nodeCoords << 0, 0,
-        1, 0,
-        1, 1,
-        0, 1;
-
-    // Создаем узелы
-    std::vector<std::shared_ptr<Node>> nodes;
-    for (int i = 0; i < 4; ++i) {
-        nodes.push_back(std::make_shared<Node>(i + 1, nodeCoords(i, 0), nodeCoords(i, 1)));
-    }
-
-    // Материал
-    auto material = std::make_shared<Material>(2, 2.0e11, 0.3, 0.1);
-
-    // Элемент
-    std::vector<int> nodeIds = { 1, 2, 3, 4 };
-    auto element = std::make_shared<PlaneIsoparametricElement>(1, nodeIds, 2);
-
-    // Нулевые перемещения
-    Eigen::VectorXd zeroDisplacements = Eigen::VectorXd::Zero(8);
-
-    // Должны получить нулевые напряжения
-    Eigen::Vector3d stress = element->computeStress(0, 0, zeroDisplacements, nodes, material);
-    std::cout << "Stress with zero displacements: " << stress.transpose() << std::endl;
-
-    // Проверим B-матрицу в центре
-    Eigen::MatrixXd B = element->strainDisplacementMatrix(0, 0, nodes, material);
-    Eigen::Vector3d strain = B * zeroDisplacements;
-    std::cout << "Strain with zero displacements: " << strain.transpose() << std::endl;
-
-    // Проверим матрицу D отдельно
-    Eigen::Matrix3d D = material->getElasticityMatrix();
-    std::cout << "D * zero_strain: " << (D * strain).transpose() << std::endl;
-}
-void debugStiffnessAssembly() {
-    std::cout << "=== Debug Stiffness Assembly ===" << std::endl;
-
-    auto assembly = std::make_shared<Assembly>();
-
-    // Простой материал
-    auto material = std::make_shared<Material>(1, 2.0e11, 0.3, 0.1);
-    assembly->addMaterial(material);
-
-    // Простой квадратный элемент
-    assembly->addNode(std::make_shared<Node>(1, 0.0, 0.0));
-    assembly->addNode(std::make_shared<Node>(2, 1.0, 0.0));
-    assembly->addNode(std::make_shared<Node>(3, 1.0, 1.0));
-    assembly->addNode(std::make_shared<Node>(4, 0.0, 1.0));
-
-    std::vector<int> nodeIds = { 1, 2, 3, 4 };
-    auto element = std::make_shared<PlaneIsoparametricElement>(1, nodeIds, 1);
-    assembly->addElement(element);
-
-    // Проверим сборку матрицы жесткости
-    Eigen::SparseMatrix<double> globalK;
-    assembly->assembleGlobalStiffnessMatrix(globalK);
-
-    std::cout << "=== Final Check ===" << std::endl;
-    std::cout << "Global matrix size: " << globalK.rows() << "x" << globalK.cols() << std::endl;
-    std::cout << "Global matrix non-zeros: " << globalK.nonZeros() << std::endl;
-    std::cout << "Global matrix norm: " << globalK.norm() << std::endl;
-
-    if (globalK.norm() < 1e-10) {
-        std::cout << "ERROR: Global stiffness matrix is ZERO!" << std::endl;
-    }
-    else {
-        std::cout << "SUCCESS: Global stiffness matrix is non-zero" << std::endl;
-    }
-}
 int main() {
     
 
@@ -108,20 +33,20 @@ int main() {
         auto model = std::make_shared<FEModel>();
         auto meshGen = std::make_shared<MeshGenerator>(assembly);
         // Добавляем материалы
-        auto material = std::make_shared<Material>(1, 12.728, 0.48, 1);
+        auto material = std::make_shared<Material>(1, 11.84, 0.48, 1);
         assembly->addMaterial(material);
         //
-        Eigen::Vector2d center(0.0, 0.0);      // Центр колеса
-        double innerRadius = 272.75;              // Внутренний радиус (обод), м
-        double outerRadius = 312.75;              // Внешний радиус (протектор), м
-        double contactAngle = 0.08249400479616308; // Угол контакта (±15° от вертикали)
+        Eigen::Vector2d center(0.0, 0.0);      
+        double innerRadius = 250;              
+        double outerRadius = 300;              
+        double contactAngle = 5 * DEG_TO_RAD; 
 
-        // Создаем кольцевое сечение (90° дуга)
-        double startAngle = (PI + 60 * DEG_TO_RAD );                    // -45°
-        double endAngle = startAngle + 60 * DEG_TO_RAD;                 // -135° (90° дуга)
+        // Создаем кольцевое сечение 
+        double startAngle = (PI + 60 * DEG_TO_RAD );                    
+        double endAngle = startAngle + 60 * DEG_TO_RAD;                 
 
-        int radialLayers = 40;          // Слоев по толщине
-        int circumferentialNodes = 101;  // Узлов по окружности
+        int radialLayers = 250;          // Слоев по толщине
+        int circumferentialNodes = 251;  // Узлов по окружности
 
         meshGen->createAnnulusSimple(center, innerRadius, outerRadius,
             startAngle, endAngle,
@@ -141,17 +66,17 @@ int main() {
 
             // Узлы на внутреннем радиусе (с допуском)
             if (std::abs(radius - innerRadius) < 0.005) {
-                assembly->addFixedNode(node->getId(), true, true); // Закрепляем X и Y
+                assembly->addFixedNode(node->getId(), true, true); 
                 innerNodesCount++;
-                //std::cout << "   node was fixed: " << node->getId() <<"cords:" << node->getCoordinates() << std::endl;
+               
 
             }
         }
         std::cout << "   nodes fixed: " << innerNodesCount << std::endl;
 
-        double maxContactPressure = 858716.234090089e-6;     // 1 МПа максимальное давление
+        double maxContactPressure = 1.0; // 858716.234090089e-6;     //  максимальное давление
         double contactHalfWidth = outerRadius * std::sin(contactAngle);        //  полуширина контакта
-        double contactCenterX = 0.0;           // Центр контакта
+        double contactCenterX = 0.0;           
         auto hertzLoad = std::make_shared<LoadFunction>(LoadFunction::parabolicPressure(maxContactPressure, contactHalfWidth, contactCenterX));
         auto elements = assembly->getElements();
         int loadedElements = 0;
@@ -197,29 +122,6 @@ int main() {
         //Валидация
             if (assembly->validate()) {
                 std::cout << "Assembly validation passed!" << std::endl;
-
-
-                 //Сборка матрицы жесткости
-               // Eigen::SparseMatrix<double> globalK;
-               // Eigen::VectorXd globalF;
-               // assembly->assembleGlobalStiffnessMatrix(globalK);
-               // assembly->assembleConcentratedForces(globalF);
-               // assembly->assembleSurfaceLoads(globalF);
-               // std::cout << "Global stiffness matrix size: " << globalK.rows() << "x" << globalK.cols() << std::endl;
-               //// std::cout << globalK << std::endl;
-               // std::cout << "===========================globalK============================================" << std::endl;
-               // assembly->applyBoundaryConditions(globalK, globalF);
-               // //std::cout << globalK << std::endl;
-               // std::cout << "=========================globalF==============================================" << std::endl;
-               // //std::cout << globalF << std::endl;
-               // std::cout << "============================Force===========================================" << std::endl;
-               //// std::cout << Force << std::endl;
-               // std::cout << "============================DofCount===========================================" << std::endl;
-               // std::cout << assembly->getTotalDofCount() << std::endl;
-               // std::cout << "===============================k*F========================================" << std::endl;
-               // //Eigen::Vector2d sila (5.0,5.0);
-               // //std::cout << globalK*sila << std::endl;
-
             }
 
        model->setAssembly(assembly);
@@ -229,21 +131,21 @@ int main() {
             std::cout << "Solution successful!" << std::endl;
          
             
-            auto nodalDisp = model->getNodalDisplacements();
-            std::cout << "Nodal Displacements:" << std::endl;
-            for (size_t i = 0; i < nodalDisp.size(); ++i) {
-                std::cout << "Node " << (i + 1) << ": ("
-                    << nodalDisp[i].x() << ", " << nodalDisp[i].y() << ")" << std::endl;
-            }
+            //auto nodalDisp = model->getNodalDisplacements();
+            //std::cout << "Nodal Displacements:" << std::endl;
+            //for (size_t i = 0; i < nodalDisp.size(); ++i) {
+            //    std::cout << "Node " << (i + 1) << ": ("
+            //        << nodalDisp[i].x() << ", " << nodalDisp[i].y() << ")" << std::endl;
+            //}
 
-             //Выводим узловые напряжения
-            auto nodalStress = model->getNodalStresses();
-            std::cout << "Nodal Stresses (sigma_xx, sigma_yy, tau_xy):" << std::endl;
-            for (size_t i = 0; i < nodalStress.size(); ++i) {
-                std::cout << "Node " << (i + 1) << ": ("
-                    << nodalStress[i].x() << ", " << nodalStress[i].y() << ", "
-                    << nodalStress[i].z() << ")" << std::endl;
-            }
+            // //Выводим узловые напряжения
+            //auto nodalStress = model->getNodalStresses();
+            //std::cout << "Nodal Stresses (sigma_xx, sigma_yy, tau_xy):" << std::endl;
+            //for (size_t i = 0; i < nodalStress.size(); ++i) {
+            //    std::cout << "Node " << (i + 1) << ": ("
+            //        << nodalStress[i].x() << ", " << nodalStress[i].y() << ", "
+            //        << nodalStress[i].z() << ")" << std::endl;
+            //}
 
             std::cout << "Solution time: " << model->getSolutionTime() << " seconds" << std::endl;
         }
@@ -251,20 +153,10 @@ int main() {
             std::cerr << "Solution failed!" << std::endl;
             return 1;
         }
-    //    
-    //    std::cout << "=======================================================================" << std::endl;
-    //    //std::cout << model->getDisplacements() << std::endl;
-    //    
-    //    //std::cout << model->getDisplacements() << std::endl;
-    //    std::cout << "=======================================================================" << std::endl;
-    //   // std::cout << model->getElementStress(5, 0.0, 0.0) << std::endl;
-    //    std::cout << "=======================================================================" << std::endl;
-    //  //  std::cout << model->getElementStress(6, 0.0, 0.0) << std::endl;
-    //   // testStressCalculation();
-    //    
+
 
         // далее попытка  портировать 
-      /*  std::ofstream file("tireTest.csv");
+        std::ofstream file("tireREF5.csv");
         if (!file.is_open()) {
             std::cerr << "cont open this file!" << std::endl;
             return 1;
@@ -297,7 +189,7 @@ int main() {
                 << std::get<7>(row) << "\n";
         }
         file.close();
-        std::cout << "data saved as tireTest.csv" << std::endl;*/
+        std::cout << "data saved as tireREF5.csv" << std::endl;
     }
     catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

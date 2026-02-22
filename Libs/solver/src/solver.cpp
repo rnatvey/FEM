@@ -133,7 +133,6 @@ void LinearSolver::reduceSystem(const Eigen::SparseMatrix<double>& fullK,
     Eigen::SparseMatrix<double>& reducedK,
     Eigen::VectorXd& reducedF,
     std::vector<int>& activeDofs) const {
-    
 
     int totalDof = fullK.rows();
 
@@ -146,10 +145,20 @@ void LinearSolver::reduceSystem(const Eigen::SparseMatrix<double>& fullK,
         throw std::runtime_error("Matrix and vector size mismatch in reduceSystem");
     }
 
-    // Определяем активные степени свободы
+    // Оптимизация 1: Создаем множество закрепленных DOF для быстрого поиска O(1)
+    std::vector<char> isFixed(totalDof, 0);
+    for (int dof : fixedDofs) {
+        if (dof < 0 || dof >= totalDof) {
+            throw std::runtime_error("Invalid fixed DOF index: " + std::to_string(dof));
+        }
+        isFixed[dof] = 1;
+    }
+
+    // Определяем активные степени свободы (один проход O(n))
     activeDofs.clear();
+    activeDofs.reserve(totalDof - fixedDofs.size());
     for (int i = 0; i < totalDof; ++i) {
-        if (std::find(fixedDofs.begin(), fixedDofs.end(), i) == fixedDofs.end()) {
+        if (!isFixed[i]) {
             activeDofs.push_back(i);
         }
     }
@@ -161,34 +170,39 @@ void LinearSolver::reduceSystem(const Eigen::SparseMatrix<double>& fullK,
         throw std::runtime_error("No active DOFs after applying boundary conditions");
     }
 
-    reducedK.resize(activeDofCount, activeDofCount);
-    reducedF.resize(activeDofCount);
-
-    // Строим матрицу перестановок с проверками границ
-    std::vector<Eigen::Triplet<double>> triplets;
-
+    // Оптимизация 2: Создаем обратное отображение global -> active
+    std::vector<int> globalToActive(totalDof, -1);
     for (int i = 0; i < activeDofCount; ++i) {
-        int global_i = activeDofs[i];
+        globalToActive[activeDofs[i]] = i;
+    }
 
-        // Проверка границ
-        if (global_i < 0 || global_i >= totalDof) {
-            throw std::runtime_error("Invalid global DOF index: " + std::to_string(global_i));
-        }
+    // Оптимизация 3: Заполняем вектор сил
+    reducedF.resize(activeDofCount);
+    for (int i = 0; i < activeDofCount; ++i) {
+        reducedF(i) = fullF[activeDofs[i]];
+    }
 
-        reducedF(i) = fullF(global_i);
+    // Оптимизация 4: Проходим только по ненулевым элементам разреженной матрицы
+    std::vector<Eigen::Triplet<double>> triplets;
+    triplets.reserve(fullK.nonZeros()); // Резервируем память
 
-        for (int j = 0; j < activeDofCount; ++j) {
-            int global_j = activeDofs[j];
+    // Проходим по всей матрице, но берем только элементы, где оба индекса активны
+    for (int k = 0; k < fullK.outerSize(); ++k) {
+        for (Eigen::SparseMatrix<double>::InnerIterator it(fullK, k); it; ++it) {
+            int global_i = it.row();
+            int global_j = it.col();
 
-            if (global_j < 0 || global_j >= totalDof) {
-                throw std::runtime_error("Invalid global DOF index: " + std::to_string(global_j));
+            // Проверяем, активны ли оба DOF
+            if (!isFixed[global_i] && !isFixed[global_j]) {
+                int active_i = globalToActive[global_i];
+                int active_j = globalToActive[global_j];
+                triplets.emplace_back(active_i, active_j, it.value());
             }
-
-            double value = fullK.coeff(global_i, global_j);
-            triplets.emplace_back(i, j, value);
         }
     }
 
+    // Создаем редуцированную матрицу
+    reducedK.resize(activeDofCount, activeDofCount);
     reducedK.setFromTriplets(triplets.begin(), triplets.end());
 }
 
@@ -231,7 +245,7 @@ void LinearSolver::applyPrescribedDisplacements(Eigen::SparseMatrix<double>& K,
     reactions.resize(totalDof);
     reactions.setZero();
 
-    // 1. Модифицируем правую часть: F_modified = F - K?? u?
+    
     for (size_t i = 0; i < prescribedDofs.size(); ++i) {
         int prescribedDof = prescribedDofs[i];
         double prescribedValue = prescribedValues[i];
@@ -242,9 +256,9 @@ void LinearSolver::applyPrescribedDisplacements(Eigen::SparseMatrix<double>& K,
         }
 
         for (int j = 0; j < totalDof; ++j) {
-            // Если j не предписанный DOF, модифицируем F[j]
+            
             if (std::find(prescribedDofs.begin(), prescribedDofs.end(), j) == prescribedDofs.end()) {
-                // Проверяем, что индексы в пределах
+                
                 if (j >= 0 && j < totalDof && prescribedDof >= 0 && prescribedDof < totalDof) {
                     F(j) -= K.coeff(j, prescribedDof) * prescribedValue;
                 }
@@ -252,7 +266,7 @@ void LinearSolver::applyPrescribedDisplacements(Eigen::SparseMatrix<double>& K,
         }
     }
 
-    // 2. Обнуляем строки и столбцы для предписанных DOF, ставим 1 на диагонали
+    
     for (size_t i = 0; i < prescribedDofs.size(); ++i) {
         int prescribedDof = prescribedDofs[i];
         double prescribedValue = prescribedValues[i];
