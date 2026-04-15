@@ -1,83 +1,97 @@
 #pragma once
-#include <memory>
-#include <vector>
+
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+#include <memory>
+#include <vector>
+
+#include "ContactTypes.h"
+#include "RigidPlaneContactSolver.h"
 #include "assembly.h"
 #include "solver.h"
 
 class FEModel {
 public:
+    struct PerformanceMetrics {
+        int linearIterations = 0;
+        int nonlinearIterations = 0;
+        int activeSetSize = 0;
+        double assemblyTimeSeconds = 0.0;
+        double solveTimeSeconds = 0.0;
+        double totalTimeSeconds = 0.0;
+        double maxPenetration = 0.0;
+        double linearResidualEstimate = 0.0;
+        Eigen::Index matrixNonZeros = 0;
+    };
+
     FEModel();
     ~FEModel() = default;
 
-    // === Управление моделью ===
     void setAssembly(std::shared_ptr<Assembly> assembly);
     std::shared_ptr<Assembly> getAssembly() const { return assembly_; }
 
-    // === Параметры решения ===
     void setSolverTolerance(double tolerance) { tolerance_ = tolerance; }
     void setMaxIterations(int maxIter) { maxIterations_ = maxIter; }
     void setPenaltyParameter(double penalty) { penaltyParameter_ = penalty; }
 
-    // === Основные методы решения ===
-    bool solve();  // Основной метод решения
-    bool solveContact();  // Решение контактной задачи (итерационный метод)
+    void setContactSolver(std::unique_ptr<RigidPlaneContactSolver> contactSolver);
+    void configureRigidPlaneContact(const RigidPlane2D& plane,
+        const std::vector<ContactFacet>& facets,
+        double penaltyParameter);
+    bool hasContactSolver() const { return contactSolver_ != nullptr; }
 
-    // === Результаты ===
+    bool solve();
+    bool solveContact();
+
     const Eigen::VectorXd& getDisplacements() const { return displacements_; }
     const Eigen::VectorXd& getReactionForces() const { return reactionForces_; }
-    double getSolutionTime() const { return solutionTime_; }
+    double getSolutionTime() const { return performanceMetrics_.totalTimeSeconds; }
     int getIterationCount() const { return iterationCount_; }
+    const PerformanceMetrics& getPerformanceMetrics() const { return performanceMetrics_; }
 
-    // === Постпроцессинг ===
     Eigen::Vector3d getElementStress(int elementId, double xi, double eta) const;
     Eigen::Vector3d getElementStrain(int elementId, double xi, double eta) const;
 
-    // Новые методы для узловых величин
     std::vector<Eigen::Vector3d> getNodalStresses() const;
     std::vector<Eigen::Vector2d> getNodalDisplacements() const;
     std::vector<Eigen::Vector3d> getNodalStrains() const;
 
-    // Усредненные напряжения в узлах (для визуализации)
     Eigen::Vector3d getNodeStress(int nodeId) const;
     Eigen::Vector2d getNodeDisplacement(int nodeId) const;
     Eigen::Vector3d getNodeStrain(int nodeId) const;
 
-
-    // === Валидация ===
     bool validate() const;
 
 private:
+    bool solveLinearSystem();
+    bool solveContactIterative();
+    void calculateReactionForces();
+    void applyContactConditions(const Eigen::VectorXd& trialDisplacements,
+        ContactIterationInfo& iterationInfo);
+    void assembleExternalForces(Eigen::VectorXd& globalF) const;
+    std::vector<std::shared_ptr<Node>> getElementNodes(int elementId) const;
+
+    void calculateNodalAverages() const;
+
     std::shared_ptr<Assembly> assembly_;
     std::unique_ptr<LinearSolver> solver_;
+    std::unique_ptr<RigidPlaneContactSolver> contactSolver_;
 
-    // Результаты
     Eigen::VectorXd displacements_;
     Eigen::VectorXd reactionForces_;
 
-    // Параметры решения
     double tolerance_ = 1.0e-8;
     int maxIterations_ = 100;
     double penaltyParameter_ = 1.0e6;
-    double solutionTime_ = 0.0;
     int iterationCount_ = 0;
 
-    // Вспомогательные методы
-    bool solveLinearSystem();  // Решение линейной системы
-    bool solveContactIterative();  // Итерационное решение контакта
-    void calculateReactionForces();  // Расчет реакций
-    void applyContactConditions();  // Применение контактных условий
-
-    // Временные матрицы для контактного решения
     Eigen::SparseMatrix<double> globalK_;
     Eigen::VectorXd globalF_;
     Eigen::VectorXd contactForces_;
 
-    void calculateNodalAverages() const;
-    mutable std::vector<Eigen::Vector3d> nodalStresses_;  // Кэш узловых напряжений
-    mutable std::vector<Eigen::Vector2d> nodalDisplacements_; // Кэш узловых перемещений
-    mutable std::vector<Eigen::Vector3d> nodalStrains_;   // Кэш узловых деформаций
+    PerformanceMetrics performanceMetrics_;
+    mutable std::vector<Eigen::Vector3d> nodalStresses_;
+    mutable std::vector<Eigen::Vector2d> nodalDisplacements_;
+    mutable std::vector<Eigen::Vector3d> nodalStrains_;
     mutable bool nodalDataCalculated_ = false;
-
 };

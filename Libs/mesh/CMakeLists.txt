@@ -1,57 +1,47 @@
-file(GLOB MESH_HEADERS include/*.h)
-file(GLOB MESH_SOURCES src/*.cpp)
-
-
 add_library(mesh)
-target_sources(mesh PUBLIC  
-    "assembly/include/assembly.h"
-    "element/include/BaseElement.h"
-    "element/include/node.h"
-    "element/include/material.h"
-    "element/include/planeisometric/ContactPlane.h"
-    #"element/include/planeisometric/StaticPlane.h"
-    "element/include/planeisometric/Planeisoparametric.h"
-    "element/include/planeisometric/Planeisoparametric.cpp"
-    "element/include/planeisometric/ContactPlane.cpp"
-    "assembly/src/assembly.cpp"
-    "element/src/BaseElement.cpp"
-    "element/src/material.cpp"
-    "model/include/FEMModel.h"
-    "model/src/FEMModel.cpp"
-    "model/include/ConcentratedForce.h" 
-    "model/src/ConcentratedForce.cpp"
-    "model/include/geometry.h"
-    "meshGenerator/include/meshgenerator.h"#
-    "meshGenerator/src/meshgenerator.cpp"
-    "model/src/geometry.cpp" 
-    "model/src/loadFunction.cpp" 
-    "model/include/constants.h")
 
-target_include_directories(mesh PUBLIC
- ${CMAKE_CURRENT_SOURCE_DIR}/element/include
- ${CMAKE_CURRENT_SOURCE_DIR}/meshing/include
- ${CMAKE_CURRENT_SOURCE_DIR}/assembly/include
- ${CMAKE_CURRENT_SOURCE_DIR}/model/include
- ${CMAKE_CURRENT_SOURCE_DIR}/meshGenerator/include
+target_sources(mesh PUBLIC
+    assembly/include/assembly.h
+    assembly/src/assembly.cpp
+    element/include/BaseElement.h
+    element/include/material.h
+    element/include/node.h
+    element/include/planeisometric/ContactPlane.h
+    element/include/planeisometric/ContactPlane.cpp
+    element/include/planeisometric/Planeisoparametric.h
+    element/include/planeisometric/Planeisoparametric.cpp
+    element/src/BaseElement.cpp
+    element/src/material.cpp
+    meshGenerator/include/meshgenerator.h
+    meshGenerator/src/meshgenerator.cpp
+    model/include/ConcentratedForce.h
+    model/include/constants.h
+    model/include/ContactTypes.h
+    model/include/FEMModel.h
+    model/include/geometry.h
+    model/include/RigidPlaneContactSolver.h
+    model/src/ConcentratedForce.cpp
+    model/src/FEMModel.cpp
+    model/src/geometry.cpp
+    model/src/loadFunction.cpp
+    model/src/RigidPlaneContactSolver.cpp
 )
 
-target_include_directories(solver PRIVATE
-    ${CMAKE_SOURCE_DIR}/Libs/mesh/element/include 
-    ${CMAKE_SOURCE_DIR}/Libs/mesh/assembly/include
-    ${CMAKE_SOURCE_DIR}/Libs/mesh/meshing/include 
-    ${CMAKE_SOURCE_DIR}/Libs/mesh/meshGenerator/include 
-    ${CMAKE_SOURCE_DIR}/Libs/solver/include
-    ${CMAKE_SOURCE_DIR}/3rdParty/eigen-5.0.0 
+target_include_directories(mesh PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/assembly/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/element/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/meshGenerator/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/model/include
 )
 
 if(USE_INTEL_MKL)
-    target_link_libraries(mesh PUBLIC IntelMKL)  # PUBLIC, чтобы зависимость передавалась дальше
+    target_link_libraries(mesh PUBLIC IntelMKL)
     target_compile_definitions(mesh PUBLIC SOLVER_USE_MKL)
 endif()
 
 target_link_libraries(mesh PUBLIC
-solver
-Eigen3::Eigen
+    solver
+    Eigen3::Eigen
 )
 
 target_compile_features(mesh PUBLIC cxx_std_23)

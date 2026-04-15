@@ -1,31 +1,34 @@
 #include "FEMModel.h"
-#include "planeisometric/Planeisoparametric.h"
+
 #include <chrono>
 #include <iostream>
-#include <cmath>
 
-FEModel::FEModel() {
-    std::cout << "FEModel constructor started..." << std::endl;
+#include "ContactTypes.h"
+#include "RigidPlaneContactSolver.h"
+#include "planeisometric/Planeisoparametric.h"
 
-    try {
-        solver_ = std::make_unique<LinearSolver>();
-        std::cout << "LinearSolver created successfully" << std::endl;
-
-        // Инициализируем векторы нулевого размера
-        displacements_ = Eigen::VectorXd::Zero(0);
-        reactionForces_ = Eigen::VectorXd::Zero(0);
-        contactForces_ = Eigen::VectorXd::Zero(0);
-
-        std::cout << "FEModel constructor completed" << std::endl;
-    }
-    catch (const std::exception& e) {
-        std::cout << "ERROR in FEModel constructor: " << e.what() << std::endl;
-        throw; // Перебрасываем исключение дальше
-    }
+FEModel::FEModel()
+    : solver_(std::make_unique<LinearSolver>()),
+      displacements_(Eigen::VectorXd::Zero(0)),
+      reactionForces_(Eigen::VectorXd::Zero(0)),
+      contactForces_(Eigen::VectorXd::Zero(0)) {
 }
 
 void FEModel::setAssembly(std::shared_ptr<Assembly> assembly) {
-    assembly_ = assembly;
+    assembly_ = std::move(assembly);
+    nodalDataCalculated_ = false;
+}
+
+void FEModel::setContactSolver(std::unique_ptr<RigidPlaneContactSolver> contactSolver) {
+    contactSolver_ = std::move(contactSolver);
+}
+
+void FEModel::configureRigidPlaneContact(const RigidPlane2D& plane,
+    const std::vector<ContactFacet>& facets,
+    double penaltyParameter) {
+    penaltyParameter_ = penaltyParameter;
+    contactSolver_ = std::make_unique<RigidPlaneContactSolver>(assembly_, plane, penaltyParameter_);
+    contactSolver_->setContactFacets(facets);
 }
 
 bool FEModel::solve() {
@@ -34,38 +37,34 @@ bool FEModel::solve() {
         return false;
     }
 
-    auto startTime = std::chrono::high_resolution_clock::now();
+    nodalDataCalculated_ = false;
+    performanceMetrics_ = {};
+    iterationCount_ = 0;
+
+    const auto totalStartTime = std::chrono::high_resolution_clock::now();
 
     try {
-        // 1. Сборка глобальной матрицы жесткости
+        const auto assemblyStartTime = std::chrono::high_resolution_clock::now();
         assembly_->assembleGlobalStiffnessMatrix(globalK_);
-        std::cout << "K assembled" << std::endl;
-        // 2. Сборка вектора нагрузок
-        //Eigen::VectorXd bodyForces = Eigen::VectorXd::Zero(2); // Объемные силы
-        //assembly_->assembleGlobalForceVector(globalF_, bodyForces);
-
-        // 3. Добавляем сосредоточенные силы
-        assembly_->assembleConcentratedForces(globalF_);
-        assembly_->assembleSurfaceLoads(globalF_);
-        std::cout << "F assembled" << std::endl;
-        // 4. Применение граничных условий
+        assembleExternalForces(globalF_);
         assembly_->applyBoundaryConditions(globalK_, globalF_);
-        std::cout << "BC assembled" << std::endl;
-        // 5. Решение системы
+        const auto assemblyEndTime = std::chrono::high_resolution_clock::now();
+
+        performanceMetrics_.assemblyTimeSeconds =
+            std::chrono::duration<double>(assemblyEndTime - assemblyStartTime).count();
+        performanceMetrics_.matrixNonZeros = globalK_.nonZeros();
+
         if (!solveLinearSystem()) {
             std::cerr << "FEModel: Linear system solution failed" << std::endl;
             return false;
         }
 
-        // 6. Расчет реакций
-       calculateReactionForces();
+        calculateReactionForces();
 
-        auto endTime = std::chrono::high_resolution_clock::now();
-        solutionTime_ = std::chrono::duration<double>(endTime - startTime).count();
-
-        std::cout << "FEModel: Solution completed in " << solutionTime_ << " seconds" << std::endl;
+        const auto totalEndTime = std::chrono::high_resolution_clock::now();
+        performanceMetrics_.totalTimeSeconds =
+            std::chrono::duration<double>(totalEndTime - totalStartTime).count();
         return true;
-
     }
     catch (const std::exception& e) {
         std::cerr << "FEModel: Solution error - " << e.what() << std::endl;
@@ -74,16 +73,20 @@ bool FEModel::solve() {
 }
 
 bool FEModel::solveContact() {
+    if (!contactSolver_) {
+        return solve();
+    }
+
     if (!assembly_ || !validate()) {
         std::cerr << "FEModel: Invalid assembly for contact solution" << std::endl;
         return false;
     }
 
-    auto startTime = std::chrono::high_resolution_clock::now();
+    nodalDataCalculated_ = false;
+    performanceMetrics_ = {};
 
     try {
         return solveContactIterative();
-
     }
     catch (const std::exception& e) {
         std::cerr << "FEModel: Contact solution error - " << e.what() << std::endl;
@@ -97,47 +100,37 @@ bool FEModel::solveLinearSystem() {
             solver_ = std::make_unique<LinearSolver>();
         }
 
-        // Решаем сокращенную систему
         Eigen::VectorXd reducedDisplacements = solver_->solveSystem(globalK_, globalF_);
+        const auto& solveStats = solver_->getLastSolveStats();
 
-        std::cout << "=== Solve Linear System ===" << std::endl;
-        std::cout << "Reduced system: " << globalK_.rows() << "x" << globalK_.cols() << std::endl;
-        std::cout << "Reduced displacements size: " << reducedDisplacements.size() << std::endl;
+        performanceMetrics_.linearIterations = solveStats.iterations;
+        performanceMetrics_.solveTimeSeconds += solveStats.solveTimeSeconds;
+        performanceMetrics_.linearResidualEstimate = solveStats.estimatedError;
 
-        // Восстанавливаем полный вектор перемещений
         int totalDof = assembly_->getTotalDofCount();
         displacements_.resize(totalDof);
         displacements_.setZero();
 
         const auto& mapping = assembly_->getDofMapping();
-
-        std::cout << "Total DOF: " << totalDof << std::endl;
-        std::cout << "Active DOF count: " << mapping.reducedToFull.size() << std::endl;
-        std::cout << "Prescribed DOF count: " << mapping.prescribedDofs.size() << std::endl;
-
-        // Заполняем активные DOF
         for (size_t i = 0; i < mapping.reducedToFull.size(); ++i) {
-            if (i < reducedDisplacements.size()) {
+            if (static_cast<Eigen::Index>(i) < reducedDisplacements.size()) {
                 int fullDof = mapping.reducedToFull[i];
                 if (fullDof >= 0 && fullDof < totalDof) {
-                    displacements_(fullDof) = reducedDisplacements(i);
+                    displacements_(fullDof) = reducedDisplacements(static_cast<Eigen::Index>(i));
                 }
             }
         }
 
-        // Заполняем предписанные перемещения
         for (size_t i = 0; i < mapping.prescribedDofs.size(); ++i) {
-            int prescribedDof = mapping.prescribedDofs[i];
-            if (prescribedDof >= 0 && prescribedDof < totalDof && i < mapping.prescribedValues.size()) {
-                displacements_(prescribedDof) = mapping.prescribedValues[i];
+            if (i < mapping.prescribedValues.size()) {
+                int prescribedDof = mapping.prescribedDofs[i];
+                if (prescribedDof >= 0 && prescribedDof < totalDof) {
+                    displacements_(prescribedDof) = mapping.prescribedValues[i];
+                }
             }
         }
 
-        std::cout << "Full displacements size: " << displacements_.size() << std::endl;
-        std::cout << "Displacements norm: " << displacements_.norm() << std::endl;
-
         return true;
-
     }
     catch (const std::exception& e) {
         std::cerr << "Linear system solution failed: " << e.what() << std::endl;
@@ -146,70 +139,73 @@ bool FEModel::solveLinearSystem() {
 }
 
 bool FEModel::solveContactIterative() {
-    std::cout << "FEModel: Starting iterative contact solution..." << std::endl;
+    if (!contactSolver_) {
+        return solve();
+    }
 
-    // Начальное решение без учета контакта
+    const auto totalStartTime = std::chrono::high_resolution_clock::now();
     if (!solve()) {
         return false;
     }
 
-    Eigen::VectorXd prevDisplacements = displacements_;
-    bool contactConverged = false;
+    double accumulatedAssemblyTime = performanceMetrics_.assemblyTimeSeconds;
+
+    Eigen::VectorXd previousDisplacements = displacements_;
+    std::vector<int> previousActiveSet;
+    bool converged = false;
 
     for (iterationCount_ = 1; iterationCount_ <= maxIterations_; ++iterationCount_) {
-        std::cout << "Contact iteration " << iterationCount_ << std::endl;
+        const auto assemblyStartTime = std::chrono::high_resolution_clock::now();
 
-        // 1. Определение активных контактных пар
-        applyContactConditions();
-
-        // 2. Пересборка системы с учетом контактных жесткостей
         assembly_->assembleGlobalStiffnessMatrix(globalK_);
+        assembleExternalForces(globalF_);
 
-        // Добавление контактных жесткостей
-        // (здесь нужно найти все ContactPlaneElement и добавить их штрафные матрицы)
+        ContactIterationInfo contactInfo;
+        applyContactConditions(previousDisplacements, contactInfo);
 
-        Eigen::VectorXd bodyForces = Eigen::VectorXd::Zero(2);
-        assembly_->assembleGlobalForceVector(globalF_, bodyForces);
-
-        // Добавление контактных сил
-        globalF_ += contactForces_;
-
-        // 3. Применение граничных условий
+        globalK_ += contactInfo.stiffness;
+        globalF_ += contactInfo.force;
         assembly_->applyBoundaryConditions(globalK_, globalF_);
 
-        // 4. Решение системы
+        const auto assemblyEndTime = std::chrono::high_resolution_clock::now();
+        accumulatedAssemblyTime +=
+            std::chrono::duration<double>(assemblyEndTime - assemblyStartTime).count();
+        performanceMetrics_.assemblyTimeSeconds = accumulatedAssemblyTime;
+        performanceMetrics_.matrixNonZeros = globalK_.nonZeros();
+        performanceMetrics_.activeSetSize =
+            static_cast<int>(contactInfo.state.activeFacetIds.size());
+        performanceMetrics_.maxPenetration = contactInfo.state.maxPenetration;
+        performanceMetrics_.nonlinearIterations = iterationCount_;
+
         if (!solveLinearSystem()) {
             return false;
         }
 
-        // 5. Проверка сходимости
-        double displacementNorm = (displacements_ - prevDisplacements).norm();
-        double relativeError = displacementNorm / (displacements_.norm() + 1.0e-15);
+        double relativeError =
+            (displacements_ - previousDisplacements).norm() /
+            (displacements_.norm() + 1.0e-15);
+        bool activeSetStable = (contactInfo.state.activeFacetIds == previousActiveSet);
 
-        std::cout << "Iteration " << iterationCount_ << ": relative error = " << relativeError << std::endl;
+        previousDisplacements = displacements_;
+        previousActiveSet = contactInfo.state.activeFacetIds;
 
-        if (relativeError < tolerance_) {
-            contactConverged = true;
+        if (relativeError < tolerance_ && activeSetStable) {
+            converged = true;
             break;
         }
-
-        prevDisplacements = displacements_;
     }
 
-    if (contactConverged) {
-        calculateReactionForces();
-        auto endTime = std::chrono::high_resolution_clock::now();
-       // solutionTime_ = std::chrono::duration<double>(endTime - startTime).count();
-
-        std::cout << "FEModel: Contact solution converged in " << iterationCount_
-            << " iterations, time = " << solutionTime_ << " seconds" << std::endl;
-        return true;
-    }
-    else {
+    if (!converged) {
         std::cerr << "FEModel: Contact solution did not converge after "
-            << maxIterations_ << " iterations" << std::endl;
+                  << maxIterations_ << " iterations" << std::endl;
         return false;
     }
+
+    calculateReactionForces();
+    const auto totalEndTime = std::chrono::high_resolution_clock::now();
+    performanceMetrics_.totalTimeSeconds =
+        std::chrono::duration<double>(totalEndTime - totalStartTime).count();
+    return true;
 }
 
 void FEModel::calculateReactionForces() {
@@ -220,115 +216,105 @@ void FEModel::calculateReactionForces() {
     Eigen::SparseMatrix<double> fullK;
     Eigen::VectorXd fullF;
     assembly_->assembleGlobalStiffnessMatrix(fullK);
+    assembleExternalForces(fullF);
 
-    // Собираем вектор сил БЕЗ граничных условий
-    Eigen::VectorXd bodyForces = Eigen::VectorXd::Zero(2);
-    assembly_->assembleGlobalForceVector(fullF, bodyForces);
-    assembly_->assembleConcentratedForces(fullF);
-    assembly_->assembleSurfaceLoads(fullF);
+    if (contactSolver_ && performanceMetrics_.nonlinearIterations > 0 &&
+        displacements_.size() == totalDof) {
+        Eigen::SparseMatrix<double> contactK;
+        Eigen::VectorXd contactF;
+        ContactState contactState;
+        contactSolver_->assembleContact(displacements_, contactK, contactF, contactState);
+        fullK += contactK;
+        fullF += contactF;
+    }
 
-    std::cout << "Full K size: " << fullK.rows() << "x" << fullK.cols() << std::endl;
-    std::cout << "Full F size: " << fullF.size() << std::endl;
-
-    //  Вычисляем реакции: R = K * u - F
     if (fullK.rows() == displacements_.size() && fullK.cols() == displacements_.size()) {
         reactionForces_ = fullK * displacements_ - fullF;
-        std::cout << "Reactions calculated successfully" << std::endl;
     }
-    else {
-        std::cout << "ERROR: Dimension mismatch for reaction calculation" << std::endl;
-        std::cout << "K: " << fullK.rows() << "x" << fullK.cols()
-            << ", u: " << displacements_.size()
-            << ", F: " << fullF.size() << std::endl;
-    }
-
-    //  Выводим реакции в закрепленных узлах
-   /* std::cout << "Reaction forces:" << std::endl;
-    auto nodes = assembly_->getNodes();
-    for (size_t i = 0; i < nodes.size(); ++i) {
-        int nodeId = nodes[i]->getId();
-        int dofX = i * 2;
-        int dofY = i * 2 + 1;
-
-        if (dofX < reactionForces_.size() && dofY < reactionForces_.size()) {
-            std::cout << "Node " << nodeId << ": Rx = " << reactionForces_(dofX)
-                << ", Ry = " << reactionForces_(dofY) << std::endl;
-        }
-    }*/
-
 }
 
-void FEModel::applyContactConditions() {
-    // Временная реализация - будет расширена
-    contactForces_.resize(globalF_.size());
-    contactForces_.setZero();
+void FEModel::applyContactConditions(const Eigen::VectorXd& trialDisplacements,
+    ContactIterationInfo& iterationInfo) {
+    if (!contactSolver_) {
+        iterationInfo.stiffness.resize(assembly_->getTotalDofCount(), assembly_->getTotalDofCount());
+        iterationInfo.stiffness.setZero();
+        iterationInfo.force = Eigen::VectorXd::Zero(assembly_->getTotalDofCount());
+        iterationInfo.state = {};
+        return;
+    }
 
-    // Здесь нужно:
-    // 1. Найти все ContactPlaneElement
-    // 2. Для каждого вычислить штрафные силы
-    // 3. Добавить в contactForces_
+    contactSolver_->assembleContact(trialDisplacements,
+        iterationInfo.stiffness,
+        iterationInfo.force,
+        iterationInfo.state);
+}
+
+void FEModel::assembleExternalForces(Eigen::VectorXd& globalF) const {
+    assembly_->assembleConcentratedForces(globalF);
+    assembly_->assembleSurfaceLoads(globalF);
+}
+
+std::vector<std::shared_ptr<Node>> FEModel::getElementNodes(int elementId) const {
+    auto element = assembly_->getElement(elementId);
+    if (!element) {
+        throw std::invalid_argument("Element not found: " + std::to_string(elementId));
+    }
+
+    std::vector<std::shared_ptr<Node>> elementNodes;
+    elementNodes.reserve(element->getNodeIds().size());
+    for (int nodeId : element->getNodeIds()) {
+        auto node = assembly_->getNode(nodeId);
+        if (!node) {
+            throw std::invalid_argument("Node not found: " + std::to_string(nodeId));
+        }
+        elementNodes.push_back(node);
+    }
+
+    return elementNodes;
 }
 
 Eigen::Vector3d FEModel::getElementStress(int elementId, double xi, double eta) const {
     auto element = assembly_->getElement(elementId);
-    auto material = assembly_->getMaterial(element->getMaterialId());
-
-    if (element && material) {
-        // Используем ПОЛНЫЕ индексы DOF
-        auto dofIndices = assembly_->getElementDofIndices(elementId);
-        Eigen::VectorXd elementDisplacements = Eigen::VectorXd::Zero(dofIndices.size());
-
-        std::cout << "=== getElementStress with FULL indices ===" << std::endl;
-        std::cout << "Element " << elementId << " DOF indices: ";
-        for (int idx : dofIndices) {
-            std::cout << idx << " ";
-        }
-        std::cout << std::endl;
-
-        std::cout << "Global displacements size: " << displacements_.size() << std::endl;
-
-        // Заполняем перемещения элемента из полного вектора перемещений
-        for (size_t i = 0; i < dofIndices.size(); ++i) {
-            if (dofIndices[i] >= 0 && dofIndices[i] < displacements_.size()) {
-                elementDisplacements(i) = displacements_(dofIndices[i]);
-                std::cout << "DOF " << dofIndices[i] << " = " << displacements_(dofIndices[i]) << std::endl;
-            }
-            else {
-                std::cout << "WARNING: Invalid DOF index " << dofIndices[i] << std::endl;
-            }
-        }
-
-        std::cout << "Element displacements norm: " << elementDisplacements.norm() << std::endl;
-
-        Eigen::Vector3d stress = element->computeStress(xi, eta, elementDisplacements,
-            assembly_->getNodes(), material);
-        std::cout << "Computed stress: " << stress.transpose() << std::endl;
-
-        return stress;
+    if (!element) {
+        return Eigen::Vector3d::Zero();
     }
 
-    return Eigen::Vector3d::Zero();
+    auto material = assembly_->getMaterial(element->getMaterialId());
+    if (!material) {
+        return Eigen::Vector3d::Zero();
+    }
+
+    auto dofIndices = assembly_->getElementDofIndices(elementId);
+    Eigen::VectorXd elementDisplacements = Eigen::VectorXd::Zero(dofIndices.size());
+    for (size_t i = 0; i < dofIndices.size(); ++i) {
+        if (dofIndices[i] >= 0 && dofIndices[i] < displacements_.size()) {
+            elementDisplacements(static_cast<Eigen::Index>(i)) = displacements_(dofIndices[i]);
+        }
+    }
+
+    return element->computeStress(xi, eta, elementDisplacements, getElementNodes(elementId), material);
 }
 
 Eigen::Vector3d FEModel::getElementStrain(int elementId, double xi, double eta) const {
     auto element = assembly_->getElement(elementId);
-    auto material = assembly_->getMaterial(element->getMaterialId());
-
-    if (element && material) {
-        auto dofIndices = assembly_->getElementDofIndices(elementId);
-        Eigen::VectorXd elementDisplacements(dofIndices.size());
-
-        for (size_t i = 0; i < dofIndices.size(); ++i) {
-            if (dofIndices[i] >= 0) {
-                elementDisplacements(i) = displacements_(dofIndices[i]);
-            }
-        }
-
-        return element->computeStrain(xi, eta, elementDisplacements,
-            assembly_->getNodes(), material);
+    if (!element) {
+        return Eigen::Vector3d::Zero();
     }
 
-    return Eigen::Vector3d::Zero();
+    auto material = assembly_->getMaterial(element->getMaterialId());
+    if (!material) {
+        return Eigen::Vector3d::Zero();
+    }
+
+    auto dofIndices = assembly_->getElementDofIndices(elementId);
+    Eigen::VectorXd elementDisplacements = Eigen::VectorXd::Zero(dofIndices.size());
+    for (size_t i = 0; i < dofIndices.size(); ++i) {
+        if (dofIndices[i] >= 0 && dofIndices[i] < displacements_.size()) {
+            elementDisplacements(static_cast<Eigen::Index>(i)) = displacements_(dofIndices[i]);
+        }
+    }
+
+    return element->computeStrain(xi, eta, elementDisplacements, getElementNodes(elementId), material);
 }
 
 bool FEModel::validate() const {
@@ -399,17 +385,15 @@ void FEModel::calculateNodalAverages() const {
     }
 
     auto nodes = assembly_->getNodes();
-    int nodeCount = nodes.size();
+    int nodeCount = static_cast<int>(nodes.size());
 
-    // Инициализация
-    nodalStresses_.resize(nodeCount, Eigen::Vector3d::Zero());
-    nodalDisplacements_.resize(nodeCount, Eigen::Vector2d::Zero());
-    nodalStrains_.resize(nodeCount, Eigen::Vector3d::Zero());
+    nodalStresses_.assign(nodeCount, Eigen::Vector3d::Zero());
+    nodalDisplacements_.assign(nodeCount, Eigen::Vector2d::Zero());
+    nodalStrains_.assign(nodeCount, Eigen::Vector3d::Zero());
 
     std::vector<int> stressCount(nodeCount, 0);
     std::vector<int> strainCount(nodeCount, 0);
 
-    // Собираем перемещения из глобального вектора
     for (int i = 0; i < nodeCount; ++i) {
         int nodeId = nodes[i]->getId();
         int dofX = assembly_->getGlobalDofIndex(nodeId, 0);
@@ -423,105 +407,76 @@ void FEModel::calculateNodalAverages() const {
         }
     }
 
-    // Усреднение напряжений и деформаций по элементам
     auto elements = assembly_->getElements();
-
     for (const auto& element : elements) {
         auto material = assembly_->getMaterial(element->getMaterialId());
-        if (!material) continue;
+        if (!material) {
+            continue;
+        }
 
-        // Получаем узлы элемента
         std::vector<std::shared_ptr<Node>> elementNodes;
-        std::vector<int> nodeIds = element->getNodeIds();
-
-        for (int nodeId : nodeIds) {
+        for (int nodeId : element->getNodeIds()) {
             auto node = assembly_->getNode(nodeId);
-            if (node) {
-                elementNodes.push_back(node);
-            }
-            else {
-                std::cerr << "Error: Element " << element->getId()
-                    << " references non-existent node " << nodeId << std::endl;
+            if (!node) {
                 elementNodes.clear();
                 break;
             }
+            elementNodes.push_back(node);
         }
 
-        if (elementNodes.empty()) continue;
+        if (elementNodes.empty()) {
+            continue;
+        }
 
-        // Получаем перемещения элемента
         auto dofIndices = assembly_->getElementDofIndices(element->getId());
         Eigen::VectorXd elementDisplacements = Eigen::VectorXd::Zero(dofIndices.size());
-
         for (size_t i = 0; i < dofIndices.size(); ++i) {
             if (dofIndices[i] >= 0 && dofIndices[i] < displacements_.size()) {
-                elementDisplacements(i) = displacements_[dofIndices[i]];
+                elementDisplacements(static_cast<Eigen::Index>(i)) = displacements_[dofIndices[i]];
             }
         }
 
-        // Точки интегрирования для усреднения (углы элемента)
-        /*const double pos = 0.577350269189626;*/
         const double pos = 0.0;
-        std::vector<std::pair<double, double>> integrationPoints = {
-            {-pos, -pos}, {pos, -pos}, {pos, pos}, {-pos, pos}  // Приближенно к узлам
+        const std::vector<std::pair<double, double>> integrationPoints = {
+            {-pos, -pos}, {pos, -pos}, {pos, pos}, {-pos, pos}
         };
 
-        for (size_t pt = 0; pt < integrationPoints.size(); ++pt) {
-            double xi = integrationPoints[pt].first;
-            double eta = integrationPoints[pt].second;
+        const auto& nodeIds = element->getNodeIds();
+        for (size_t pt = 0; pt < integrationPoints.size() && pt < nodeIds.size(); ++pt) {
+            Eigen::Vector3d stress = element->computeStress(
+                integrationPoints[pt].first,
+                integrationPoints[pt].second,
+                elementDisplacements,
+                elementNodes,
+                material);
+            Eigen::Vector3d strain = element->computeStrain(
+                integrationPoints[pt].first,
+                integrationPoints[pt].second,
+                elementDisplacements,
+                elementNodes,
+                material);
 
-            // Вычисляем напряжения и деформации в точке
-            Eigen::Vector3d stress = element->computeStress(xi, eta, elementDisplacements,
-                elementNodes, material);
-            Eigen::Vector3d strain = element->computeStrain(xi, eta, elementDisplacements,
-                elementNodes, material);
-
-            // Находим соответствующий узел элемента
-            if (pt < nodeIds.size()) {
-                int targetNodeId = nodeIds[pt];
-
-                // Ищем узел в глобальном списке nodes, а не в elementNodes!
-                for (int globalIdx = 0; globalIdx < nodeCount; ++globalIdx) {
-                    if (nodes[globalIdx]->getId() == targetNodeId) {
-                        nodalStresses_[globalIdx] += stress;
-                        nodalStrains_[globalIdx] += strain;
-                        stressCount[globalIdx]++;
-                        strainCount[globalIdx]++;
-                        break;
-                    }
+            int targetNodeId = nodeIds[pt];
+            for (int globalIdx = 0; globalIdx < nodeCount; ++globalIdx) {
+                if (nodes[globalIdx]->getId() == targetNodeId) {
+                    nodalStresses_[globalIdx] += stress;
+                    nodalStrains_[globalIdx] += strain;
+                    stressCount[globalIdx]++;
+                    strainCount[globalIdx]++;
+                    break;
                 }
             }
         }
     }
 
-    // Усреднение по количеству элементов, содержащих узел
     for (int i = 0; i < nodeCount; ++i) {
         if (stressCount[i] > 0) {
-            nodalStresses_[i] /= stressCount[i];
+            nodalStresses_[i] /= static_cast<double>(stressCount[i]);
         }
         if (strainCount[i] > 0) {
-            nodalStrains_[i] /= strainCount[i];
+            nodalStrains_[i] /= static_cast<double>(strainCount[i]);
         }
     }
-
-    // Отладка: выводим статистику
-   /* std::cout << "=== Nodal Averages Debug ===" << std::endl;
-    std::cout << "Total nodes: " << nodeCount << std::endl;
-    std::cout << "Nodes with stress data: ";*/
- /*   int nodesWithData = 0;
-    for (int i = 0; i < nodeCount; ++i) {
-        if (stressCount[i] > 0) nodesWithData++;
-    }
-    std::cout << nodesWithData << std::endl;*/
-
-    // Выводим первые 10 узлов для проверки
- /*   for (int i = 0; i < std::min(10, nodeCount); ++i) {
-        std::cout << "Node " << nodes[i]->getId()
-            << ": stress count=" << stressCount[i]
-            << ", strain count=" << strainCount[i]
-            << ", displacement=(" << nodalDisplacements_[i].x()
-            << ", " << nodalDisplacements_[i].y() << ")" << std::endl;
-    }*/
 
     nodalDataCalculated_ = true;
 }

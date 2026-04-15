@@ -1,10 +1,17 @@
 #pragma once
+
+#ifndef EIGEN_USE_MKL_ALL
 #define EIGEN_USE_MKL_ALL
+#endif
+
+#ifndef EIGEN_USE_MKL
 #define EIGEN_USE_MKL
+#endif
+
 #include <Eigen/Dense>
-#include <Eigen/Sparse>
-#include <Eigen/PardisoSupport>
 #include <Eigen/IterativeLinearSolvers>
+#include <Eigen/PardisoSupport>
+#include <Eigen/Sparse>
 #include <functional>
 #include <vector>
 
@@ -13,12 +20,19 @@ public:
     LinearSolver() = default;
     ~LinearSolver() = default;
 
-    // Вычисление интеграла методом Гаусса
+    struct SolveStats {
+        int iterations = 0;
+        int maxIterations = 0;
+        double tolerance = 0.0;
+        double estimatedError = 0.0;
+        double solveTimeSeconds = 0.0;
+        bool converged = false;
+    };
+
     Eigen::MatrixXd computeGaussIntegral(
         const std::function<Eigen::MatrixXd(double, double)>& matFunc,
         int numGaussPoints);
 
-    // Решение СЛАУ методом LDLT разложения
     Eigen::VectorXd solveSystem(
         const Eigen::SparseMatrix<double>& systemMatrix,
         const Eigen::VectorXd& rightHandSide);
@@ -34,7 +48,6 @@ public:
         Eigen::VectorXd& reducedF,
         std::vector<int>& activeDofs) const;
 
-    // Восстановление полного вектора перемещений
     void expandSolution(const Eigen::VectorXd& reducedU,
         const std::vector<int>& fixedDofs,
         const std::vector<int>& activeDofs,
@@ -46,6 +59,8 @@ public:
         const std::vector<double>& prescribedValues,
         Eigen::VectorXd& reactions) const;
 
+    const SolveStats& getLastSolveStats() const { return lastSolveStats_; }
+
 private:
     struct GaussPoint {
         double xi;
@@ -55,7 +70,5 @@ private:
 
     std::vector<GaussPoint> generateGaussPoints(int order);
 
-
-
-
+    SolveStats lastSolveStats_;
 };
