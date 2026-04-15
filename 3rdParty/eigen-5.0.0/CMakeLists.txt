@@ -123,8 +123,8 @@ if (NOT DEFINED EIGEN_PRERELEASE_VERSION)
   set(EIGEN_PRERELEASE_VERSION "dev")
 endif()
 
-# If we are in a git repo, extract a changeset.
-if(IS_DIRECTORY ${CMAKE_SOURCE_DIR}/.git)
+# If Eigen is configured as a top-level project and lives in a git repo, extract a changeset.
+if(PROJECT_IS_TOP_LEVEL AND IS_DIRECTORY ${CMAKE_SOURCE_DIR}/.git)
   # if the git program is absent or this will leave the EIGEN_GIT_REVNUM string empty,
   # but won't stop CMake.
   execute_process(COMMAND git ls-remote -q ${CMAKE_SOURCE_DIR} HEAD OUTPUT_VARIABLE EIGEN_GIT_OUTPUT)

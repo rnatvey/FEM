@@ -3,8 +3,10 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <stdexcept>
 
 #include "FEMModel.h"
+#include "RigidPlaneContactSolver.h"
 #include "assembly.h"
 #include "material.h"
 #include "meshgenerator.h"
@@ -14,6 +16,10 @@
 namespace {
 
 constexpr double kCoordinateTolerance = 1.0e-9;
+constexpr double kPenaltyParameter = 1.0e7;
+constexpr double kExpectedPrecontactPenetration = 0.04;
+constexpr double kMaximumAllowedPenetration = 2.0e-3;
+constexpr int kExpectedActiveFacets = 10;
 
 std::shared_ptr<Assembly> buildBlockAssembly() {
     auto assembly = std::make_shared<Assembly>();
@@ -98,46 +104,72 @@ double computeMinimumSignedDistanceToPlane(const FEModel& model,
     return minimumSignedDistance;
 }
 
+void require(bool condition, const std::string& message) {
+    if (!condition) {
+        throw std::runtime_error(message);
+    }
+}
+
 } // namespace
 
 int main() {
     try {
         auto assembly = buildBlockAssembly();
-        auto model = std::make_shared<FEModel>();
         auto meshGenerator = std::make_shared<MeshGenerator>(assembly);
+        auto model = std::make_shared<FEModel>();
 
         const RigidPlane2D rigidPlane{Eigen::Vector2d(0.0, 1.0), 0.0};
         const auto contactFacets = meshGenerator->collectExteriorFacets(1, true, 1.0e-8);
-        if (contactFacets.empty()) {
-            throw std::runtime_error("No contact facets were found on the lower boundary");
-        }
+        require(!contactFacets.empty(), "No contact facets were found on the lower boundary");
 
         model->setAssembly(assembly);
         model->setMaxIterations(30);
         model->setSolverTolerance(1.0e-8);
-        model->configureRigidPlaneContact(rigidPlane, contactFacets, 1.0e7);
 
-        const bool success = model->solveContact();
+        require(model->solve(), "Precontact linear solve failed");
+
+        RigidPlaneContactSolver precheckSolver(assembly, rigidPlane, kPenaltyParameter);
+        precheckSolver.setContactFacets(contactFacets);
+
+        Eigen::SparseMatrix<double> precontactK;
+        Eigen::VectorXd precontactF;
+        ContactState precontactState;
+        precheckSolver.assembleContact(model->getDisplacements(),
+            precontactK,
+            precontactF,
+            precontactState);
+
+        require(static_cast<int>(precontactState.activeFacetIds.size()) == kExpectedActiveFacets,
+            "Unexpected precontact active set size");
+        require(precontactState.maxPenetration > kExpectedPrecontactPenetration,
+            "Precontact penetration is smaller than expected");
+
+        model->configureRigidPlaneContact(rigidPlane, contactFacets, kPenaltyParameter);
+        require(model->solveContact(), "Contact solve failed");
+
         const auto& metrics = model->getPerformanceMetrics();
         const double minimumSignedDistance =
             computeMinimumSignedDistanceToPlane(*model, assembly, rigidPlane);
 
-        std::cout << "Block on rigid plane example" << std::endl;
-        std::cout << "success=" << std::boolalpha << success << std::endl;
-        std::cout << "contact_facets=" << contactFacets.size() << std::endl;
+        require(metrics.nonlinearIterations > 0, "Nonlinear iteration counter was not updated");
+        require(metrics.nonlinearIterations <= 10, "Contact solve required too many nonlinear iterations");
+        require(metrics.activeSetSize == kExpectedActiveFacets, "Unexpected converged active set size");
+        require(metrics.maxPenetration >= 0.0, "Max penetration must be non-negative");
+        require(metrics.maxPenetration < kMaximumAllowedPenetration,
+            "Max penetration exceeded regression threshold");
+        require(minimumSignedDistance > -kMaximumAllowedPenetration,
+            "Deformed block penetrated too deeply into the rigid plane");
+
+        std::cout << "contact_block_regression_passed" << std::endl;
+        std::cout << "precontact_max_penetration=" << precontactState.maxPenetration << std::endl;
         std::cout << "nonlinear_iterations=" << metrics.nonlinearIterations << std::endl;
         std::cout << "active_set_size=" << metrics.activeSetSize << std::endl;
         std::cout << "max_penetration=" << metrics.maxPenetration << std::endl;
         std::cout << "minimum_signed_distance_to_plane=" << minimumSignedDistance << std::endl;
-        std::cout << "linear_iterations=" << metrics.linearIterations << std::endl;
-        std::cout << "assembly_time_seconds=" << metrics.assemblyTimeSeconds << std::endl;
-        std::cout << "solve_time_seconds=" << metrics.solveTimeSeconds << std::endl;
-        std::cout << "matrix_nonzeros=" << metrics.matrixNonZeros << std::endl;
-
-        return success ? 0 : 1;
+        return 0;
     }
     catch (const std::exception& exception) {
-        std::cerr << "Block on rigid plane example failed: " << exception.what() << std::endl;
+        std::cerr << "contact_block_regression_failed: " << exception.what() << std::endl;
         return 1;
     }
 }
