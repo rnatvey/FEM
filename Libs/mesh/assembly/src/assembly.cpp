@@ -12,7 +12,7 @@ void Assembly::addNode(std::shared_ptr<Node> node) {
         throw std::invalid_argument("Cannot add null node");
     }
 
-    // Проверяем уникальность ID
+    // РџСЂРѕРІРµСЂСЏРµРј СѓРЅРёРєР°Р»СЊРЅРѕСЃС‚СЊ ID
     for (const auto& existingNode : nodes_) {
         if (existingNode->getId() == node->getId()) {
             throw std::invalid_argument("Node with ID " + std::to_string(node->getId()) + " already exists");
@@ -20,7 +20,7 @@ void Assembly::addNode(std::shared_ptr<Node> node) {
     }
 
     nodes_.push_back(node);
-    buildNodeIndexMap(); // Обновляем карту индексов
+    buildNodeIndexMap(); // РћР±РЅРѕРІР»СЏРµРј РєР°СЂС‚Сѓ РёРЅРґРµРєСЃРѕРІ
 }
 
 void Assembly::addNodes(const std::vector<std::shared_ptr<Node>>& nodes) {
@@ -77,21 +77,21 @@ void Assembly::addElement(std::shared_ptr<BaseElement> element) {
         throw std::invalid_argument("Cannot add null element");
     }
 
-    // Проверяем уникальность ID
+    // РџСЂРѕРІРµСЂСЏРµРј СѓРЅРёРєР°Р»СЊРЅРѕСЃС‚СЊ ID
     for (const auto& existingElement : elements_) {
         if (existingElement->getId() == element->getId()) {
             throw std::invalid_argument("Element with ID " + std::to_string(element->getId()) + " already exists");
         }
     }
 
-    // Проверяем существование узлов
+    // РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ СѓР·Р»РѕРІ
     for (int nodeId : element->getNodeIds()) {
         if (!getNode(nodeId)) {
             throw std::invalid_argument("Node with ID " + std::to_string(nodeId) + " not found for element " + std::to_string(element->getId()));
         }
     }
 
-    // Проверяем существование материала
+    // РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ РјР°С‚РµСЂРёР°Р»Р°
     if (!getMaterial(element->getMaterialId())) {
         throw std::invalid_argument("Material with ID " + std::to_string(element->getMaterialId()) + " not found for element " + std::to_string(element->getId()));
     }
@@ -133,13 +133,13 @@ void Assembly::assembleGlobalStiffnessMatrix(Eigen::SparseMatrix<double>& global
             if (node) elementNodes.push_back(node);
         }
 
-        // Вычисляем матрицу жесткости элемента
+        // Р’С‹С‡РёСЃР»СЏРµРј РјР°С‚СЂРёС†Сѓ Р¶РµСЃС‚РєРѕСЃС‚Рё СЌР»РµРјРµРЅС‚Р°
         Eigen::MatrixXd ke = element->computeStiffnessMatrix(elementNodes, material);
 
         
         std::vector<int> dofIndices = getElementFullDofIndices(element->getId());
 
-        // Добавляем в глобальную матрицу
+        // Р”РѕР±Р°РІР»СЏРµРј РІ РіР»РѕР±Р°Р»СЊРЅСѓСЋ РјР°С‚СЂРёС†Сѓ
         for (int i = 0; i < dofIndices.size(); ++i) {
             for (int j = 0; j < dofIndices.size(); ++j) {
                 if (dofIndices[i] >= 0 && dofIndices[j] >= 0) {
@@ -169,7 +169,7 @@ void Assembly::assembleGlobalForceVector(Eigen::VectorXd& globalF, const Eigen::
 
         Eigen::VectorXd fe = element->computeEquivalentNodalForces(bodyForces, elementNodes, material);
 
-        // Используем ПОЛНЫЕ индексы
+        // РСЃРїРѕР»СЊР·СѓРµРј РџРћР›РќР«Р• РёРЅРґРµРєСЃС‹
         auto dofIndices = getElementFullDofIndices(element->getId());
 
         for (int i = 0; i < dofIndices.size(); ++i) {
@@ -194,7 +194,7 @@ void Assembly::addFixedNode(int nodeId, bool fixX, bool fixY) {
 void Assembly::addPrescribedDisplacement(int nodeId, double dx, double dy) {
     BoundaryCondition bc;
     bc.nodeId = nodeId;
-    bc.fixX = true;  // Для предписанных перемещений фиксируем обе степени свободы
+    bc.fixX = true;  // Р”Р»СЏ РїСЂРµРґРїРёСЃР°РЅРЅС‹С… РїРµСЂРµРјРµС‰РµРЅРёР№ С„РёРєСЃРёСЂСѓРµРј РѕР±Рµ СЃС‚РµРїРµРЅРё СЃРІРѕР±РѕРґС‹
     bc.fixY = true;
     bc.hasPrescribedDisplacement = true;
     bc.prescribedDx = dx;
@@ -205,17 +205,21 @@ void Assembly::addPrescribedDisplacement(int nodeId, double dx, double dy) {
 void Assembly::addPrescribedDisplacementX(int nodeId, double dx) {
     BoundaryCondition bc;
     bc.nodeId = nodeId;
-    bc.fixX = true;  // Для предписанных перемещений фиксируем обе степени свободы
+    bc.fixX = true;
+    bc.fixY = false;
     bc.hasPrescribedDisplacement = true;
     bc.prescribedDx = dx;
+    bc.prescribedDy = 0.0;
     boundaryConditions_.push_back(bc);
 }
 
 void Assembly::addPrescribedDisplacementY(int nodeId,  double dy) {
     BoundaryCondition bc;
     bc.nodeId = nodeId;
+    bc.fixX = false;
     bc.fixY = true;
     bc.hasPrescribedDisplacement = true;
+    bc.prescribedDx = 0.0;
     bc.prescribedDy = dy;
     boundaryConditions_.push_back(bc);
 }
@@ -224,76 +228,90 @@ void Assembly::applyBoundaryConditions(Eigen::SparseMatrix<double>& globalK,
     Eigen::VectorXd& globalF) const {
     LinearSolver solver;
 
-    // Сбрасываем mapping
+    // РЎР±СЂР°СЃС‹РІР°РµРј mapping
     dofMapping_.fullToReduced.clear();
     dofMapping_.reducedToFull.clear();
     dofMapping_.prescribedDofs.clear();
     dofMapping_.prescribedValues.clear();
 
     int totalDof = globalK.rows();
-    dofMapping_.fullToReduced.resize(totalDof, -1); // Инициализируем -1
+    dofMapping_.fullToReduced.resize(totalDof, -1); // РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј -1
 
-    std::vector<int> fixedDofs;
+    std::vector<int> fixedZeroDofs;
+    std::vector<int> constrainedDofs;
     std::vector<int> prescribedDofs;
     std::vector<double> prescribedValues;
 
-    // Собираем граничные условия
+    auto appendUniqueDof = [](std::vector<int>& dofs, int dof) {
+        if (std::find(dofs.begin(), dofs.end(), dof) == dofs.end()) {
+            dofs.push_back(dof);
+        }
+    };
+
+    // РЎРѕР±РёСЂР°РµРј РіСЂР°РЅРёС‡РЅС‹Рµ СѓСЃР»РѕРІРёСЏ
     for (const auto& bc : boundaryConditions_) {
         auto node = getNode(bc.nodeId);
         if (!node) continue;
 
         if (bc.fixX) {
             int dofX = getGlobalDofIndex(bc.nodeId, 0);
-            fixedDofs.push_back(dofX);
-
             if (bc.hasPrescribedDisplacement) {
-                prescribedDofs.push_back(dofX);
+                appendUniqueDof(prescribedDofs, dofX);
                 prescribedValues.push_back(bc.prescribedDx);
+            }
+            else {
+                appendUniqueDof(fixedZeroDofs, dofX);
             }
         }
 
         if (bc.fixY) {
             int dofY = getGlobalDofIndex(bc.nodeId, 1);
-            fixedDofs.push_back(dofY);
-
             if (bc.hasPrescribedDisplacement) {
-                prescribedDofs.push_back(dofY);
+                appendUniqueDof(prescribedDofs, dofY);
                 prescribedValues.push_back(bc.prescribedDy);
+            }
+            else {
+                appendUniqueDof(fixedZeroDofs, dofY);
             }
         }
     }
 
-    // Строим mapping для активных DOF
+    constrainedDofs = fixedZeroDofs;
+    for (int prescribedDof : prescribedDofs) {
+        appendUniqueDof(constrainedDofs, prescribedDof);
+    }
+
+    // РЎС‚СЂРѕРёРј mapping РґР»СЏ Р°РєС‚РёРІРЅС‹С… DOF
     int reducedIndex = 0;
     for (int i = 0; i < totalDof; ++i) {
-        // Если DOF не закреплен и не имеет предписанного перемещения
-        if (std::find(fixedDofs.begin(), fixedDofs.end(), i) == fixedDofs.end() &&
-            std::find(prescribedDofs.begin(), prescribedDofs.end(), i) == prescribedDofs.end()) {
+        // Р•СЃР»Рё DOF РЅРµ Р·Р°РєСЂРµРїР»РµРЅ Рё РЅРµ РёРјРµРµС‚ РїСЂРµРґРїРёСЃР°РЅРЅРѕРіРѕ РїРµСЂРµРјРµС‰РµРЅРёСЏ
+        if (std::find(constrainedDofs.begin(), constrainedDofs.end(), i) == constrainedDofs.end()) {
             dofMapping_.fullToReduced[i] = reducedIndex;
             dofMapping_.reducedToFull.push_back(i);
             reducedIndex++;
         }
     }
 
-    // Сохраняем предписанные перемещения
+    // РЎРѕС…СЂР°РЅСЏРµРј РїСЂРµРґРїРёСЃР°РЅРЅС‹Рµ РїРµСЂРµРјРµС‰РµРЅРёСЏ
     dofMapping_.prescribedDofs = prescribedDofs;
     dofMapping_.prescribedValues = prescribedValues;
 
-    // Исключаем закрепленные DOF из системы
-    if (!fixedDofs.empty()) {
+    // РЎРЅР°С‡Р°Р»Р° СѓС‡РёС‚С‹РІР°РµРј РїСЂРµРґРїРёСЃР°РЅРЅС‹Рµ РїРµСЂРµРјРµС‰РµРЅРёСЏ РЅР° РїРѕР»РЅРѕР№ СЃРёСЃС‚РµРјРµ,
+    // Р·Р°С‚РµРј РёСЃРєР»СЋС‡Р°РµРј Р·Р°РєСЂРµРїР»РµРЅРЅС‹Рµ/Р·Р°РґР°РЅРЅС‹Рµ DOF СЂРµРґСѓРєС†РёРµР№.
+    if (!prescribedDofs.empty()) {
+        Eigen::VectorXd reactions;
+        solver.applyPrescribedDisplacements(globalK, globalF, prescribedDofs, prescribedValues, reactions);
+    }
+
+    // РСЃРєР»СЋС‡Р°РµРј Р·Р°РєСЂРµРїР»РµРЅРЅС‹Рµ DOF РёР· СЃРёСЃС‚РµРјС‹
+    if (!constrainedDofs.empty()) {
         Eigen::SparseMatrix<double> reducedK;
         Eigen::VectorXd reducedF;
         std::vector<int> activeDofs;
 
-        solver.reduceSystem(globalK, globalF, fixedDofs, reducedK, reducedF, activeDofs);
+        solver.reduceSystem(globalK, globalF, constrainedDofs, reducedK, reducedF, activeDofs);
         globalK = std::move(reducedK);
         globalF = std::move(reducedF);
-    }
-
-    // Применяем предписанные перемещения
-    if (!prescribedDofs.empty()) {
-        Eigen::VectorXd reactions;
-        solver.applyPrescribedDisplacements(globalK, globalF, prescribedDofs, prescribedValues, reactions);
     }
 }
 
@@ -305,7 +323,7 @@ std::vector<int> Assembly::getElementDofIndices(int elementId) const {
 
     std::vector<int> fullDofIndices;
 
-    // Получаем полные индексы DOF
+    // РџРѕР»СѓС‡Р°РµРј РїРѕР»РЅС‹Рµ РёРЅРґРµРєСЃС‹ DOF
     for (int nodeId : element->getNodeIds()) {
         auto node = getNode(nodeId);
         if (node) {
@@ -315,7 +333,7 @@ std::vector<int> Assembly::getElementDofIndices(int elementId) const {
         }
     }
 
-    return fullDofIndices; // ВОЗВРАЩАЕМ ПОЛНЫЕ ИНДЕКСЫ!
+    return fullDofIndices; // Р’РћР—Р’Р РђР©РђР•Рњ РџРћР›РќР«Р• РРќР”Р•РљРЎР«!
 }
 
 bool Assembly::validate() const {
@@ -334,9 +352,9 @@ bool Assembly::validate() const {
         return false;
     }
 
-    // Проверяем корректность элементов - передаем ТОЛЬКО узлы элемента
+    // РџСЂРѕРІРµСЂСЏРµРј РєРѕСЂСЂРµРєС‚РЅРѕСЃС‚СЊ СЌР»РµРјРµРЅС‚РѕРІ - РїРµСЂРµРґР°РµРј РўРћР›Р¬РљРћ СѓР·Р»С‹ СЌР»РµРјРµРЅС‚Р°
     for (const auto& element : elements_) {
-        // Получаем узлы конкретного элемента
+        // РџРѕР»СѓС‡Р°РµРј СѓР·Р»С‹ РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ СЌР»РµРјРµРЅС‚Р°
         std::vector<std::shared_ptr<Node>> elementNodes;
         for (int nodeId : element->getNodeIds()) {
             auto node = getNode(nodeId);
@@ -350,7 +368,7 @@ bool Assembly::validate() const {
             }
         }
 
-        // Проверяем элемент с его собственными узлами
+        // РџСЂРѕРІРµСЂСЏРµРј СЌР»РµРјРµРЅС‚ СЃ РµРіРѕ СЃРѕР±СЃС‚РІРµРЅРЅС‹РјРё СѓР·Р»Р°РјРё
         if (!element->isValid(elementNodes)) {
             std::cerr << "Assembly validation failed: Element " << element->getId()
                 << " is invalid (negative Jacobian or other issue)" << std::endl;
@@ -358,7 +376,7 @@ bool Assembly::validate() const {
         }
     }
 
-    // Проверяем, что все элементы ссылаются на существующие материалы
+    // РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ РІСЃРµ СЌР»РµРјРµРЅС‚С‹ СЃСЃС‹Р»Р°СЋС‚СЃСЏ РЅР° СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёРµ РјР°С‚РµСЂРёР°Р»С‹
     for (const auto& element : elements_) {
         if (!getMaterial(element->getMaterialId())) {
             std::cerr << "Assembly validation failed: Element " << element->getId()
@@ -391,12 +409,12 @@ void Assembly::buildNodeIndexMap() {
 }
 
 std::vector<int> Assembly::getElementFullDofIndices(int elementId) const {
-    // Используется при сборке матрицы жесткости - ДО граничных условий
+    // РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РїСЂРё СЃР±РѕСЂРєРµ РјР°С‚СЂРёС†С‹ Р¶РµСЃС‚РєРѕСЃС‚Рё - Р”Рћ РіСЂР°РЅРёС‡РЅС‹С… СѓСЃР»РѕРІРёР№
     return getElementDofIndicesInternal(elementId);
 }
 
 std::vector<int> Assembly::getElementReducedDofIndices(int elementId) const {
-    // Используется после применения граничных условий
+    // РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РїРѕСЃР»Рµ РїСЂРёРјРµРЅРµРЅРёСЏ РіСЂР°РЅРёС‡РЅС‹С… СѓСЃР»РѕРІРёР№
     std::vector<int> fullDofIndices = getElementDofIndicesInternal(elementId);
     std::vector<int> reducedDofIndices;
 
@@ -406,7 +424,7 @@ std::vector<int> Assembly::getElementReducedDofIndices(int elementId) const {
             reducedDofIndices.push_back(reducedDof);
         }
         else {
-            reducedDofIndices.push_back(-1); // Некорректный индекс
+            reducedDofIndices.push_back(-1); // РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ РёРЅРґРµРєСЃ
         }
     }
 
@@ -421,7 +439,7 @@ std::vector<int> Assembly::getElementDofIndicesInternal(int elementId) const {
 
     std::vector<int> fullDofIndices;
 
-    // Получаем полные индексы DOF (всегда от 0 до totalDof-1)
+    // РџРѕР»СѓС‡Р°РµРј РїРѕР»РЅС‹Рµ РёРЅРґРµРєСЃС‹ DOF (РІСЃРµРіРґР° РѕС‚ 0 РґРѕ totalDof-1)
     for (int nodeId : element->getNodeIds()) {
         auto node = getNode(nodeId);
         if (node) {
@@ -450,7 +468,7 @@ void Assembly::assembleConcentratedForces(Eigen::VectorXd& globalF) const {
 
 
         try {
-            // Используем ПОЛНЫЕ индексы
+            // РСЃРїРѕР»СЊР·СѓРµРј РџРћР›РќР«Р• РёРЅРґРµРєСЃС‹
             int dofX = getGlobalDofIndex(nodeId, 0);
             int dofY = getGlobalDofIndex(nodeId, 1);
 
@@ -472,7 +490,7 @@ void Assembly::addConcentratedForce(std::shared_ptr<ConcentratedForce> force) {
         throw std::invalid_argument("Cannot add null force");
     }
 
-    // Проверяем существование узла
+    // РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ СѓР·Р»Р°
     if (!getNode(force->getNodeId())) {
         throw std::invalid_argument("Node with ID " + std::to_string(force->getNodeId()) + " not found for force");
     }
@@ -492,17 +510,17 @@ void Assembly::addSurfaceLoad(int elementId, int surfaceIndex,
         throw std::invalid_argument("Cannot add null load function");
     }
 
-    // Проверяем существование элемента
+    // РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ СЌР»РµРјРµРЅС‚Р°
     if (!getElement(elementId)) {
         throw std::invalid_argument("Element with ID " + std::to_string(elementId) + " not found");
     }
 
-    // Проверяем корректность номера поверхности
+    // РџСЂРѕРІРµСЂСЏРµРј РєРѕСЂСЂРµРєС‚РЅРѕСЃС‚СЊ РЅРѕРјРµСЂР° РїРѕРІРµСЂС…РЅРѕСЃС‚Рё
     if (surfaceIndex < 0 || surfaceIndex > 3) {
         throw std::invalid_argument("Surface index must be between 0 and 3");
     }
 
-    // Используем emplace_back с конструктором
+    // РСЃРїРѕР»СЊР·СѓРµРј emplace_back СЃ РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂРѕРј
     surfaceLoads_.emplace_back(elementId, surfaceIndex, std::move(loadFunction));
 }
 
@@ -511,17 +529,17 @@ void Assembly::assembleSurfaceLoads(Eigen::VectorXd& globalF) const {
         try {
             if (!surfaceLoad.loadFunction) continue;
 
-            // Применяем нагрузку к поверхности элемента
+            // РџСЂРёРјРµРЅСЏРµРј РЅР°РіСЂСѓР·РєСѓ Рє РїРѕРІРµСЂС…РЅРѕСЃС‚Рё СЌР»РµРјРµРЅС‚Р°
             Eigen::VectorXd surfaceForces = surfaceLoad.loadFunction->applyToElementSurface(
                 surfaceLoad.elementId,
                 surfaceLoad.surfaceIndex,
                 shared_from_this()
             );
 
-            // Получаем индексы DOF элемента
+            // РџРѕР»СѓС‡Р°РµРј РёРЅРґРµРєСЃС‹ DOF СЌР»РµРјРµРЅС‚Р°
             auto dofIndices = getElementDofIndices(surfaceLoad.elementId);
 
-            // Добавляем в глобальный вектор сил
+            // Р”РѕР±Р°РІР»СЏРµРј РІ РіР»РѕР±Р°Р»СЊРЅС‹Р№ РІРµРєС‚РѕСЂ СЃРёР»
             for (size_t i = 0; i < dofIndices.size(); ++i) {
                 if (dofIndices[i] >= 0 && dofIndices[i] < globalF.size()) {
                     globalF(dofIndices[i]) += surfaceForces(i);

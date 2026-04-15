@@ -256,6 +256,108 @@ void MeshGenerator::createAnnulusGraded(const Eigen::Vector2d& center,
     }
 }
 
+std::vector<ContactFacet> MeshGenerator::collectBoundaryFacetsByCoordinate(int axis,
+    double coordinateValue,
+    double tolerance) const {
+    if (axis < 0 || axis > 1) {
+        throw std::invalid_argument("Axis must be 0 (x) or 1 (y)");
+    }
+    if (tolerance < 0.0) {
+        throw std::invalid_argument("Tolerance must be non-negative");
+    }
+
+    struct OrderedFacet {
+        ContactFacet facet;
+        double tangentCoordinate = 0.0;
+    };
+
+    std::vector<OrderedFacet> orderedFacets;
+    for (const auto& element : assembly_->getElements()) {
+        auto planeElement = std::dynamic_pointer_cast<PlaneIsoparametricElement>(element);
+        if (!planeElement) {
+            continue;
+        }
+
+        std::vector<std::shared_ptr<Node>> elementNodes;
+        elementNodes.reserve(element->getNodeIds().size());
+        for (int nodeId : element->getNodeIds()) {
+            auto node = assembly_->getNode(nodeId);
+            if (!node) {
+                elementNodes.clear();
+                break;
+            }
+            elementNodes.push_back(node);
+        }
+
+        if (elementNodes.size() != 4) {
+            continue;
+        }
+
+        static constexpr int surfaceNodePairs[4][2] = {
+            {2, 3}, // eta = -1
+            {0, 3}, // xi = 1
+            {0, 1}, // eta = 1
+            {1, 2}  // xi = -1
+        };
+
+        for (int surfaceIndex = 0; surfaceIndex < 4; ++surfaceIndex) {
+            const Eigen::Vector2d firstPoint =
+                elementNodes[surfaceNodePairs[surfaceIndex][0]]->getCoordinates();
+            const Eigen::Vector2d secondPoint =
+                elementNodes[surfaceNodePairs[surfaceIndex][1]]->getCoordinates();
+
+            const bool matchesBoundary =
+                std::abs(firstPoint(axis) - coordinateValue) <= tolerance &&
+                std::abs(secondPoint(axis) - coordinateValue) <= tolerance;
+
+            if (!matchesBoundary) {
+                continue;
+            }
+
+            OrderedFacet orderedFacet;
+            orderedFacet.facet = ContactFacet{element->getId(), surfaceIndex};
+            orderedFacet.tangentCoordinate =
+                0.5 * (firstPoint(1 - axis) + secondPoint(1 - axis));
+            orderedFacets.push_back(orderedFacet);
+        }
+    }
+
+    std::sort(orderedFacets.begin(), orderedFacets.end(),
+        [](const OrderedFacet& lhs, const OrderedFacet& rhs) {
+            if (lhs.tangentCoordinate == rhs.tangentCoordinate) {
+                if (lhs.facet.elementId == rhs.facet.elementId) {
+                    return lhs.facet.surfaceIndex < rhs.facet.surfaceIndex;
+                }
+                return lhs.facet.elementId < rhs.facet.elementId;
+            }
+            return lhs.tangentCoordinate < rhs.tangentCoordinate;
+        });
+
+    std::vector<ContactFacet> facets;
+    facets.reserve(orderedFacets.size());
+    for (const auto& orderedFacet : orderedFacets) {
+        facets.push_back(orderedFacet.facet);
+    }
+    return facets;
+}
+
+std::vector<ContactFacet> MeshGenerator::collectExteriorFacets(int axis,
+    bool selectMinimum,
+    double tolerance) const {
+    if (assembly_->getNodes().empty()) {
+        return {};
+    }
+
+    double boundaryCoordinate = assembly_->getNodes().front()->getCoordinates()(axis);
+    for (const auto& node : assembly_->getNodes()) {
+        boundaryCoordinate = selectMinimum
+            ? std::min(boundaryCoordinate, node->getCoordinates()(axis))
+            : std::max(boundaryCoordinate, node->getCoordinates()(axis));
+    }
+
+    return collectBoundaryFacetsByCoordinate(axis, boundaryCoordinate, tolerance);
+}
+
 std::vector<int> MeshGenerator::findContactNodes(double contactCenterX,
     double contactHalfWidth,
     double maxYtolerance) const {

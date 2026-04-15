@@ -26,34 +26,71 @@ Eigen::VectorXd LinearSolver::solveSystem(
     const Eigen::SparseMatrix<double>& systemMatrix,
     const Eigen::VectorXd& rightHandSide)
 {
-    Eigen::ConjugateGradient<Eigen::SparseMatrix<double>,
-        Eigen::Lower,
-        Eigen::IncompleteCholesky<double>> solver;
-
     constexpr double tolerance = 1.0e-10;
     constexpr int maxIterations = 2000;
-
-    solver.setTolerance(tolerance);
-    solver.setMaxIterations(maxIterations);
-
     const auto startTime = std::chrono::high_resolution_clock::now();
-    solver.compute(systemMatrix);
-    if (solver.info() != Eigen::Success) {
+
+    auto finalizeStats = [this, &startTime](int iterations,
+        int requestedMaxIterations,
+        double requestedTolerance,
+        double estimatedError,
+        bool converged) {
+            const auto endTime = std::chrono::high_resolution_clock::now();
+            lastSolveStats_.iterations = iterations;
+            lastSolveStats_.maxIterations = requestedMaxIterations;
+            lastSolveStats_.tolerance = requestedTolerance;
+            lastSolveStats_.estimatedError = estimatedError;
+            lastSolveStats_.solveTimeSeconds =
+                std::chrono::duration<double>(endTime - startTime).count();
+            lastSolveStats_.converged = converged;
+        };
+
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<double>,
+        Eigen::Lower | Eigen::Upper,
+        Eigen::IncompleteCholesky<double>> iterativeSolver;
+
+    iterativeSolver.setTolerance(tolerance);
+    iterativeSolver.setMaxIterations(maxIterations);
+    iterativeSolver.compute(systemMatrix);
+    if (iterativeSolver.info() == Eigen::Success) {
+        Eigen::VectorXd solution = iterativeSolver.solve(rightHandSide);
+        if (iterativeSolver.info() == Eigen::Success) {
+            finalizeStats(iterativeSolver.iterations(),
+                maxIterations,
+                tolerance,
+                iterativeSolver.error(),
+                true);
+            return solution;
+        }
+    }
+
+    // Fallback to a direct sparse solver for poorly conditioned systems
+    // such as near-incompressible materials and penalty contact steps.
+#ifdef SOLVER_USE_MKL
+    Eigen::PardisoLDLT<Eigen::SparseMatrix<double>> directSolver;
+#else
+    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> directSolver;
+#endif
+
+    directSolver.compute(systemMatrix);
+    if (directSolver.info() != Eigen::Success) {
+        finalizeStats(iterativeSolver.iterations(),
+            maxIterations,
+            tolerance,
+            iterativeSolver.error(),
+            false);
         throw std::runtime_error("Matrix decomposition failed");
     }
 
-    Eigen::VectorXd solution = solver.solve(rightHandSide);
-    const auto endTime = std::chrono::high_resolution_clock::now();
+    Eigen::VectorXd solution = directSolver.solve(rightHandSide);
+    const bool converged = directSolver.info() == Eigen::Success;
+    finalizeStats(iterativeSolver.iterations(),
+        maxIterations,
+        tolerance,
+        iterativeSolver.error(),
+        converged);
 
-    lastSolveStats_.iterations = solver.iterations();
-    lastSolveStats_.maxIterations = maxIterations;
-    lastSolveStats_.tolerance = tolerance;
-    lastSolveStats_.estimatedError = solver.error();
-    lastSolveStats_.solveTimeSeconds =
-        std::chrono::duration<double>(endTime - startTime).count();
-    lastSolveStats_.converged = solver.info() == Eigen::Success;
-
-    if (solver.info() != Eigen::Success) {
+    if (!converged) {
         throw std::runtime_error("Solving failed");
     }
 

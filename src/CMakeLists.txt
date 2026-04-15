@@ -8,6 +8,10 @@ add_executable(FEM
     src/main.cpp
 )
 
+add_executable(FEMBlockOnRigidPlane
+    src/block_on_rigid_plane.cpp
+)
+
 target_include_directories(FEM PRIVATE
     ${CMAKE_SOURCE_DIR}/Libs/solver/include
     ${CMAKE_SOURCE_DIR}/Libs/linalg/include 
@@ -17,7 +21,24 @@ target_include_directories(FEM PRIVATE
     ${CMAKE_SOURCE_DIR}/3rdParty/eigen-5.0.0 
 )
 
+target_include_directories(FEMBlockOnRigidPlane PRIVATE
+    ${CMAKE_SOURCE_DIR}/Libs/solver/include
+    ${CMAKE_SOURCE_DIR}/Libs/linalg/include
+    ${CMAKE_SOURCE_DIR}/Libs/mesh/element/include
+    ${CMAKE_SOURCE_DIR}/Libs/mesh/assembly/include
+    ${CMAKE_SOURCE_DIR}/Libs/mesh/meshGenerator/include
+    ${CMAKE_SOURCE_DIR}/3rdParty/eigen-5.0.0
+)
+
 target_link_libraries(FEM 
+    PRIVATE
+        solver
+        linalg
+        mesh
+        Eigen3::Eigen
+)
+
+target_link_libraries(FEMBlockOnRigidPlane
     PRIVATE
         solver
         linalg
@@ -32,15 +53,22 @@ if(USE_INTEL_MKL)
         EIGEN_USE_MKL
         SOLVER_USE_MKL
     )
+
+    target_link_libraries(FEMBlockOnRigidPlane PRIVATE IntelMKL)
+    target_compile_definitions(FEMBlockOnRigidPlane PRIVATE
+        EIGEN_USE_MKL_ALL
+        EIGEN_USE_MKL
+        SOLVER_USE_MKL
+    )
     
     if(WIN32)
-        # Получаем путь к MKL
+        # РџРѕР»СѓС‡Р°РµРј РїСѓС‚СЊ Рє MKL
         if(NOT DEFINED MKLROOT AND DEFINED ENV{MKLROOT})
             set(MKLROOT $ENV{MKLROOT})
         endif()
         
         if(DEFINED MKLROOT)
-            # ИСПРАВЛЕННЫЕ ПУТИ с учетом вашей структуры
+            # РРЎРџР РђР’Р›Р•РќРќР«Р• РџРЈРўР СЃ СѓС‡РµС‚РѕРј РІР°С€РµР№ СЃС‚СЂСѓРєС‚СѓСЂС‹
             set(MKL_DLL_SEARCH_PATHS
                 "${MKLROOT}/redist/intel64"
                 "${MKLROOT}/../redist/intel64"
@@ -48,7 +76,7 @@ if(USE_INTEL_MKL)
                 "C:/Program Files (x86)/Intel/oneAPI/mkl/latest/redist/intel64"
             )
             
-            # Ищем MKL DLL
+            # РС‰РµРј MKL DLL
             set(MKL_DLL_NAMES
                 mkl_core.dll
                 mkl_intel_thread.dll
@@ -72,7 +100,7 @@ if(USE_INTEL_MKL)
                 endif()
             endforeach()
             
-            # ИСПРАВЛЕННЫЙ ПУТЬ для OpenMP DLL - используем вашу конкретную версию
+            # РРЎРџР РђР’Р›Р•РќРќР«Р™ РџРЈРўР¬ РґР»СЏ OpenMP DLL - РёСЃРїРѕР»СЊР·СѓРµРј РІР°С€Сѓ РєРѕРЅРєСЂРµС‚РЅСѓСЋ РІРµСЂСЃРёСЋ
             set(OMP_DLL_SEARCH_PATHS
                 "C:/Program Files (x86)/Intel/oneAPI/compiler/2025.3/bin"
                 "C:/Program Files (x86)/Intel/oneAPI/compiler/latest/bin"
@@ -95,7 +123,7 @@ if(USE_INTEL_MKL)
                 message(WARNING "Could not find libiomp5md.dll in ${OMP_DLL_SEARCH_PATHS}")
             endif()
             
-            # Копируем все найденные DLL
+            # РљРѕРїРёСЂСѓРµРј РІСЃРµ РЅР°Р№РґРµРЅРЅС‹Рµ DLL
             foreach(DLL_FILE ${MKL_DLLS_FOUND})
                 if(EXISTS "${DLL_FILE}")
                     message(STATUS "Copying DLL: ${DLL_FILE}")
@@ -105,10 +133,16 @@ if(USE_INTEL_MKL)
                             $<TARGET_FILE_DIR:FEM>
                         COMMENT "Copying ${DLL_FILE} to output directory"
                     )
+                    add_custom_command(TARGET FEMBlockOnRigidPlane POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                            "${DLL_FILE}"
+                            $<TARGET_FILE_DIR:FEMBlockOnRigidPlane>
+                        COMMENT "Copying ${DLL_FILE} to output directory"
+                    )
                 endif()
             endforeach()
             
-            # Если не нашли DLL, показываем где искали
+            # Р•СЃР»Рё РЅРµ РЅР°С€Р»Рё DLL, РїРѕРєР°Р·С‹РІР°РµРј РіРґРµ РёСЃРєР°Р»Рё
             if(NOT MKL_DLLS_FOUND)
                 message(WARNING "No MKL DLLs found. Searched in: ${MKL_DLL_SEARCH_PATHS}")
             endif()
@@ -117,3 +151,4 @@ if(USE_INTEL_MKL)
 endif()
 
 target_compile_features(FEM PUBLIC cxx_std_23)
+target_compile_features(FEMBlockOnRigidPlane PUBLIC cxx_std_23)

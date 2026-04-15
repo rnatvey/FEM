@@ -164,7 +164,7 @@ bool FEModel::solveContactIterative() {
         applyContactConditions(previousDisplacements, contactInfo);
 
         globalK_ += contactInfo.stiffness;
-        globalF_ += contactInfo.force;
+        globalF_ += contactInfo.force + contactInfo.stiffness * previousDisplacements;
         assembly_->applyBoundaryConditions(globalK_, globalF_);
 
         const auto assemblyEndTime = std::chrono::high_resolution_clock::now();

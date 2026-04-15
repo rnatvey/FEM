@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 
+#include "ContactTypes.h"
 #include "assembly.h"
 #include "geometry.h"
 
@@ -52,6 +53,13 @@ public:
         int radialLayers, int circumferentialNodes,
         int materialId,
         const AnnulusGrading& grading);
+
+    std::vector<ContactFacet> collectBoundaryFacetsByCoordinate(int axis,
+        double coordinateValue,
+        double tolerance) const;
+    std::vector<ContactFacet> collectExteriorFacets(int axis,
+        bool selectMinimum,
+        double tolerance) const;
 
     std::vector<int> findContactNodes(double contactCenterX,
         double contactHalfWidth,
