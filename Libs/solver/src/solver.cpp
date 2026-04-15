@@ -1,5 +1,6 @@
 #include "solver.h"
 
+#include <algorithm>
 #include <chrono>
 #include <stdexcept>
 
@@ -30,19 +31,32 @@ Eigen::VectorXd LinearSolver::solveSystem(
     constexpr int maxIterations = 2000;
     const auto startTime = std::chrono::high_resolution_clock::now();
 
-    auto finalizeStats = [this, &startTime](int iterations,
+    auto computeResidualNorm = [&systemMatrix, &rightHandSide](const Eigen::VectorXd& solution) {
+        return (systemMatrix * solution - rightHandSide).norm();
+    };
+
+    auto finalizeStats = [this, &startTime, &rightHandSide](int iterations,
         int requestedMaxIterations,
         double requestedTolerance,
         double estimatedError,
-        bool converged) {
+        double residualNorm,
+        bool converged,
+        bool usedDirectSolver,
+        const char* backendName) {
             const auto endTime = std::chrono::high_resolution_clock::now();
             lastSolveStats_.iterations = iterations;
             lastSolveStats_.maxIterations = requestedMaxIterations;
             lastSolveStats_.tolerance = requestedTolerance;
             lastSolveStats_.estimatedError = estimatedError;
+            lastSolveStats_.residualNorm = residualNorm;
+            const double rhsNorm = rightHandSide.norm();
+            lastSolveStats_.relativeResidualNorm =
+                residualNorm / std::max(rhsNorm, 1.0e-30);
             lastSolveStats_.solveTimeSeconds =
                 std::chrono::duration<double>(endTime - startTime).count();
             lastSolveStats_.converged = converged;
+            lastSolveStats_.usedDirectSolver = usedDirectSolver;
+            lastSolveStats_.backendName = backendName;
         };
 
     Eigen::ConjugateGradient<Eigen::SparseMatrix<double>,
@@ -55,11 +69,15 @@ Eigen::VectorXd LinearSolver::solveSystem(
     if (iterativeSolver.info() == Eigen::Success) {
         Eigen::VectorXd solution = iterativeSolver.solve(rightHandSide);
         if (iterativeSolver.info() == Eigen::Success) {
+            const double residualNorm = computeResidualNorm(solution);
             finalizeStats(iterativeSolver.iterations(),
                 maxIterations,
                 tolerance,
                 iterativeSolver.error(),
-                true);
+                residualNorm,
+                true,
+                false,
+                "ConjugateGradient");
             return solution;
         }
     }
@@ -78,17 +96,32 @@ Eigen::VectorXd LinearSolver::solveSystem(
             maxIterations,
             tolerance,
             iterativeSolver.error(),
-            false);
+            0.0,
+            false,
+            true,
+#ifdef SOLVER_USE_MKL
+            "PardisoLDLT");
+#else
+            "SimplicialLDLT");
+#endif
         throw std::runtime_error("Matrix decomposition failed");
     }
 
     Eigen::VectorXd solution = directSolver.solve(rightHandSide);
     const bool converged = directSolver.info() == Eigen::Success;
+    const double residualNorm = converged ? computeResidualNorm(solution) : 0.0;
     finalizeStats(iterativeSolver.iterations(),
         maxIterations,
         tolerance,
         iterativeSolver.error(),
-        converged);
+        residualNorm,
+        converged,
+        true,
+#ifdef SOLVER_USE_MKL
+        "PardisoLDLT");
+#else
+        "SimplicialLDLT");
+#endif
 
     if (!converged) {
         throw std::runtime_error("Solving failed");

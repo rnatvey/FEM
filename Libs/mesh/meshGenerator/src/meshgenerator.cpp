@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 
 #include "ConcentratedForce.h"
@@ -256,6 +257,85 @@ void MeshGenerator::createAnnulusGraded(const Eigen::Vector2d& center,
     }
 }
 
+MeshGenerator::RingMeshDiagnostics MeshGenerator::generateTireRingGraded(
+    const Eigen::Vector2d& center,
+    double innerRadius,
+    double outerRadius,
+    const RingMeshControl& control) {
+    AnnulusGrading grading;
+    grading.useAngularBias = control.useAngularBias;
+    grading.useRadialBias = control.useRadialBias;
+    grading.contactCenterAngle = control.contactCenterAngle;
+    grading.contactHalfAngle = control.contactHalfAngle;
+    grading.angularBiasStrength = control.angularBiasStrength;
+    grading.radialBiasToOuterStrength = control.radialBiasToOuterStrength;
+
+    createAnnulusGraded(center,
+        innerRadius,
+        outerRadius,
+        control.startAngle,
+        control.endAngle,
+        control.radialLayers,
+        control.circumferentialNodes,
+        control.materialId,
+        grading);
+
+    double startRad = (std::abs(control.startAngle) > TWO_PI)
+        ? control.startAngle * DEG_TO_RAD
+        : control.startAngle;
+    double endRad = (std::abs(control.endAngle) > TWO_PI)
+        ? control.endAngle * DEG_TO_RAD
+        : control.endAngle;
+    if (endRad <= startRad) {
+        endRad += TWO_PI;
+    }
+
+    std::vector<double> angularParams;
+    if (grading.useAngularBias && grading.contactHalfAngle > 0.0) {
+        const double centerAngle =
+            normalizeAngleToSweep(grading.contactCenterAngle, startRad, endRad);
+        const double halfAngle = std::abs(grading.contactHalfAngle);
+        angularParams = buildDensityMappedParameters(
+            control.circumferentialNodes,
+            [=](double s) {
+                const double angle = startRad + s * (endRad - startRad);
+                const double distance = std::abs(angle - centerAngle);
+                const double normalizedDistance = distance / std::max(halfAngle, 1.0e-12);
+                return 1.0 + grading.angularBiasStrength *
+                    std::exp(-4.0 * normalizedDistance * normalizedDistance);
+            });
+    }
+    else {
+        angularParams = buildDensityMappedParameters(
+            control.circumferentialNodes,
+            [](double) { return 1.0; });
+    }
+
+    std::vector<double> radialParams;
+    if (grading.useRadialBias) {
+        radialParams = buildDensityMappedParameters(
+            control.radialLayers,
+            [=](double s) {
+                return 1.0 + grading.radialBiasToOuterStrength * s * s;
+            });
+    }
+    else {
+        radialParams = buildDensityMappedParameters(control.radialLayers, [](double) { return 1.0; });
+    }
+
+    std::vector<double> angles(control.circumferentialNodes, 0.0);
+    for (int i = 0; i < control.circumferentialNodes; ++i) {
+        angles[i] = startRad + angularParams[i] * (endRad - startRad);
+    }
+
+    std::vector<double> radii(control.radialLayers, 0.0);
+    for (int i = 0; i < control.radialLayers; ++i) {
+        radii[i] = innerRadius + radialParams[i] * (outerRadius - innerRadius);
+    }
+
+    return buildRingMeshDiagnostics(radii, angles, outerRadius);
+}
+
 std::vector<ContactFacet> MeshGenerator::collectBoundaryFacetsByCoordinate(int axis,
     double coordinateValue,
     double tolerance) const {
@@ -356,6 +436,92 @@ std::vector<ContactFacet> MeshGenerator::collectExteriorFacets(int axis,
     }
 
     return collectBoundaryFacetsByCoordinate(axis, boundaryCoordinate, tolerance);
+}
+
+std::vector<ContactFacet> MeshGenerator::collectBoundaryFacetsByPolarWindow(
+    const Eigen::Vector2d& center,
+    double targetRadius,
+    double radiusTolerance,
+    double startAngle,
+    double endAngle) const {
+    if (radiusTolerance < 0.0) {
+        throw std::invalid_argument("Radius tolerance must be non-negative");
+    }
+
+    struct OrderedFacet {
+        ContactFacet facet;
+        double angle = 0.0;
+    };
+
+    std::vector<OrderedFacet> orderedFacets;
+    for (const auto& element : assembly_->getElements()) {
+        auto planeElement = std::dynamic_pointer_cast<PlaneIsoparametricElement>(element);
+        if (!planeElement) {
+            continue;
+        }
+
+        std::vector<std::shared_ptr<Node>> elementNodes;
+        elementNodes.reserve(element->getNodeIds().size());
+        for (int nodeId : element->getNodeIds()) {
+            auto node = assembly_->getNode(nodeId);
+            if (!node) {
+                elementNodes.clear();
+                break;
+            }
+            elementNodes.push_back(node);
+        }
+
+        if (elementNodes.size() != 4) {
+            continue;
+        }
+
+        static constexpr int surfaceNodePairs[4][2] = {
+            {2, 3},
+            {0, 3},
+            {0, 1},
+            {1, 2}
+        };
+
+        for (int surfaceIndex = 0; surfaceIndex < 4; ++surfaceIndex) {
+            const Eigen::Vector2d p0 =
+                elementNodes[surfaceNodePairs[surfaceIndex][0]]->getCoordinates();
+            const Eigen::Vector2d p1 =
+                elementNodes[surfaceNodePairs[surfaceIndex][1]]->getCoordinates();
+
+            const double r0 = (p0 - center).norm();
+            const double r1 = (p1 - center).norm();
+            if (std::abs(r0 - targetRadius) > radiusTolerance ||
+                std::abs(r1 - targetRadius) > radiusTolerance) {
+                continue;
+            }
+
+            const Eigen::Vector2d midpoint = 0.5 * (p0 + p1);
+            const double angle = std::atan2(midpoint.y() - center.y(), midpoint.x() - center.x());
+            if (!isAngleWithinSweep(angle, startAngle, endAngle)) {
+                continue;
+            }
+
+            orderedFacets.push_back({ContactFacet{element->getId(), surfaceIndex}, angle});
+        }
+    }
+
+    std::sort(orderedFacets.begin(), orderedFacets.end(),
+        [](const OrderedFacet& lhs, const OrderedFacet& rhs) {
+            if (lhs.angle == rhs.angle) {
+                if (lhs.facet.elementId == rhs.facet.elementId) {
+                    return lhs.facet.surfaceIndex < rhs.facet.surfaceIndex;
+                }
+                return lhs.facet.elementId < rhs.facet.elementId;
+            }
+            return lhs.angle < rhs.angle;
+        });
+
+    std::vector<ContactFacet> facets;
+    facets.reserve(orderedFacets.size());
+    for (const auto& orderedFacet : orderedFacets) {
+        facets.push_back(orderedFacet.facet);
+    }
+    return facets;
 }
 
 std::vector<int> MeshGenerator::findContactNodes(double contactCenterX,
@@ -474,4 +640,68 @@ double MeshGenerator::normalizeAngleToSweep(double angle, double startAngle, dou
         normalized = endAngle;
     }
     return normalized;
+}
+
+MeshGenerator::RingMeshDiagnostics MeshGenerator::buildRingMeshDiagnostics(
+    const std::vector<double>& radii,
+    const std::vector<double>& angles,
+    double outerRadius) {
+    RingMeshDiagnostics diagnostics;
+    if (radii.size() < 2 || angles.size() < 2) {
+        return diagnostics;
+    }
+
+    diagnostics.minRadialStep = std::numeric_limits<double>::infinity();
+    diagnostics.minAngularStep = std::numeric_limits<double>::infinity();
+    diagnostics.minOuterArcStep = std::numeric_limits<double>::infinity();
+    diagnostics.minAspectRatio = std::numeric_limits<double>::infinity();
+
+    for (size_t i = 0; i + 1 < radii.size(); ++i) {
+        const double radialStep = std::abs(radii[i + 1] - radii[i]);
+        diagnostics.minRadialStep = std::min(diagnostics.minRadialStep, radialStep);
+        diagnostics.maxRadialStep = std::max(diagnostics.maxRadialStep, radialStep);
+    }
+
+    for (size_t i = 0; i + 1 < angles.size(); ++i) {
+        const double angularStep = std::abs(angles[i + 1] - angles[i]);
+        const double outerArcStep = outerRadius * angularStep;
+        diagnostics.minAngularStep = std::min(diagnostics.minAngularStep, angularStep);
+        diagnostics.maxAngularStep = std::max(diagnostics.maxAngularStep, angularStep);
+        diagnostics.minOuterArcStep = std::min(diagnostics.minOuterArcStep, outerArcStep);
+        diagnostics.maxOuterArcStep = std::max(diagnostics.maxOuterArcStep, outerArcStep);
+    }
+
+    for (size_t radialIndex = 0; radialIndex + 1 < radii.size(); ++radialIndex) {
+        const double radialStep = std::abs(radii[radialIndex + 1] - radii[radialIndex]);
+        const double meanRadius = 0.5 * (radii[radialIndex + 1] + radii[radialIndex]);
+        for (size_t angleIndex = 0; angleIndex + 1 < angles.size(); ++angleIndex) {
+            const double angularStep = std::abs(angles[angleIndex + 1] - angles[angleIndex]);
+            const double tangentialStep = meanRadius * angularStep;
+            const double longerStep = std::max(radialStep, tangentialStep);
+            const double shorterStep = std::max(1.0e-15, std::min(radialStep, tangentialStep));
+            const double aspectRatio = longerStep / shorterStep;
+            diagnostics.minAspectRatio = std::min(diagnostics.minAspectRatio, aspectRatio);
+            diagnostics.maxAspectRatio = std::max(diagnostics.maxAspectRatio, aspectRatio);
+        }
+    }
+
+    return diagnostics;
+}
+
+bool MeshGenerator::isAngleWithinSweep(double angle, double startAngle, double endAngle) {
+    double normalizedStart = startAngle;
+    double normalizedEnd = endAngle;
+    while (normalizedEnd <= normalizedStart) {
+        normalizedEnd += TWO_PI;
+    }
+
+    double normalizedAngle = angle;
+    while (normalizedAngle < normalizedStart) {
+        normalizedAngle += TWO_PI;
+    }
+    while (normalizedAngle > normalizedEnd) {
+        normalizedAngle -= TWO_PI;
+    }
+
+    return normalizedAngle >= normalizedStart && normalizedAngle <= normalizedEnd;
 }

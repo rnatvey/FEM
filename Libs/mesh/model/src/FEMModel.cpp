@@ -1,6 +1,7 @@
 #include "FEMModel.h"
 
 #include <chrono>
+#include <cmath>
 #include <iostream>
 
 #include "ContactTypes.h"
@@ -106,6 +107,10 @@ bool FEModel::solveLinearSystem() {
         performanceMetrics_.linearIterations = solveStats.iterations;
         performanceMetrics_.solveTimeSeconds += solveStats.solveTimeSeconds;
         performanceMetrics_.linearResidualEstimate = solveStats.estimatedError;
+        performanceMetrics_.linearResidualNorm = solveStats.relativeResidualNorm;
+        performanceMetrics_.linearSolveConverged = solveStats.converged;
+        performanceMetrics_.usedDirectLinearSolver = solveStats.usedDirectSolver;
+        performanceMetrics_.linearSolverBackend = solveStats.backendName;
 
         int totalDof = assembly_->getTotalDofCount();
         displacements_.resize(totalDof);
@@ -151,7 +156,6 @@ bool FEModel::solveContactIterative() {
     double accumulatedAssemblyTime = performanceMetrics_.assemblyTimeSeconds;
 
     Eigen::VectorXd previousDisplacements = displacements_;
-    std::vector<int> previousActiveSet;
     bool converged = false;
 
     for (iterationCount_ = 1; iterationCount_ <= maxIterations_; ++iterationCount_) {
@@ -172,22 +176,27 @@ bool FEModel::solveContactIterative() {
             std::chrono::duration<double>(assemblyEndTime - assemblyStartTime).count();
         performanceMetrics_.assemblyTimeSeconds = accumulatedAssemblyTime;
         performanceMetrics_.matrixNonZeros = globalK_.nonZeros();
-        performanceMetrics_.activeSetSize =
-            static_cast<int>(contactInfo.state.activeFacetIds.size());
-        performanceMetrics_.maxPenetration = contactInfo.state.maxPenetration;
         performanceMetrics_.nonlinearIterations = iterationCount_;
 
         if (!solveLinearSystem()) {
             return false;
         }
 
+        ContactIterationInfo convergedStateInfo;
+        applyContactConditions(displacements_, convergedStateInfo);
+
         double relativeError =
             (displacements_ - previousDisplacements).norm() /
             (displacements_.norm() + 1.0e-15);
-        bool activeSetStable = (contactInfo.state.activeFacetIds == previousActiveSet);
+        bool activeSetStable =
+            (convergedStateInfo.state.activeFacetIds == contactInfo.state.activeFacetIds);
+
+        performanceMetrics_.activeSetSize =
+            static_cast<int>(convergedStateInfo.state.activeFacetIds.size());
+        performanceMetrics_.maxPenetration = convergedStateInfo.state.maxPenetration;
+        performanceMetrics_.contactForceNorm = convergedStateInfo.state.contactForceNorm;
 
         previousDisplacements = displacements_;
-        previousActiveSet = contactInfo.state.activeFacetIds;
 
         if (relativeError < tolerance_ && activeSetStable) {
             converged = true;
@@ -213,24 +222,35 @@ void FEModel::calculateReactionForces() {
     reactionForces_.resize(totalDof);
     reactionForces_.setZero();
 
-    Eigen::SparseMatrix<double> fullK;
+    Eigen::SparseMatrix<double> structuralK;
     Eigen::VectorXd fullF;
-    assembly_->assembleGlobalStiffnessMatrix(fullK);
+    assembly_->assembleGlobalStiffnessMatrix(structuralK);
     assembleExternalForces(fullF);
+    contactForces_ = Eigen::VectorXd::Zero(totalDof);
 
     if (contactSolver_ && performanceMetrics_.nonlinearIterations > 0 &&
         displacements_.size() == totalDof) {
         Eigen::SparseMatrix<double> contactK;
-        Eigen::VectorXd contactF;
+        Eigen::VectorXd rawContactF;
         ContactState contactState;
-        contactSolver_->assembleContact(displacements_, contactK, contactF, contactState);
-        fullK += contactK;
-        fullF += contactF;
+        contactSolver_->assembleContact(displacements_, contactK, rawContactF, contactState);
+        contactForces_ = -rawContactF;
+        performanceMetrics_.contactForceNorm = contactState.contactForceNorm;
+        reactionForces_ = structuralK * displacements_ - fullF - rawContactF;
+    }
+    else if (structuralK.rows() == displacements_.size() &&
+        structuralK.cols() == displacements_.size()) {
+        reactionForces_ = structuralK * displacements_ - fullF;
     }
 
-    if (fullK.rows() == displacements_.size() && fullK.cols() == displacements_.size()) {
-        reactionForces_ = fullK * displacements_ - fullF;
+    const auto& mapping = assembly_->getDofMapping();
+    double freeDofResidualSquaredNorm = 0.0;
+    for (int fullDof : mapping.reducedToFull) {
+        if (fullDof >= 0 && fullDof < reactionForces_.size()) {
+            freeDofResidualSquaredNorm += reactionForces_(fullDof) * reactionForces_(fullDof);
+        }
     }
+    performanceMetrics_.equilibriumResidualNorm = std::sqrt(freeDofResidualSquaredNorm);
 }
 
 void FEModel::applyContactConditions(const Eigen::VectorXd& trialDisplacements,

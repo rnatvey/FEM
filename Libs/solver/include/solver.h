@@ -13,6 +13,7 @@
 #include <Eigen/PardisoSupport>
 #include <Eigen/Sparse>
 #include <functional>
+#include <string>
 #include <vector>
 
 class LinearSolver {
@@ -25,8 +26,12 @@ public:
         int maxIterations = 0;
         double tolerance = 0.0;
         double estimatedError = 0.0;
+        double residualNorm = 0.0;
+        double relativeResidualNorm = 0.0;
         double solveTimeSeconds = 0.0;
         bool converged = false;
+        bool usedDirectSolver = false;
+        std::string backendName = "uninitialized";
     };
 
     Eigen::MatrixXd computeGaussIntegral(

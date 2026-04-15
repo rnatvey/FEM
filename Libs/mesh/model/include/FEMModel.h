@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "ContactTypes.h"
@@ -21,6 +22,12 @@ public:
         double totalTimeSeconds = 0.0;
         double maxPenetration = 0.0;
         double linearResidualEstimate = 0.0;
+        double linearResidualNorm = 0.0;
+        double equilibriumResidualNorm = 0.0;
+        double contactForceNorm = 0.0;
+        bool linearSolveConverged = false;
+        bool usedDirectLinearSolver = false;
+        std::string linearSolverBackend = "uninitialized";
         Eigen::Index matrixNonZeros = 0;
     };
 

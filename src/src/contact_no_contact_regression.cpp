@@ -3,6 +3,7 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <stdexcept>
 
 #include "FEMModel.h"
 #include "assembly.h"
@@ -14,6 +15,7 @@
 namespace {
 
 constexpr double kCoordinateTolerance = 1.0e-9;
+constexpr double kSolutionTolerance = 1.0e-10;
 
 std::shared_ptr<Assembly> buildBlockAssembly() {
     auto assembly = std::make_shared<Assembly>();
@@ -66,7 +68,7 @@ std::shared_ptr<Assembly> buildBlockAssembly() {
             continue;
         }
 
-        assembly->addPrescribedDisplacementY(node->getId(), -0.10);
+        assembly->addPrescribedDisplacementY(node->getId(), -0.02);
         if (coordinates.x() < smallestAnchorX) {
             smallestAnchorX = coordinates.x();
             anchorNodeId = node->getId();
@@ -74,74 +76,63 @@ std::shared_ptr<Assembly> buildBlockAssembly() {
     }
 
     if (anchorNodeId < 0) {
-        throw std::runtime_error("Failed to select an anchor node on the top edge");
+        throw std::runtime_error("Failed to select an anchor node");
     }
 
     assembly->addFixedNode(anchorNodeId, true, false);
     return assembly;
 }
 
-double computeMinimumSignedDistanceToPlane(const FEModel& model,
-    const std::shared_ptr<Assembly>& assembly,
-    const RigidPlane2D& plane) {
-    const auto& nodes = assembly->getNodes();
-    const auto nodalDisplacements = model.getNodalDisplacements();
-
-    double minimumSignedDistance = std::numeric_limits<double>::infinity();
-    for (size_t i = 0; i < nodes.size() && i < nodalDisplacements.size(); ++i) {
-        const Eigen::Vector2d deformedPosition =
-            nodes[i]->getCoordinates() + nodalDisplacements[i];
-        minimumSignedDistance =
-            std::min(minimumSignedDistance, plane.signedDistance(deformedPosition));
+void require(bool condition, const std::string& message) {
+    if (!condition) {
+        throw std::runtime_error(message);
     }
-
-    return minimumSignedDistance;
 }
 
 } // namespace
 
 int main() {
     try {
-        auto assembly = buildBlockAssembly();
-        auto model = std::make_shared<FEModel>();
-        auto meshGenerator = std::make_shared<MeshGenerator>(assembly);
+        auto baselineAssembly = buildBlockAssembly();
+        auto baselineModel = std::make_shared<FEModel>();
+        baselineModel->setAssembly(baselineAssembly);
+        baselineModel->setSolverTolerance(1.0e-8);
+        require(baselineModel->solve(), "Baseline solve() failed");
 
-        const RigidPlane2D rigidPlane{Eigen::Vector2d(0.0, 1.0), 0.0};
-        const auto contactFacets = meshGenerator->collectExteriorFacets(1, true, 1.0e-8);
-        if (contactFacets.empty()) {
-            throw std::runtime_error("No contact facets were found on the lower boundary");
-        }
+        auto contactAssembly = buildBlockAssembly();
+        auto contactMeshGenerator = std::make_shared<MeshGenerator>(contactAssembly);
+        auto contactModel = std::make_shared<FEModel>();
+        contactModel->setAssembly(contactAssembly);
+        contactModel->setSolverTolerance(1.0e-8);
+        contactModel->setMaxIterations(10);
 
-        model->setAssembly(assembly);
-        model->setMaxIterations(30);
-        model->setSolverTolerance(1.0e-8);
-        model->configureRigidPlaneContact(rigidPlane, contactFacets, 1.0e7);
+        const auto contactFacets = contactMeshGenerator->collectExteriorFacets(1, true, 1.0e-8);
+        require(!contactFacets.empty(), "No candidate contact facets found");
 
-        const bool success = model->solveContact();
-        const auto& metrics = model->getPerformanceMetrics();
-        const double minimumSignedDistance =
-            computeMinimumSignedDistanceToPlane(*model, assembly, rigidPlane);
+        const RigidPlane2D farPlane{Eigen::Vector2d(0.0, 1.0), -10.0};
+        contactModel->configureRigidPlaneContact(farPlane, contactFacets, 1.0e7);
+        require(contactModel->solveContact(), "solveContact() failed in no-contact scenario");
 
-        std::cout << "Block on rigid plane example" << std::endl;
-        std::cout << "success=" << std::boolalpha << success << std::endl;
-        std::cout << "contact_facets=" << contactFacets.size() << std::endl;
+        const Eigen::VectorXd displacementDifference =
+            baselineModel->getDisplacements() - contactModel->getDisplacements();
+        const double differenceNorm = displacementDifference.norm();
+        const auto& metrics = contactModel->getPerformanceMetrics();
+
+        require(differenceNorm < kSolutionTolerance,
+            "solveContact() does not match solve() when the plane is far away");
+        require(metrics.activeSetSize == 0, "Active set must remain empty without contact");
+        require(metrics.maxPenetration == 0.0, "Penetration must remain zero without contact");
+
+        std::cout << "contact_no_contact_regression_passed" << std::endl;
+        std::cout << "difference_norm=" << differenceNorm << std::endl;
         std::cout << "nonlinear_iterations=" << metrics.nonlinearIterations << std::endl;
         std::cout << "active_set_size=" << metrics.activeSetSize << std::endl;
-        std::cout << "max_penetration=" << metrics.maxPenetration << std::endl;
-        std::cout << "minimum_signed_distance_to_plane=" << minimumSignedDistance << std::endl;
-        std::cout << "linear_iterations=" << metrics.linearIterations << std::endl;
         std::cout << "linear_solver_backend=" << metrics.linearSolverBackend << std::endl;
-        std::cout << "linear_relative_residual=" << metrics.linearResidualNorm << std::endl;
         std::cout << "equilibrium_residual_norm=" << metrics.equilibriumResidualNorm << std::endl;
-        std::cout << "contact_force_norm=" << metrics.contactForceNorm << std::endl;
-        std::cout << "assembly_time_seconds=" << metrics.assemblyTimeSeconds << std::endl;
-        std::cout << "solve_time_seconds=" << metrics.solveTimeSeconds << std::endl;
-        std::cout << "matrix_nonzeros=" << metrics.matrixNonZeros << std::endl;
-
-        return success ? 0 : 1;
+        return 0;
     }
     catch (const std::exception& exception) {
-        std::cerr << "Block on rigid plane example failed: " << exception.what() << std::endl;
+        std::cerr << "contact_no_contact_regression_failed: " << exception.what() << std::endl;
         return 1;
     }
 }

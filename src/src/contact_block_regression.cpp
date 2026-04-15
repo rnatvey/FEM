@@ -166,6 +166,10 @@ int main() {
         std::cout << "active_set_size=" << metrics.activeSetSize << std::endl;
         std::cout << "max_penetration=" << metrics.maxPenetration << std::endl;
         std::cout << "minimum_signed_distance_to_plane=" << minimumSignedDistance << std::endl;
+        std::cout << "linear_solver_backend=" << metrics.linearSolverBackend << std::endl;
+        std::cout << "linear_relative_residual=" << metrics.linearResidualNorm << std::endl;
+        std::cout << "equilibrium_residual_norm=" << metrics.equilibriumResidualNorm << std::endl;
+        std::cout << "contact_force_norm=" << metrics.contactForceNorm << std::endl;
         return 0;
     }
     catch (const std::exception& exception) {
