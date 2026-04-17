@@ -336,6 +336,169 @@ MeshGenerator::RingMeshDiagnostics MeshGenerator::generateTireRingGraded(
     return buildRingMeshDiagnostics(radii, angles, outerRadius);
 }
 
+MeshGenerator::TireContactMeshResult MeshGenerator::generateTireContactRingMesh(
+    const TireContactMeshControl& control) {
+    if (control.radialLayers < 2 || control.circumferentialNodes < 2) {
+        throw std::invalid_argument("Invalid tire-contact mesh size");
+    }
+    if (control.innerRadius >= control.outerRadius) {
+        throw std::invalid_argument("Inner radius must be smaller than outer radius");
+    }
+    if (control.outerRadiusTolerance < 0.0) {
+        throw std::invalid_argument("Outer radius tolerance must be non-negative");
+    }
+    if (control.candidateFacetWindowScale <= 0.0) {
+        throw std::invalid_argument("Candidate facet window scale must be positive");
+    }
+
+    RingMeshControl ringControl;
+    ringControl.startAngle = control.startAngle;
+    ringControl.endAngle = control.endAngle;
+    ringControl.radialLayers = control.radialLayers;
+    ringControl.circumferentialNodes = control.circumferentialNodes;
+    ringControl.materialId = control.materialId;
+    ringControl.useAngularBias = control.refineCircumferentiallyNearContact;
+    ringControl.useRadialBias = control.refineRadiallyToOuterSurface;
+    ringControl.contactCenterAngle = control.expectedContactCenterAngle;
+    ringControl.contactHalfAngle = control.expectedContactHalfAngle;
+    ringControl.angularBiasStrength = control.circumferentialRefinementStrength;
+    ringControl.radialBiasToOuterStrength = control.radialRefinementStrength;
+
+    TireContactMeshResult result;
+    result.diagnostics = generateTireRingGraded(
+        control.center,
+        control.innerRadius,
+        control.outerRadius,
+        ringControl);
+
+    double startRad = (std::abs(control.startAngle) > TWO_PI)
+        ? control.startAngle * DEG_TO_RAD
+        : control.startAngle;
+    double endRad = (std::abs(control.endAngle) > TWO_PI)
+        ? control.endAngle * DEG_TO_RAD
+        : control.endAngle;
+    if (endRad <= startRad) {
+        endRad += TWO_PI;
+    }
+
+    result.normalizedStartAngle = startRad;
+    result.normalizedEndAngle = endRad;
+    result.normalizedContactCenterAngle =
+        normalizeAngleToSweep(control.expectedContactCenterAngle, startRad, endRad);
+
+    if (control.expectedContactHalfAngle <= 0.0) {
+        result.candidateFacetWindowStartAngle = startRad;
+        result.candidateFacetWindowEndAngle = endRad;
+    }
+    else {
+        const double maxHalfWindow = 0.5 * (endRad - startRad);
+        const double candidateHalfWindow = std::min(
+            maxHalfWindow,
+            std::abs(control.expectedContactHalfAngle) * control.candidateFacetWindowScale);
+
+        result.candidateFacetWindowStartAngle = normalizeAngleToSweep(
+            result.normalizedContactCenterAngle - candidateHalfWindow, startRad, endRad);
+        result.candidateFacetWindowEndAngle = normalizeAngleToSweep(
+            result.normalizedContactCenterAngle + candidateHalfWindow, startRad, endRad);
+    }
+
+    result.candidateContactFacets = collectBoundaryFacetsByPolarWindow(
+        control.center,
+        control.outerRadius,
+        control.outerRadiusTolerance,
+        result.candidateFacetWindowStartAngle,
+        result.candidateFacetWindowEndAngle);
+
+    if (result.candidateContactFacets.empty()) {
+        result.candidateFacetWindowStartAngle = startRad;
+        result.candidateFacetWindowEndAngle = endRad;
+        result.candidateContactFacets = collectBoundaryFacetsByPolarWindow(
+            control.center,
+            control.outerRadius,
+            control.outerRadiusTolerance,
+            startRad,
+            endRad);
+    }
+
+    return result;
+}
+
+MeshGenerator::TireContactAnalysisSetup MeshGenerator::generateTireContactAnalysisSetup(
+    const TireContactAnalysisControl& control) {
+    if (control.innerRadiusTolerance < 0.0) {
+        throw std::invalid_argument("Inner radius tolerance must be non-negative");
+    }
+    if (control.addInnerBoundaryAnchor &&
+        !control.anchorFixX &&
+        !control.anchorFixY) {
+        throw std::invalid_argument("Anchor must constrain at least one DOF");
+    }
+    if (control.prescribeInnerBoundaryX && control.addInnerBoundaryAnchor && control.anchorFixX) {
+        throw std::invalid_argument(
+            "Anchor X constraint conflicts with prescribed inner-boundary X displacement");
+    }
+    if (control.prescribeInnerBoundaryY && control.addInnerBoundaryAnchor && control.anchorFixY) {
+        throw std::invalid_argument(
+            "Anchor Y constraint conflicts with prescribed inner-boundary Y displacement");
+    }
+
+    TireContactAnalysisSetup setup;
+    setup.mesh = generateTireContactRingMesh(control.mesh);
+    setup.rigidPlane = control.rigidPlane;
+
+    double anchorSelectorCoordinate = control.anchorSelectMinimumX
+        ? std::numeric_limits<double>::infinity()
+        : -std::numeric_limits<double>::infinity();
+
+    for (const auto& node : assembly_->getNodes()) {
+        const Eigen::Vector2d coordinates = node->getCoordinates();
+        const double radius = (coordinates - control.mesh.center).norm();
+        if (std::abs(radius - control.mesh.innerRadius) > control.innerRadiusTolerance) {
+            continue;
+        }
+
+        setup.innerBoundaryNodeIds.push_back(node->getId());
+
+        if (control.prescribeInnerBoundaryX && control.prescribeInnerBoundaryY) {
+            assembly_->addPrescribedDisplacement(node->getId(),
+                control.prescribedInnerBoundaryDx,
+                control.prescribedInnerBoundaryDy);
+        }
+        else if (control.prescribeInnerBoundaryX) {
+            assembly_->addPrescribedDisplacementX(node->getId(), control.prescribedInnerBoundaryDx);
+        }
+        else if (control.prescribeInnerBoundaryY) {
+            assembly_->addPrescribedDisplacementY(node->getId(), control.prescribedInnerBoundaryDy);
+        }
+
+        if (!control.addInnerBoundaryAnchor) {
+            continue;
+        }
+
+        const double selectorCoordinate = coordinates.x();
+        const bool updateAnchor = control.anchorSelectMinimumX
+            ? (selectorCoordinate < anchorSelectorCoordinate)
+            : (selectorCoordinate > anchorSelectorCoordinate);
+        if (updateAnchor) {
+            anchorSelectorCoordinate = selectorCoordinate;
+            setup.anchorNodeId = node->getId();
+        }
+    }
+
+    if (setup.innerBoundaryNodeIds.empty()) {
+        throw std::runtime_error("No inner-boundary nodes found for tire-contact setup");
+    }
+
+    if (control.addInnerBoundaryAnchor) {
+        if (setup.anchorNodeId < 0) {
+            throw std::runtime_error("Failed to select an inner-boundary anchor node");
+        }
+        assembly_->addFixedNode(setup.anchorNodeId, control.anchorFixX, control.anchorFixY);
+    }
+
+    return setup;
+}
+
 std::vector<ContactFacet> MeshGenerator::collectBoundaryFacetsByCoordinate(int axis,
     double coordinateValue,
     double tolerance) const {

@@ -43,46 +43,30 @@ std::shared_ptr<Assembly> buildRingAssembly(bool graded,
     const double startAngle = -120.0 * DEG_TO_RAD;
     const double endAngle = -60.0 * DEG_TO_RAD;
 
-    MeshGenerator::RingMeshControl control;
-    control.startAngle = startAngle;
-    control.endAngle = endAngle;
-    control.radialLayers = 9;
-    control.circumferentialNodes = 61;
-    control.materialId = material->getId();
-    control.useAngularBias = graded;
-    control.useRadialBias = graded;
-    control.contactCenterAngle = -90.0 * DEG_TO_RAD;
-    control.contactHalfAngle = 12.0 * DEG_TO_RAD;
-    control.angularBiasStrength = 6.0;
-    control.radialBiasToOuterStrength = 2.5;
+    MeshGenerator::TireContactAnalysisControl control;
+    control.mesh.center = center;
+    control.mesh.innerRadius = innerRadius;
+    control.mesh.outerRadius = outerRadius;
+    control.mesh.startAngle = startAngle;
+    control.mesh.endAngle = endAngle;
+    control.mesh.radialLayers = 9;
+    control.mesh.circumferentialNodes = 61;
+    control.mesh.materialId = material->getId();
+    control.mesh.refineCircumferentiallyNearContact = graded;
+    control.mesh.refineRadiallyToOuterSurface = graded;
+    control.mesh.expectedContactCenterAngle = -90.0 * DEG_TO_RAD;
+    control.mesh.expectedContactHalfAngle = 12.0 * DEG_TO_RAD;
+    control.mesh.circumferentialRefinementStrength = 6.0;
+    control.mesh.radialRefinementStrength = 2.5;
+    control.mesh.candidateFacetWindowScale = 3.0;
+    control.rigidPlane = RigidPlane2D{Eigen::Vector2d(0.0, 1.0), 0.0};
+    control.prescribedInnerBoundaryDy = -0.12;
 
-    diagnostics = meshGenerator.generateTireRingGraded(center, innerRadius, outerRadius, control);
-    contactFacets = meshGenerator.collectBoundaryFacetsByPolarWindow(
-        center,
-        outerRadius,
-        1.0e-6,
-        startAngle,
-        endAngle);
+    const auto analysisSetup = meshGenerator.generateTireContactAnalysisSetup(control);
+    diagnostics = analysisSetup.mesh.diagnostics;
+    contactFacets = analysisSetup.mesh.candidateContactFacets;
     contactFacetCount = static_cast<int>(contactFacets.size());
-    rigidPlane = RigidPlane2D{Eigen::Vector2d(0.0, 1.0), 0.0};
-
-    int anchorNodeId = -1;
-    double smallestX = std::numeric_limits<double>::infinity();
-    for (const auto& node : assembly->getNodes()) {
-        const Eigen::Vector2d coords = node->getCoordinates();
-        const double radius = (coords - center).norm();
-        if (std::abs(radius - innerRadius) <= 1.0e-6) {
-            assembly->addPrescribedDisplacementY(node->getId(), -0.12);
-            if (coords.x() < smallestX) {
-                smallestX = coords.x();
-                anchorNodeId = node->getId();
-            }
-        }
-    }
-
-    if (anchorNodeId >= 0) {
-        assembly->addFixedNode(anchorNodeId, true, false);
-    }
+    rigidPlane = analysisSetup.rigidPlane;
 
     return assembly;
 }

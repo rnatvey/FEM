@@ -52,6 +52,60 @@ public:
         double maxAspectRatio = 0.0;
     };
 
+    struct TireContactMeshControl {
+        Eigen::Vector2d center = Eigen::Vector2d::Zero();
+        double innerRadius = 0.0;
+        double outerRadius = 0.0;
+        double startAngle = 0.0;
+        double endAngle = 2.0 * EIGEN_PI;
+        int radialLayers = 0;
+        int circumferentialNodes = 0;
+        int materialId = 0;
+
+        bool refineCircumferentiallyNearContact = true;
+        bool refineRadiallyToOuterSurface = true;
+        double expectedContactCenterAngle = -0.5 * EIGEN_PI;
+        double expectedContactHalfAngle = 0.25 * EIGEN_PI;
+        double circumferentialRefinementStrength = 4.0;
+        double radialRefinementStrength = 2.0;
+
+        // Expand the candidate contact window beyond the expected patch
+        // so the active set can grow without remeshing.
+        double candidateFacetWindowScale = 3.0;
+        double outerRadiusTolerance = 1.0e-6;
+    };
+
+    struct TireContactMeshResult {
+        RingMeshDiagnostics diagnostics;
+        std::vector<ContactFacet> candidateContactFacets;
+        double normalizedStartAngle = 0.0;
+        double normalizedEndAngle = 0.0;
+        double normalizedContactCenterAngle = 0.0;
+        double candidateFacetWindowStartAngle = 0.0;
+        double candidateFacetWindowEndAngle = 0.0;
+    };
+
+    struct TireContactAnalysisControl {
+        TireContactMeshControl mesh;
+        RigidPlane2D rigidPlane = RigidPlane2D{Eigen::Vector2d(0.0, 1.0), 0.0};
+        double innerRadiusTolerance = 1.0e-6;
+        bool prescribeInnerBoundaryX = false;
+        bool prescribeInnerBoundaryY = true;
+        double prescribedInnerBoundaryDx = 0.0;
+        double prescribedInnerBoundaryDy = 0.0;
+        bool addInnerBoundaryAnchor = true;
+        bool anchorFixX = true;
+        bool anchorFixY = false;
+        bool anchorSelectMinimumX = true;
+    };
+
+    struct TireContactAnalysisSetup {
+        TireContactMeshResult mesh;
+        RigidPlane2D rigidPlane;
+        std::vector<int> innerBoundaryNodeIds;
+        int anchorNodeId = -1;
+    };
+
     explicit MeshGenerator(std::shared_ptr<Assembly> assembly);
 
     void addBlock(const Block& block);
@@ -83,6 +137,9 @@ public:
         double innerRadius,
         double outerRadius,
         const RingMeshControl& control);
+    TireContactMeshResult generateTireContactRingMesh(const TireContactMeshControl& control);
+    TireContactAnalysisSetup generateTireContactAnalysisSetup(
+        const TireContactAnalysisControl& control);
 
     std::vector<ContactFacet> collectBoundaryFacetsByCoordinate(int axis,
         double coordinateValue,
