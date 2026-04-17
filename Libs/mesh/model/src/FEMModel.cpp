@@ -217,76 +217,190 @@ bool FEModel::solveContactIterative() {
         return false;
     }
 
+    int accumulatedLinearIterations = performanceMetrics_.linearIterations;
     double accumulatedAssemblyTime = performanceMetrics_.assemblyTimeSeconds;
-
-    Eigen::VectorXd previousDisplacements = displacements_;
+    const bool useNestedAugmentedLagrangianLoop =
+        contactSolver_->getMethod() == RigidPlaneContactMethod::AugmentedLagrangian;
     bool converged = false;
 
-    for (iterationCount_ = 1; iterationCount_ <= maxIterations_; ++iterationCount_) {
-        const auto iterationAssemblyStartTime = std::chrono::high_resolution_clock::now();
+    if (!useNestedAugmentedLagrangianLoop) {
+        Eigen::VectorXd previousDisplacements = displacements_;
 
-        ContactIterationInfo contactInfo;
-        applyContactConditions(previousDisplacements, contactInfo);
+        for (iterationCount_ = 1; iterationCount_ <= maxIterations_; ++iterationCount_) {
+            const auto iterationAssemblyStartTime = std::chrono::high_resolution_clock::now();
 
-        Eigen::SparseMatrix<double> reducedContactK = contactInfo.stiffness;
-        Eigen::VectorXd reducedContactF =
-            contactInfo.force + contactInfo.stiffness * previousDisplacements;
-        assembly_->applyBoundaryConditions(reducedContactK, reducedContactF);
+            ContactIterationInfo contactInfo;
+            applyContactConditions(previousDisplacements, contactInfo);
 
-        globalK_ = structuralReducedK;
-        globalK_ += reducedContactK;
-        globalK_.makeCompressed();
-        globalF_ = structuralReducedF + reducedContactF;
+            Eigen::SparseMatrix<double> reducedContactK = contactInfo.stiffness;
+            Eigen::VectorXd reducedContactF =
+                contactInfo.force + contactInfo.stiffness * previousDisplacements;
+            assembly_->applyBoundaryConditions(reducedContactK, reducedContactF);
 
-        const auto iterationAssemblyEndTime = std::chrono::high_resolution_clock::now();
-        accumulatedAssemblyTime +=
-            std::chrono::duration<double>(
-                iterationAssemblyEndTime - iterationAssemblyStartTime).count();
-        performanceMetrics_.assemblyTimeSeconds = accumulatedAssemblyTime;
-        performanceMetrics_.matrixNonZeros = globalK_.nonZeros();
-        performanceMetrics_.nonlinearIterations = iterationCount_;
+            globalK_ = structuralReducedK;
+            globalK_ += reducedContactK;
+            globalK_.makeCompressed();
+            globalF_ = structuralReducedF + reducedContactF;
 
-        if (!solveLinearSystem()) {
-            return false;
+            const auto iterationAssemblyEndTime = std::chrono::high_resolution_clock::now();
+            accumulatedAssemblyTime +=
+                std::chrono::duration<double>(
+                    iterationAssemblyEndTime - iterationAssemblyStartTime).count();
+            performanceMetrics_.assemblyTimeSeconds = accumulatedAssemblyTime;
+            performanceMetrics_.matrixNonZeros = globalK_.nonZeros();
+            performanceMetrics_.nonlinearIterations = iterationCount_;
+
+            if (!solveLinearSystem()) {
+                const auto failureTime = std::chrono::high_resolution_clock::now();
+                performanceMetrics_.totalTimeSeconds =
+                    std::chrono::duration<double>(failureTime - totalStartTime).count();
+                return false;
+            }
+            accumulatedLinearIterations += solver_->getLastSolveStats().iterations;
+            performanceMetrics_.linearIterations = accumulatedLinearIterations;
+
+            ContactIterationInfo convergedStateInfo;
+            convergedStateInfo.updateInfo = contactSolver_->updateState(displacements_);
+            applyContactConditions(displacements_, convergedStateInfo);
+
+            double relativeError =
+                (displacements_ - previousDisplacements).norm() /
+                (displacements_.norm() + 1.0e-15);
+            bool activeSetStable =
+                (convergedStateInfo.state.activeFacetIds == contactInfo.state.activeFacetIds);
+            const bool contactStateConverged = convergedStateInfo.updateInfo.converged;
+
+            performanceMetrics_.activeSetSize =
+                static_cast<int>(convergedStateInfo.state.activeFacetIds.size());
+            performanceMetrics_.activeContactGaussPoints =
+                convergedStateInfo.updateInfo.activeGaussPointCount;
+            performanceMetrics_.maxPenetration = convergedStateInfo.state.maxPenetration;
+            performanceMetrics_.contactForceNorm = convergedStateInfo.state.contactForceNorm;
+            performanceMetrics_.contactStateUpdateNorm =
+                convergedStateInfo.updateInfo.stateUpdateNorm;
+            performanceMetrics_.contactStateRelativeUpdateNorm =
+                convergedStateInfo.updateInfo.relativeStateUpdateNorm;
+            performanceMetrics_.maxNormalContactMultiplier =
+                convergedStateInfo.updateInfo.maxNormalMultiplier;
+            performanceMetrics_.meanNormalContactMultiplier =
+                convergedStateInfo.updateInfo.meanNormalMultiplier;
+
+            previousDisplacements = displacements_;
+
+            if (relativeError < tolerance_ && activeSetStable && contactStateConverged) {
+                converged = true;
+                break;
+            }
         }
+    }
+    else {
+        const int maxEquilibriumIterations =
+            std::max(6, std::min(24, maxIterations_));
 
-        ContactIterationInfo convergedStateInfo;
-        convergedStateInfo.updateInfo = contactSolver_->updateState(displacements_);
-        applyContactConditions(displacements_, convergedStateInfo);
+        for (iterationCount_ = 1; iterationCount_ <= maxIterations_; ++iterationCount_) {
+            bool equilibriumConverged = false;
+            Eigen::VectorXd equilibriumPreviousDisplacements = displacements_;
+            ContactIterationInfo convergedStateInfo;
 
-        double relativeError =
-            (displacements_ - previousDisplacements).norm() /
-            (displacements_.norm() + 1.0e-15);
-        bool activeSetStable =
-            (convergedStateInfo.state.activeFacetIds == contactInfo.state.activeFacetIds);
-        const bool contactStateConverged = convergedStateInfo.updateInfo.converged;
+            for (int equilibriumIteration = 1;
+                equilibriumIteration <= maxEquilibriumIterations;
+                ++equilibriumIteration) {
+                const auto iterationAssemblyStartTime = std::chrono::high_resolution_clock::now();
 
-        performanceMetrics_.activeSetSize =
-            static_cast<int>(convergedStateInfo.state.activeFacetIds.size());
-        performanceMetrics_.activeContactGaussPoints =
-            convergedStateInfo.updateInfo.activeGaussPointCount;
-        performanceMetrics_.maxPenetration = convergedStateInfo.state.maxPenetration;
-        performanceMetrics_.contactForceNorm = convergedStateInfo.state.contactForceNorm;
-        performanceMetrics_.contactStateUpdateNorm =
-            convergedStateInfo.updateInfo.stateUpdateNorm;
-        performanceMetrics_.contactStateRelativeUpdateNorm =
-            convergedStateInfo.updateInfo.relativeStateUpdateNorm;
-        performanceMetrics_.maxNormalContactMultiplier =
-            convergedStateInfo.updateInfo.maxNormalMultiplier;
-        performanceMetrics_.meanNormalContactMultiplier =
-            convergedStateInfo.updateInfo.meanNormalMultiplier;
+                ContactIterationInfo contactInfo;
+                applyContactConditions(equilibriumPreviousDisplacements, contactInfo);
 
-        previousDisplacements = displacements_;
+                Eigen::SparseMatrix<double> reducedContactK = contactInfo.stiffness;
+                Eigen::VectorXd reducedContactF =
+                    contactInfo.force + contactInfo.stiffness * equilibriumPreviousDisplacements;
+                assembly_->applyBoundaryConditions(reducedContactK, reducedContactF);
 
-        if (relativeError < tolerance_ && activeSetStable && contactStateConverged) {
-            converged = true;
-            break;
+                globalK_ = structuralReducedK;
+                globalK_ += reducedContactK;
+                globalK_.makeCompressed();
+                globalF_ = structuralReducedF + reducedContactF;
+
+                const auto iterationAssemblyEndTime = std::chrono::high_resolution_clock::now();
+                accumulatedAssemblyTime +=
+                    std::chrono::duration<double>(
+                        iterationAssemblyEndTime - iterationAssemblyStartTime).count();
+                performanceMetrics_.assemblyTimeSeconds = accumulatedAssemblyTime;
+                performanceMetrics_.matrixNonZeros = globalK_.nonZeros();
+
+                if (!solveLinearSystem()) {
+                    const auto failureTime = std::chrono::high_resolution_clock::now();
+                    performanceMetrics_.totalTimeSeconds =
+                        std::chrono::duration<double>(failureTime - totalStartTime).count();
+                    return false;
+                }
+                accumulatedLinearIterations += solver_->getLastSolveStats().iterations;
+                performanceMetrics_.linearIterations = accumulatedLinearIterations;
+
+                applyContactConditions(displacements_, convergedStateInfo);
+
+                const double relativeError =
+                    (displacements_ - equilibriumPreviousDisplacements).norm() /
+                    (displacements_.norm() + 1.0e-15);
+                const bool activeSetStable =
+                    (convergedStateInfo.state.activeFacetIds == contactInfo.state.activeFacetIds);
+
+                performanceMetrics_.nonlinearIterations = iterationCount_;
+                performanceMetrics_.activeSetSize =
+                    static_cast<int>(convergedStateInfo.state.activeFacetIds.size());
+                performanceMetrics_.activeContactGaussPoints =
+                    convergedStateInfo.state.activeGaussPointCount;
+                performanceMetrics_.maxPenetration = convergedStateInfo.state.maxPenetration;
+                performanceMetrics_.contactForceNorm = convergedStateInfo.state.contactForceNorm;
+
+                if (relativeError < tolerance_ && activeSetStable) {
+                    equilibriumConverged = true;
+                    break;
+                }
+
+                equilibriumPreviousDisplacements = displacements_;
+            }
+
+            if (!equilibriumConverged) {
+                std::cerr << "FEModel: Augmented Lagrangian equilibrium solve did not converge "
+                          << "during outer iteration " << iterationCount_ << std::endl;
+                const auto failureTime = std::chrono::high_resolution_clock::now();
+                performanceMetrics_.totalTimeSeconds =
+                    std::chrono::duration<double>(failureTime - totalStartTime).count();
+                return false;
+            }
+
+            convergedStateInfo.updateInfo = contactSolver_->updateState(displacements_);
+            applyContactConditions(displacements_, convergedStateInfo);
+
+            performanceMetrics_.nonlinearIterations = iterationCount_;
+            performanceMetrics_.activeSetSize =
+                static_cast<int>(convergedStateInfo.state.activeFacetIds.size());
+            performanceMetrics_.activeContactGaussPoints =
+                convergedStateInfo.updateInfo.activeGaussPointCount;
+            performanceMetrics_.maxPenetration = convergedStateInfo.state.maxPenetration;
+            performanceMetrics_.contactForceNorm = convergedStateInfo.state.contactForceNorm;
+            performanceMetrics_.contactStateUpdateNorm =
+                convergedStateInfo.updateInfo.stateUpdateNorm;
+            performanceMetrics_.contactStateRelativeUpdateNorm =
+                convergedStateInfo.updateInfo.relativeStateUpdateNorm;
+            performanceMetrics_.maxNormalContactMultiplier =
+                convergedStateInfo.updateInfo.maxNormalMultiplier;
+            performanceMetrics_.meanNormalContactMultiplier =
+                convergedStateInfo.updateInfo.meanNormalMultiplier;
+
+            if (convergedStateInfo.updateInfo.converged) {
+                converged = true;
+                break;
+            }
         }
     }
 
     if (!converged) {
         std::cerr << "FEModel: Contact solution did not converge after "
                   << maxIterations_ << " iterations" << std::endl;
+        const auto failureTime = std::chrono::high_resolution_clock::now();
+        performanceMetrics_.totalTimeSeconds =
+            std::chrono::duration<double>(failureTime - totalStartTime).count();
         return false;
     }
 

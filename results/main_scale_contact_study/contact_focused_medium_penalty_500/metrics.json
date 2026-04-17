@@ -23,13 +23,13 @@
     "prescribed_dofs": 181
   },
   "timings": {
-    "assembly_time_seconds": 0.57049479999999997,
-    "solve_time_seconds": 49.851944600000003,
-    "total_time_seconds": 50.906341700000006
+    "assembly_time_seconds": 0.35319869999999998,
+    "solve_time_seconds": 28.370802400000006,
+    "total_time_seconds": 29.163836600000003
   },
   "iterations": {
     "nonlinear_iterations": 8,
-    "linear_iterations": 2000
+    "linear_iterations": 0
   },
   "solver": {
     "backend": "PardisoLDLT",
@@ -37,9 +37,9 @@
     "used_direct_solver": true
   },
   "residuals": {
-    "linear_residual_estimate": 3.4366144249709694e-05,
-    "linear_relative_residual_norm": 6.1375802026566317e-15,
-    "equilibrium_residual_norm": 3.0620267286175276e-10
+    "linear_residual_estimate": 3.6643433683308864e-05,
+    "linear_relative_residual_norm": 6.2277503471060979e-15,
+    "equilibrium_residual_norm": 3.1455162184386328e-10
   },
   "matrix": {
     "nnz": 907246
@@ -50,7 +50,7 @@
     "candidate_contact_facets": 120,
     "active_contact_facets": 114,
     "active_contact_gauss_points": 0,
-    "contact_force_norm": 227.79865616186626,
+    "contact_force_norm": 227.79865616171813,
     "contact_state_update_norm": 0,
     "contact_state_relative_update_norm": 0,
     "max_normal_multiplier": 0,
@@ -58,17 +58,17 @@
     "max_penetration": 0.0049714696306750739,
     "max_nodal_penetration": 0.0049714857458980077,
     "minimum_signed_distance": -0.0049714857458980077,
-    "total_normal_force": 227.79865616186609,
+    "total_normal_force": 227.79865616171799,
     "active_contact_area": 113.89556870819028,
     "contact_patch_length": 113.89556870819028,
     "max_facet_average_pressure": 2.4857238084763367,
-    "mean_active_pressure": 2.0000660143811633,
-    "center_of_pressure_x": -1.522454403361924e-11,
-    "center_of_pressure_y": -298.54964051417898
+    "mean_active_pressure": 2.000066014379863,
+    "center_of_pressure_x": -4.7646444746430447e-11,
+    "center_of_pressure_y": -298.54964051417943
   },
   "extrema": {
-    "max_displacement_magnitude": 18.360817145491691,
-    "max_reaction_force_magnitude": 3.5753808577938777,
+    "max_displacement_magnitude": 18.360817145685104,
+    "max_reaction_force_magnitude": 3.575380857788423,
     "max_contact_force_magnitude": 6.0206334305004452
   },
   "extra": {

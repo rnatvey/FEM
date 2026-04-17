@@ -92,7 +92,7 @@ Eigen::VectorXd LinearSolver::solveSystem(
 
     directSolver.compute(systemMatrix);
     if (directSolver.info() != Eigen::Success) {
-        finalizeStats(iterativeSolver.iterations(),
+        finalizeStats(0,
             maxIterations,
             tolerance,
             iterativeSolver.error(),
@@ -110,7 +110,7 @@ Eigen::VectorXd LinearSolver::solveSystem(
     Eigen::VectorXd solution = directSolver.solve(rightHandSide);
     const bool converged = directSolver.info() == Eigen::Success;
     const double residualNorm = converged ? computeResidualNorm(solution) : 0.0;
-    finalizeStats(iterativeSolver.iterations(),
+    finalizeStats(0,
         maxIterations,
         tolerance,
         iterativeSolver.error(),

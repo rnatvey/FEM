@@ -1,2 +1,2 @@
 case_name,contact_method,contact_parameter_name,contact_parameter_value,mesh_label,group_label,contact_patch_length,max_average_pressure_mpa,mean_active_pressure_mpa,total_normal_force_kn,center_of_pressure_arc
-contact_focused_medium_penalty_500,penalty,penalty_parameter,500.0,contact focused medium,Штрафной метод / contact focused medium,113.89556870819028,2.4857238084763367,2.0000660143811637,0.22779865616186612,-1.545430450278218e-11
+contact_focused_medium_penalty_500,penalty,penalty_parameter,500.0,contact focused medium,Штрафной метод / contact focused medium,113.89556870819028,2.4857238084763367,2.000066014379864,0.22779865616171807,-4.796163466380676e-11
