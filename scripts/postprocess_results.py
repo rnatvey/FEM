@@ -10,6 +10,7 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import AutoMinorLocator
 
 try:
     import pyvista as pv
@@ -17,6 +18,238 @@ except ImportError as exc:  # pragma: no cover - import guard for runtime enviro
     raise SystemExit(
         "PyVista is required for this postprocessor. Install pyvista and vtk in the Python environment."
     ) from exc
+
+
+PASCAL_TO_MPA = 1.0e-6
+LENGTH_UNIT_LABEL = "ед. длины"
+FORCE_UNIT_LABEL = "ед. силы"
+
+LENGTH_UNIT_LABEL = "ед. длины"
+FORCE_UNIT_LABEL = "ед. силы"
+
+TECHNICAL_COLORS = {
+    "blue": "#1f4e79",
+    "red": "#a61c1c",
+    "green": "#2f6b3b",
+    "orange": "#b45f06",
+    "gray": "#4d4d4d",
+    "light_gray": "#c9ced6",
+    "teal": "#0b6e75",
+}
+
+
+def configure_plot_style() -> None:
+    plt.style.use("default")
+    plt.rcParams.update(
+        {
+            "figure.facecolor": "white",
+            "axes.facecolor": "white",
+            "axes.edgecolor": "#222222",
+            "axes.linewidth": 1.0,
+            "axes.titlesize": 13,
+            "axes.labelsize": 11,
+            "axes.titleweight": "semibold",
+            "font.family": "DejaVu Sans",
+            "font.size": 10,
+            "legend.frameon": True,
+            "legend.facecolor": "white",
+            "legend.edgecolor": "#bbbbbb",
+            "legend.framealpha": 1.0,
+            "xtick.direction": "in",
+            "ytick.direction": "in",
+            "xtick.major.size": 5,
+            "ytick.major.size": 5,
+            "xtick.minor.size": 3,
+            "ytick.minor.size": 3,
+            "savefig.facecolor": "white",
+            "savefig.dpi": 180,
+            "axes.formatter.use_mathtext": True,
+        }
+    )
+
+
+def apply_axes_style(axis: plt.Axes, *, x_minor: bool = True, y_minor: bool = True) -> None:
+    if x_minor:
+        axis.xaxis.set_minor_locator(AutoMinorLocator())
+    if y_minor:
+        axis.yaxis.set_minor_locator(AutoMinorLocator())
+    axis.grid(True, which="major", linestyle="--", linewidth=0.65, color="#aeb6bf", alpha=0.9)
+    axis.grid(True, which="minor", linestyle=":", linewidth=0.5, color="#d5dbe3", alpha=0.9)
+
+
+def format_scientific(value: Any) -> str:
+    if isinstance(value, (int, float, np.floating)):
+        return f"{float(value):.3e}"
+    return str(value)
+
+
+def configure_pyvista_theme() -> None:
+    pv.set_plot_theme("document")
+    pv.global_theme.background = "white"
+    pv.global_theme.font.color = "black"
+
+
+def format_metric_with_unit(
+    value: Any,
+    *,
+    scale: float = 1.0,
+    unit: str | None = None,
+) -> str:
+    if value is None:
+        return "н/д"
+    try:
+        numeric_value = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+
+    if not math.isfinite(numeric_value):
+        return "н/д"
+
+    formatted = f"{numeric_value * scale:.3e}"
+    if unit:
+        return f"{formatted} {unit}"
+    return formatted
+
+
+def humanize_mesh_label(label: str) -> str:
+    translated = label.replace("_", " ")
+    replacements = {
+        "uniform": "равномерная",
+        "graded": "сгущенная",
+        "penalty": "штраф",
+        "mesh": "сетка",
+        "study": "исследование",
+    }
+    for english, russian in replacements.items():
+        translated = translated.replace(english, russian)
+    return translated
+
+
+def configure_plotter(plotter: pv.Plotter) -> None:
+    plotter.set_background("white")
+    plotter.enable_parallel_projection()
+
+
+def save_rendered_image_figure(
+    image: np.ndarray,
+    bounds: tuple[float, float, float, float],
+    output_path: Path,
+    title: str,
+    *,
+    colorbar_label: str | None = None,
+    cmap: str | None = None,
+    value_range: tuple[float, float] | None = None,
+    indicator_ticks: list[float] | None = None,
+) -> None:
+    fig, axis = plt.subplots(figsize=(10.5, 7.5))
+    axis.imshow(
+        image,
+        extent=(bounds[0], bounds[1], bounds[2], bounds[3]),
+        origin="upper",
+    )
+    axis.set_title(title)
+    axis.set_xlabel(f"Координата X, {LENGTH_UNIT_LABEL}")
+    axis.set_ylabel(f"Координата Y, {LENGTH_UNIT_LABEL}")
+    axis.set_aspect("equal")
+    apply_axes_style(axis)
+
+    if colorbar_label and cmap and value_range is not None:
+        normalizer = plt.Normalize(vmin=value_range[0], vmax=value_range[1])
+        scalar_mappable = plt.cm.ScalarMappable(norm=normalizer, cmap=cmap)
+        colorbar = fig.colorbar(scalar_mappable, ax=axis, pad=0.03, fraction=0.046)
+        colorbar.set_label(colorbar_label)
+        if indicator_ticks is not None:
+            colorbar.set_ticks(indicator_ticks)
+
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=180)
+    plt.close(fig)
+
+
+def save_scalar_field_plot(
+    mesh: pv.DataSet,
+    case_dir: Path,
+    scalar_name: str,
+    file_name: str,
+    title: str,
+    cmap: str,
+    *,
+    scale: float = 1.0,
+    scalar_bar_format: str = "%.3e",
+    is_indicator: bool = False,
+) -> None:
+    plotter = pv.Plotter(off_screen=True, window_size=(1400, 900))
+    configure_plotter(plotter)
+
+    field_values = np.asarray(mesh[scalar_name])
+    if scale != 1.0:
+        field_values = field_values * scale
+
+    add_mesh_kwargs: dict[str, Any] = {
+        "scalars": field_values,
+        "show_edges": True,
+        "edge_color": TECHNICAL_COLORS["gray"],
+        "line_width": 0.8,
+        "cmap": cmap,
+        "show_scalar_bar": False,
+        "lighting": False,
+    }
+    if is_indicator:
+        add_mesh_kwargs["clim"] = (0.0, 1.0)
+        add_mesh_kwargs["n_colors"] = 2
+
+    plotter.add_mesh(mesh, **add_mesh_kwargs)
+    plotter.view_xy()
+    plotter.camera.zoom(1.05)
+    rendered_image = plotter.screenshot(return_img=True)
+    plotter.close()
+
+    finite_values = field_values[np.isfinite(field_values)]
+    if finite_values.size == 0:
+        value_range = (0.0, 1.0)
+    else:
+        value_range = (float(finite_values.min()), float(finite_values.max()))
+        if math.isclose(value_range[0], value_range[1]):
+            delta = 1.0 if value_range[0] == 0.0 else 0.05 * abs(value_range[0])
+            value_range = (value_range[0] - delta, value_range[1] + delta)
+
+    save_rendered_image_figure(
+        rendered_image,
+        (float(mesh.bounds[0]), float(mesh.bounds[1]), float(mesh.bounds[2]), float(mesh.bounds[3])),
+        case_dir / file_name,
+        title,
+        colorbar_label=title,
+        cmap=cmap,
+        value_range=value_range,
+        indicator_ticks=[0.0, 1.0] if is_indicator else None,
+    )
+
+
+def save_mesh_plot(case: dict[str, Any]) -> None:
+    case_dir = case["case_dir"]
+    mesh = case["mesh"]
+
+    plotter = pv.Plotter(off_screen=True, window_size=(1400, 900))
+    configure_plotter(plotter)
+    plotter.add_mesh(
+        mesh,
+        color="white",
+        show_edges=True,
+        edge_color=TECHNICAL_COLORS["gray"],
+        line_width=1.0,
+        lighting=False,
+    )
+    plotter.view_xy()
+    plotter.camera.zoom(1.05)
+    rendered_image = plotter.screenshot(return_img=True)
+    plotter.close()
+
+    save_rendered_image_figure(
+        rendered_image,
+        (float(mesh.bounds[0]), float(mesh.bounds[1]), float(mesh.bounds[2]), float(mesh.bounds[3])),
+        case_dir / "computational_mesh.png",
+        "Расчетная конечно-элементная сетка",
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -371,9 +604,9 @@ def save_ring_contour_profiles(case: dict[str, Any], ring_metadata: dict[str, An
         "outer": ring_metadata["outer_radius"],
     }
     contour_styles = {
-        "inner": ("#4C78A8", "Inner contour"),
-        "mid": ("#F58518", "Mid-surface"),
-        "outer": ("#54A24B", "Outer contour"),
+        "inner": (TECHNICAL_COLORS["blue"], "Внутренний контур"),
+        "mid": (TECHNICAL_COLORS["orange"], "Средний слой"),
+        "outer": (TECHNICAL_COLORS["green"], "Внешний контур"),
     }
 
     csv_rows: list[list[Any]] = []
@@ -397,7 +630,7 @@ def save_ring_contour_profiles(case: dict[str, Any], ring_metadata: dict[str, An
         for field_name, _, axis in axis_specs:
             axis.plot(
                 x_values,
-                fields[field_name][ordered_indices],
+                fields[field_name][ordered_indices] * PASCAL_TO_MPA,
                 color=contour_styles[contour_key][0],
                 linewidth=2.0,
                 label=contour_styles[contour_key][1],
@@ -409,20 +642,20 @@ def save_ring_contour_profiles(case: dict[str, Any], ring_metadata: dict[str, An
                     contour_key,
                     fields["relative_angles_deg"][ordered_index],
                     fields["radii"][ordered_index],
-                    fields["sigma_rr"][ordered_index],
-                    fields["sigma_tt"][ordered_index],
-                    fields["tau_rt"][ordered_index],
+                    fields["sigma_rr"][ordered_index] * PASCAL_TO_MPA,
+                    fields["sigma_tt"][ordered_index] * PASCAL_TO_MPA,
+                    fields["tau_rt"][ordered_index] * PASCAL_TO_MPA,
                 ]
             )
 
-    axes[0].set_title("Stress Profiles Along Tire Contours")
-    axes[0].set_ylabel(r"$\sigma_{rr}$")
-    axes[1].set_ylabel(r"$\sigma_{\theta\theta}$")
-    axes[2].set_ylabel(r"$\tau_{r\theta}$")
-    axes[2].set_xlabel("Angle relative to contact center [deg]")
+    axes[0].set_title("Распределение напряжений по контурам шины")
+    axes[0].set_ylabel(r"$\sigma_{rr}$, МПа")
+    axes[1].set_ylabel(r"$\sigma_{\theta\theta}$, МПа")
+    axes[2].set_ylabel(r"$\tau_{r\theta}$, МПа")
+    axes[2].set_xlabel("Угол относительно центра контакта, град")
     for axis in axes:
-        axis.grid(True, alpha=0.3)
-        axis.legend()
+        apply_axes_style(axis)
+        axis.legend(loc="best")
 
     fig.tight_layout()
     fig.savefig(case_dir / "ring_contour_stress_profiles.png", dpi=180)
@@ -430,7 +663,7 @@ def save_ring_contour_profiles(case: dict[str, Any], ring_metadata: dict[str, An
 
     write_rows_csv(
         case_dir / "ring_contour_stress_profiles.csv",
-        ["contour", "relative_angle_deg", "radius", "sigma_rr", "sigma_tt", "tau_rt"],
+        ["contour", "relative_angle_deg", f"radius_{LENGTH_UNIT_LABEL}", "sigma_rr_mpa", "sigma_tt_mpa", "tau_rt_mpa"],
         csv_rows,
     )
 
@@ -460,26 +693,41 @@ def save_ring_radial_profiles(case: dict[str, Any], ring_metadata: dict[str, Any
         [
             radii[i],
             fields["relative_angles_deg"][ordered_indices[i]],
-            fields["sigma_rr"][ordered_indices[i]],
-            fields["sigma_tt"][ordered_indices[i]],
+            fields["sigma_rr"][ordered_indices[i]] * PASCAL_TO_MPA,
+            fields["sigma_tt"][ordered_indices[i]] * PASCAL_TO_MPA,
             fields["radial_displacement"][ordered_indices[i]],
         ]
         for i in range(len(ordered_indices))
     ]
 
     fig, axes = plt.subplots(3, 1, figsize=(10, 11), sharex=True)
-    axes[0].plot(radii, fields["sigma_rr"][ordered_indices], color="#4C78A8", linewidth=2.0)
-    axes[1].plot(radii, fields["sigma_tt"][ordered_indices], color="#F58518", linewidth=2.0)
-    axes[2].plot(radii, fields["radial_displacement"][ordered_indices], color="#54A24B", linewidth=2.0)
+    axes[0].plot(
+        radii,
+        fields["sigma_rr"][ordered_indices] * PASCAL_TO_MPA,
+        color=TECHNICAL_COLORS["blue"],
+        linewidth=2.0,
+    )
+    axes[1].plot(
+        radii,
+        fields["sigma_tt"][ordered_indices] * PASCAL_TO_MPA,
+        color=TECHNICAL_COLORS["orange"],
+        linewidth=2.0,
+    )
+    axes[2].plot(
+        radii,
+        fields["radial_displacement"][ordered_indices],
+        color=TECHNICAL_COLORS["green"],
+        linewidth=2.0,
+    )
 
-    axes[0].set_title("Radial Section Profiles Through Contact Symmetry Plane")
-    axes[0].set_ylabel(r"$\sigma_{rr}$")
-    axes[1].set_ylabel(r"$\sigma_{\theta\theta}$")
-    axes[2].set_ylabel(r"$u_r$")
-    axes[2].set_xlabel("Radius")
+    axes[0].set_title("Профили по радиальному сечению через центр контакта")
+    axes[0].set_ylabel(r"$\sigma_{rr}$, МПа")
+    axes[1].set_ylabel(r"$\sigma_{\theta\theta}$, МПа")
+    axes[2].set_ylabel(r"$u_r$, {LENGTH_UNIT_LABEL}")
+    axes[2].set_xlabel(f"Радиальная координата, {LENGTH_UNIT_LABEL}")
 
     for axis in axes:
-        axis.grid(True, alpha=0.3)
+        apply_axes_style(axis)
 
     fig.tight_layout()
     fig.savefig(case_dir / "ring_radial_section_profiles.png", dpi=180)
@@ -487,7 +735,7 @@ def save_ring_radial_profiles(case: dict[str, Any], ring_metadata: dict[str, Any
 
     write_rows_csv(
         case_dir / "ring_radial_section_profiles.csv",
-        ["radius", "relative_angle_deg", "sigma_rr", "sigma_tt", "radial_displacement"],
+        [f"radius_{LENGTH_UNIT_LABEL}", "relative_angle_deg", "sigma_rr_mpa", "sigma_tt_mpa", f"radial_displacement_{LENGTH_UNIT_LABEL}"],
         csv_rows,
     )
 
@@ -514,7 +762,7 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
             dtype=float,
         )
         average_pressure = np.array(
-            [float(row["average_pressure"]) for row in contact_facet_rows],
+            [float(row["average_pressure"]) * PASCAL_TO_MPA for row in contact_facet_rows],
             dtype=float,
         )
         active_length = np.array(
@@ -543,33 +791,42 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
         ]
 
         fig, axes = plt.subplots(3, 1, figsize=(10, 11), sharex=True)
-        axes[0].plot(arc_coordinate, average_penetration, color="#E45756", linewidth=2.0)
+        axes[0].plot(arc_coordinate, average_penetration, color=TECHNICAL_COLORS["red"], linewidth=2.0)
         axes[0].plot(
             arc_coordinate,
             maximum_penetration,
-            color="#B279A2",
+            color=TECHNICAL_COLORS["gray"],
             linewidth=1.5,
             linestyle="--",
+            label="Максимальное проникновение",
         )
-        axes[1].plot(arc_coordinate, integrated_normal_force, color="#4C78A8", linewidth=2.0)
-        axes[2].plot(arc_coordinate, average_pressure, color="#72B7B2", linewidth=2.0)
+        axes[0].plot(
+            arc_coordinate,
+            average_penetration,
+            color=TECHNICAL_COLORS["red"],
+            linewidth=2.0,
+            label="Среднее проникновение",
+        )
+        axes[1].plot(arc_coordinate, integrated_normal_force, color=TECHNICAL_COLORS["blue"], linewidth=2.0)
+        axes[2].plot(arc_coordinate, average_pressure, color=TECHNICAL_COLORS["teal"], linewidth=2.0)
         axes[2].fill_between(
             arc_coordinate,
             0.0,
             average_pressure,
             where=active_mask,
             alpha=0.25,
-            color="#72B7B2",
+            color=TECHNICAL_COLORS["teal"],
         )
 
-        axes[0].set_title("Facet-Level Contact Patch Profiles")
-        axes[0].set_ylabel("Penetration")
-        axes[1].set_ylabel("Integrated normal force")
-        axes[2].set_ylabel("Average pressure")
-        axes[2].set_xlabel("Arc coordinate relative to contact center")
+        axes[0].set_title("Контактные характеристики по фасеткам")
+        axes[0].set_ylabel(f"Проникновение, {LENGTH_UNIT_LABEL}")
+        axes[1].set_ylabel(f"Интегральная нормальная сила, {FORCE_UNIT_LABEL}")
+        axes[2].set_ylabel("Среднее контактное давление, МПа")
+        axes[2].set_xlabel(f"Дуговая координата относительно центра контакта, {LENGTH_UNIT_LABEL}")
 
         for axis in axes:
-            axis.grid(True, alpha=0.3)
+            apply_axes_style(axis)
+        axes[0].legend(loc="best")
 
         fig.tight_layout()
         fig.savefig(case_dir / "contact_patch_profiles.png", dpi=180)
@@ -586,7 +843,7 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
                 "average_penetration",
                 "maximum_penetration",
                 "integrated_normal_force",
-                "average_pressure",
+                "average_pressure_mpa",
             ],
             csv_rows,
         )
@@ -637,24 +894,29 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
             fields["penetration"][ordered_indices[i]],
             fields["signed_distance"][ordered_indices[i]],
             contact_force[i],
-            traction_estimate[i],
+            traction_estimate[i] * PASCAL_TO_MPA,
         ]
         for i in range(len(ordered_indices))
     ]
 
     fig, axes = plt.subplots(3, 1, figsize=(10, 11), sharex=True)
-    axes[0].plot(arc_coordinate, fields["penetration"][ordered_indices], color="#E45756", linewidth=2.0)
-    axes[1].plot(arc_coordinate, contact_force, color="#4C78A8", linewidth=2.0)
-    axes[2].plot(arc_coordinate, traction_estimate, color="#72B7B2", linewidth=2.0)
+    axes[0].plot(arc_coordinate, fields["penetration"][ordered_indices], color=TECHNICAL_COLORS["red"], linewidth=2.0)
+    axes[1].plot(arc_coordinate, contact_force, color=TECHNICAL_COLORS["blue"], linewidth=2.0)
+    axes[2].plot(
+        arc_coordinate,
+        traction_estimate * PASCAL_TO_MPA,
+        color=TECHNICAL_COLORS["teal"],
+        linewidth=2.0,
+    )
 
-    axes[0].set_title("Contact Patch Profiles Along Outer Contour")
-    axes[0].set_ylabel("Penetration")
-    axes[1].set_ylabel("Normal contact force")
-    axes[2].set_ylabel("Normal traction estimate")
-    axes[2].set_xlabel("Arc coordinate relative to contact center")
+    axes[0].set_title("Контактные профили по внешнему контуру")
+    axes[0].set_ylabel(f"Проникновение, {LENGTH_UNIT_LABEL}")
+    axes[1].set_ylabel(f"Нормальная контактная сила, {FORCE_UNIT_LABEL}")
+    axes[2].set_ylabel("Оценка нормального давления, МПа")
+    axes[2].set_xlabel(f"Дуговая координата относительно центра контакта, {LENGTH_UNIT_LABEL}")
 
     for axis in axes:
-        axis.grid(True, alpha=0.3)
+        apply_axes_style(axis)
 
     fig.tight_layout()
     fig.savefig(case_dir / "contact_patch_profiles.png", dpi=180)
@@ -668,7 +930,7 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
             "penetration",
             "signed_distance",
             "contact_normal_force",
-            "normal_traction_estimate",
+            "normal_traction_estimate_mpa",
         ],
         csv_rows,
     )
@@ -755,26 +1017,30 @@ def save_case_metric_overview(case: dict[str, Any]) -> None:
     ]
 
     summary_lines = [
-        f"nodes: {metric_path(metrics, 'counts', 'nodes', default='n/a')}",
-        f"elements: {metric_path(metrics, 'counts', 'elements', default='n/a')}",
-        f"total_dofs: {metric_path(metrics, 'counts', 'total_dofs', default='n/a')}",
-        f"free_dofs: {metric_path(metrics, 'counts', 'free_dofs', default='n/a')}",
-        f"matrix_nnz: {metric_path(metrics, 'matrix', 'nnz', default='n/a')}",
-        f"linear_iterations: {metric_path(metrics, 'iterations', 'linear_iterations', default='n/a')}",
-        f"nonlinear_iterations: {metric_path(metrics, 'iterations', 'nonlinear_iterations', default='n/a')}",
-        f"active_contact_facets: {metric_path(metrics, 'contact', 'active_contact_facets', default='n/a')}",
-        f"max_penetration: {metric_path(metrics, 'contact', 'max_penetration', default='n/a')}",
-        f"contact_patch_length: {metric_path(metrics, 'contact', 'contact_patch_length', default='n/a')}",
-        f"max_avg_pressure: {metric_path(metrics, 'contact', 'max_facet_average_pressure', default='n/a')}",
-        f"total_normal_force: {metric_path(metrics, 'contact', 'total_normal_force', default='n/a')}",
-        f"max_displacement: {metric_path(metrics, 'extrema', 'max_displacement_magnitude', default='n/a')}",
+        f"Узлы: {metric_path(metrics, 'counts', 'nodes', default='н/д')}",
+        f"Элементы: {metric_path(metrics, 'counts', 'elements', default='н/д')}",
+        f"Всего степеней свободы: {metric_path(metrics, 'counts', 'total_dofs', default='н/д')}",
+        f"Свободные степени свободы: {metric_path(metrics, 'counts', 'free_dofs', default='н/д')}",
+        f"Ненулевые элементы матрицы: {metric_path(metrics, 'matrix', 'nnz', default='н/д')}",
+        f"Линейные итерации: {metric_path(metrics, 'iterations', 'linear_iterations', default='н/д')}",
+        f"Нелинейные итерации: {metric_path(metrics, 'iterations', 'nonlinear_iterations', default='н/д')}",
+        f"Активные контактные фасетки: {metric_path(metrics, 'contact', 'active_contact_facets', default='н/д')}",
+        f"Макс. проникновение: {format_metric_with_unit(metric_path(metrics, 'contact', 'max_penetration'), unit=LENGTH_UNIT_LABEL)}",
+        f"Длина пятна контакта: {format_metric_with_unit(metric_path(metrics, 'contact', 'contact_patch_length'), unit=LENGTH_UNIT_LABEL)}",
+        f"Макс. среднее давление: {format_metric_with_unit(metric_path(metrics, 'contact', 'max_facet_average_pressure'), scale=PASCAL_TO_MPA, unit='МПа')}",
+        f"Суммарная нормальная сила: {format_metric_with_unit(metric_path(metrics, 'contact', 'total_normal_force'), unit=FORCE_UNIT_LABEL)}",
+        f"Макс. модуль перемещения: {format_metric_with_unit(metric_path(metrics, 'extrema', 'max_displacement_magnitude'), unit=LENGTH_UNIT_LABEL)}",
     ]
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
-    bars = axes[0].bar(timing_labels, timing_values, color=["#4C78A8", "#F58518", "#54A24B"])
-    axes[0].set_ylabel("Time [s]")
-    axes[0].set_title("Timing Overview")
-    axes[0].grid(True, axis="y", alpha=0.3)
+    bars = axes[0].bar(
+        ["Сборка", "Решение", "Полное время"],
+        timing_values,
+        color=[TECHNICAL_COLORS["blue"], TECHNICAL_COLORS["orange"], TECHNICAL_COLORS["green"]],
+    )
+    axes[0].set_ylabel("Время, с")
+    axes[0].set_title("Временные характеристики расчета")
+    apply_axes_style(axes[0], x_minor=False)
 
     for bar, value in zip(bars, timing_values):
         axes[0].text(
@@ -787,7 +1053,7 @@ def save_case_metric_overview(case: dict[str, Any]) -> None:
         )
 
     axes[1].axis("off")
-    axes[1].set_title("Case Metrics")
+    axes[1].set_title("Сводные метрики расчета")
     axes[1].text(
         0.0,
         1.0,
@@ -808,29 +1074,45 @@ def save_case_plots(case: dict[str, Any], warp_factor: float) -> None:
     mesh = case["mesh"]
 
     plot_specs = [
-        ("displacement_magnitude", "displacement_magnitude.png", "Displacement Magnitude", "viridis"),
-        ("sigma_yy", "sigma_yy.png", "Sigma YY", "coolwarm"),
-        ("von_mises_stress", "von_mises_stress.png", "Von Mises Stress", "plasma"),
-        ("reaction_force_magnitude", "reaction_force_magnitude.png", "Reaction Force Magnitude", "magma"),
-        ("active_contact_facet", "active_contact_facet.png", "Active Contact Facets", "binary"),
+        (
+            "displacement_magnitude",
+            "displacement_magnitude.png",
+            f"Модуль перемещений, {LENGTH_UNIT_LABEL}",
+            "viridis",
+            1.0,
+            False,
+        ),
+        ("sigma_yy", "sigma_yy.png", "Напряжение σ_yy, МПа", "coolwarm", PASCAL_TO_MPA, False),
+        ("von_mises_stress", "von_mises_stress.png", "Эквивалентное напряжение Мизеса, МПа", "plasma", PASCAL_TO_MPA, False),
+        (
+            "reaction_force_magnitude",
+            "reaction_force_magnitude.png",
+            f"Модуль реакций опор, {FORCE_UNIT_LABEL}",
+            "magma",
+            1.0,
+            False,
+        ),
+        ("active_contact_facet", "active_contact_facet.png", "Активные контактные фасетки, индикатор", "binary", 1.0, True),
         (
             "candidate_contact_facet",
             "candidate_contact_facet.png",
-            "Candidate Contact Facets",
+            "Кандидатные контактные фасетки, индикатор",
             "binary",
+            1.0,
+            True,
         ),
     ]
     if "rigid_plane_penetration" in mesh.point_data:
         plot_specs.append(
-            ("rigid_plane_penetration", "penetration.png", "Rigid-Plane Penetration", "inferno")
+            ("rigid_plane_penetration", "penetration.png", f"Проникновение в жесткую плоскость, {LENGTH_UNIT_LABEL}", "inferno", 1.0, False)
         )
     if "contact_force_magnitude" in mesh.point_data:
         plot_specs.append(
-            ("contact_force_magnitude", "contact_force_magnitude.png", "Contact Force Magnitude", "magma")
+            ("contact_force_magnitude", "contact_force_magnitude.png", f"Модуль контактной силы, {FORCE_UNIT_LABEL}", "magma", 1.0, False)
         )
     if "rigid_plane_signed_distance" in mesh.point_data:
         plot_specs.append(
-            ("rigid_plane_signed_distance", "signed_distance.png", "Rigid-Plane Signed Distance", "coolwarm")
+            ("rigid_plane_signed_distance", "signed_distance.png", f"Подписанное расстояние до жесткой плоскости, {LENGTH_UNIT_LABEL}", "coolwarm", 1.0, False)
         )
 
     deformed_mesh = mesh
@@ -838,24 +1120,22 @@ def save_case_plots(case: dict[str, Any], warp_factor: float) -> None:
         deformed_mesh = mesh.warp_by_vector("displacement", factor=warp_factor)
 
     available_scalars = set(deformed_mesh.array_names)
+    save_mesh_plot(case)
 
-    for scalar_name, file_name, title, cmap in plot_specs:
+    for scalar_name, file_name, title, cmap, scale, is_indicator in plot_specs:
         if scalar_name not in available_scalars:
             continue
 
-        plotter = pv.Plotter(off_screen=True, window_size=(1400, 900))
-        plotter.add_text(title, font_size=12)
-        plotter.add_mesh(
+        save_scalar_field_plot(
             deformed_mesh,
-            scalars=scalar_name,
-            show_edges=True,
-            cmap=cmap,
-            scalar_bar_args={"title": title},
+            case_dir,
+            scalar_name,
+            file_name,
+            title,
+            cmap,
+            scale=scale,
+            is_indicator=is_indicator,
         )
-        plotter.view_xy()
-        plotter.camera.zoom(1.2)
-        plotter.screenshot(case_dir / file_name)
-        plotter.close()
 
 
 def save_ring_specific_plots(case: dict[str, Any]) -> None:
@@ -876,7 +1156,7 @@ def build_summary_plot(cases: list[dict[str, Any]], output_root: Path, output_na
     for case in cases:
         metrics = case["metrics"]
         extra = metrics.get("extra", {})
-        mesh_label = extra.get("mesh_label", case["case_dir"].name)
+        mesh_label = humanize_mesh_label(extra.get("mesh_label", case["case_dir"].name))
         penalty = float(extra.get("penalty_parameter", math.nan))
         max_penetration = float(metric_path(metrics, "contact", "max_penetration", default=math.nan))
         total_time = float(metric_path(metrics, "timings", "total_time_seconds", default=math.nan))
@@ -913,16 +1193,16 @@ def build_summary_plot(cases: list[dict[str, Any]], output_root: Path, output_na
         axes[1].plot(penalties, total_times, marker="o", label=mesh_label)
 
     axes[0].set_xscale("log")
-    axes[0].set_xlabel("Penalty Parameter")
-    axes[0].set_ylabel("Max Penetration")
-    axes[0].set_title("Penalty vs Max Penetration")
-    axes[0].grid(True, which="both", alpha=0.3)
+    axes[0].set_xlabel("Параметр штрафа")
+    axes[0].set_ylabel(f"Максимальное проникновение, {LENGTH_UNIT_LABEL}")
+    axes[0].set_title("Зависимость проникновения от параметра штрафа")
+    apply_axes_style(axes[0], x_minor=False)
 
     axes[1].set_xscale("log")
-    axes[1].set_xlabel("Penalty Parameter")
-    axes[1].set_ylabel("Total Solve Time [s]")
-    axes[1].set_title("Penalty vs Total Time")
-    axes[1].grid(True, which="both", alpha=0.3)
+    axes[1].set_xlabel("Параметр штрафа")
+    axes[1].set_ylabel("Полное время расчета, с")
+    axes[1].set_title("Зависимость времени расчета от параметра штрафа")
+    apply_axes_style(axes[1], x_minor=False)
 
     for axis in axes:
         axis.legend()
@@ -941,7 +1221,7 @@ def build_contact_summary_plot(cases: list[dict[str, Any]], output_root: Path) -
     for case in cases:
         metrics = case["metrics"]
         extra = metrics.get("extra", {})
-        mesh_label = extra.get("mesh_label", case["case_dir"].name)
+        mesh_label = humanize_mesh_label(extra.get("mesh_label", case["case_dir"].name))
         penalty = float(extra.get("penalty_parameter", math.nan))
         ring_metadata = load_ring_metadata(case)
         facet_summary = summarize_contact_facet_rows(
@@ -965,13 +1245,13 @@ def build_contact_summary_plot(cases: list[dict[str, Any]], output_root: Path) -
                 "max_average_pressure",
                 metric_path(metrics, "contact", "max_facet_average_pressure", default=math.nan),
             )
-        )
+        ) * PASCAL_TO_MPA
         mean_active_pressure = float(
             facet_summary.get(
                 "mean_active_pressure",
                 metric_path(metrics, "contact", "mean_active_pressure", default=math.nan),
             )
-        )
+        ) * PASCAL_TO_MPA
 
         row = {
             "case_name": case["case_dir"].name,
@@ -1010,10 +1290,10 @@ def build_contact_summary_plot(cases: list[dict[str, Any]], output_root: Path) -
 
     fig, axes = plt.subplots(2, 2, figsize=(13, 10))
     axis_specs = [
-        ("contact_patch_length", "Contact patch length", axes[0, 0]),
-        ("max_average_pressure", "Max facet average pressure", axes[0, 1]),
-        ("total_normal_force", "Total normal force", axes[1, 0]),
-        ("mean_active_pressure", "Mean active pressure", axes[1, 1]),
+        ("contact_patch_length", f"Длина пятна контакта, {LENGTH_UNIT_LABEL}", axes[0, 0]),
+        ("max_average_pressure", "Максимальное среднее контактное давление, МПа", axes[0, 1]),
+        ("total_normal_force", f"Суммарная нормальная сила, {FORCE_UNIT_LABEL}", axes[1, 0]),
+        ("mean_active_pressure", "Среднее активное контактное давление, МПа", axes[1, 1]),
     ]
 
     for mesh_label in grouped_labels:
@@ -1026,10 +1306,10 @@ def build_contact_summary_plot(cases: list[dict[str, Any]], output_root: Path) -
             values = [row[field_name] for row in group]
             axis.plot(penalties, values, marker="o", linewidth=2.0, label=mesh_label)
             axis.set_xscale("log")
-            axis.set_xlabel("Penalty Parameter")
+            axis.set_xlabel("Параметр штрафа")
             axis.set_ylabel(title)
-            axis.set_title(f"Penalty vs {title}")
-            axis.grid(True, which="both", alpha=0.3)
+            axis.set_title(title)
+            apply_axes_style(axis, x_minor=False)
 
     for axis in axes.flatten():
         axis.legend()
@@ -1045,8 +1325,8 @@ def build_contact_summary_plot(cases: list[dict[str, Any]], output_root: Path) -
             "mesh_label",
             "penalty",
             "contact_patch_length",
-            "max_average_pressure",
-            "mean_active_pressure",
+            "max_average_pressure_mpa",
+            "mean_active_pressure_mpa",
             "total_normal_force",
             "center_of_pressure_arc",
         ],
@@ -1069,7 +1349,8 @@ def build_contact_summary_plot(cases: list[dict[str, Any]], output_root: Path) -
 
 def main() -> int:
     args = parse_args()
-    pv.set_plot_theme("document")
+    configure_plot_style()
+    configure_pyvista_theme()
 
     case_dirs = discover_case_directories(args.paths)
     if not case_dirs:
