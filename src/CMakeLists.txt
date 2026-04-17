@@ -13,6 +13,7 @@ function(fem_configure_app target source_file)
     add_executable(${target} ${source_file})
     target_link_libraries(${target} PRIVATE mesh)
     target_compile_features(${target} PUBLIC cxx_std_23)
+    target_compile_definitions(${target} PRIVATE FEM_REPO_ROOT="${CMAKE_SOURCE_DIR}")
 
     if(USE_INTEL_MKL AND WIN32)
         set(_omp_dll_candidates
@@ -40,6 +41,7 @@ fem_configure_app(FEMBlockOnRigidPlane src/block_on_rigid_plane.cpp)
 fem_configure_app(FEMContactBlockRegression src/contact_block_regression.cpp)
 fem_configure_app(FEMContactNoContactRegression src/contact_no_contact_regression.cpp)
 fem_configure_app(FEMRingContactStudy src/ring_contact_study.cpp)
+fem_configure_app(FEMMainScaleContactStudy src/main_scale_contact_study.cpp)
 
 enable_testing()
 add_test(NAME FEMBasicLinearReference COMMAND FEMBasicLinearReference)

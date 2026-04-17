@@ -21,10 +21,12 @@ public:
     struct AnnulusGrading {
         bool useAngularBias = false;
         bool useRadialBias = false;
+        bool localizeAngularBiasToOuterSurface = false;
         double contactCenterAngle = 0.0;
         double contactHalfAngle = 0.0;
         double angularBiasStrength = 4.0;
         double radialBiasToOuterStrength = 2.0;
+        double angularBiasOuterLocalizationPower = 2.0;
     };
 
     struct RingMeshControl {
@@ -35,10 +37,12 @@ public:
         int materialId = 0;
         bool useAngularBias = true;
         bool useRadialBias = true;
+        bool localizeAngularBiasToOuterSurface = false;
         double contactCenterAngle = -0.5 * EIGEN_PI;
         double contactHalfAngle = 0.25 * EIGEN_PI;
         double angularBiasStrength = 4.0;
         double radialBiasToOuterStrength = 2.0;
+        double angularBiasOuterLocalizationPower = 2.0;
     };
 
     struct RingMeshDiagnostics {
@@ -64,10 +68,12 @@ public:
 
         bool refineCircumferentiallyNearContact = true;
         bool refineRadiallyToOuterSurface = true;
+        bool localizeCircumferentialRefinementToOuterSurface = true;
         double expectedContactCenterAngle = -0.5 * EIGEN_PI;
         double expectedContactHalfAngle = 0.25 * EIGEN_PI;
         double circumferentialRefinementStrength = 4.0;
         double radialRefinementStrength = 2.0;
+        double circumferentialLocalizationPower = 2.0;
 
         // Expand the candidate contact window beyond the expected patch
         // so the active set can grow without remeshing.
@@ -169,7 +175,7 @@ private:
         const std::function<double(double)>& densityFunction);
     static double normalizeAngleToSweep(double angle, double startAngle, double endAngle);
     static RingMeshDiagnostics buildRingMeshDiagnostics(const std::vector<double>& radii,
-        const std::vector<double>& angles,
+        const std::vector<std::vector<double>>& anglesByLayer,
         double outerRadius);
     static bool isAngleWithinSweep(double angle, double startAngle, double endAngle);
 

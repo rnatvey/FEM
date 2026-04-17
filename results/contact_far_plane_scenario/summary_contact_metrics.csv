@@ -1,0 +1,2 @@
+case_name,mesh_label,penalty,contact_patch_length,max_average_pressure_mpa,mean_active_pressure_mpa,total_normal_force,center_of_pressure_arc
+contact_far_plane_scenario,contact far plane scenario,10000000.0,0.0,0.0,0.0,0.0,nan

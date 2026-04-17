@@ -49,7 +49,8 @@ def configure_plot_style() -> None:
             "axes.titlesize": 13,
             "axes.labelsize": 11,
             "axes.titleweight": "semibold",
-            "font.family": "DejaVu Sans",
+            "font.family": "Times New Roman",
+            "font.serif": ["Times New Roman"],
             "font.size": 10,
             "legend.frameon": True,
             "legend.facecolor": "white",
@@ -64,6 +65,7 @@ def configure_plot_style() -> None:
             "savefig.facecolor": "white",
             "savefig.dpi": 180,
             "axes.formatter.use_mathtext": True,
+            "mathtext.fontset": "stix",
         }
     )
 
@@ -649,9 +651,9 @@ def save_ring_contour_profiles(case: dict[str, Any], ring_metadata: dict[str, An
             )
 
     axes[0].set_title("Распределение напряжений по контурам шины")
-    axes[0].set_ylabel(r"$\sigma_{rr}$, МПа")
-    axes[1].set_ylabel(r"$\sigma_{\theta\theta}$, МПа")
-    axes[2].set_ylabel(r"$\tau_{r\theta}$, МПа")
+    axes[0].set_ylabel("σ_rr, МПа")
+    axes[1].set_ylabel("σ_θθ, МПа")
+    axes[2].set_ylabel("τ_rθ, МПа")
     axes[2].set_xlabel("Угол относительно центра контакта, град")
     for axis in axes:
         apply_axes_style(axis)
@@ -721,9 +723,9 @@ def save_ring_radial_profiles(case: dict[str, Any], ring_metadata: dict[str, Any
     )
 
     axes[0].set_title("Профили по радиальному сечению через центр контакта")
-    axes[0].set_ylabel(r"$\sigma_{rr}$, МПа")
-    axes[1].set_ylabel(r"$\sigma_{\theta\theta}$, МПа")
-    axes[2].set_ylabel(r"$u_r$, {LENGTH_UNIT_LABEL}")
+    axes[0].set_ylabel("σ_rr, МПа")
+    axes[1].set_ylabel("σ_θθ, МПа")
+    axes[2].set_ylabel(f"u_r, {LENGTH_UNIT_LABEL}")
     axes[2].set_xlabel(f"Радиальная координата, {LENGTH_UNIT_LABEL}")
 
     for axis in axes:
@@ -1060,7 +1062,7 @@ def save_case_metric_overview(case: dict[str, Any]) -> None:
         "\n".join(summary_lines),
         va="top",
         ha="left",
-        family="monospace",
+        family="Times New Roman",
         fontsize=10,
     )
 

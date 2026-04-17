@@ -14,9 +14,9 @@
     "prescribed_dofs": 11
   },
   "timings": {
-    "assembly_time_seconds": 0.00037880000000000005,
-    "solve_time_seconds": 0.00090430000000000003,
-    "total_time_seconds": 0.0016261000000000001
+    "assembly_time_seconds": 0.00037200000000000004,
+    "solve_time_seconds": 0.00091390000000000004,
+    "total_time_seconds": 0.0016182000000000002
   },
   "iterations": {
     "nonlinear_iterations": 1,
@@ -57,6 +57,7 @@
     "max_contact_force_magnitude": 0
   },
   "extra": {
+    "plane_strain_poissons_ratio_for_von_mises": 0.30000000000000049,
     "case_name": "contact_far_plane_scenario",
     "verification_category": "contact_no_contact",
     "difference_norm_to_baseline": 0,

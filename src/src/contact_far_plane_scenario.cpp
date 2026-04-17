@@ -5,6 +5,7 @@
 #include <limits>
 #include <memory>
 
+#include "AppRuntimeSupport.h"
 #include "FEMModel.h"
 #include "ResultFileExporter.h"
 #include "assembly.h"
@@ -155,7 +156,8 @@ int main() {
         }
 
         ResultFileExportOptions exportOptions;
-        exportOptions.outputDirectory = std::filesystem::path("results") / "contact_far_plane_scenario";
+        exportOptions.outputDirectory =
+            AppRuntimeSupport::caseOutputDirectory("contact_far_plane_scenario");
         exportOptions.baseName = "solution";
         exportOptions.extraStringMetrics = {
             {"case_name", "contact_far_plane_scenario"},
@@ -170,6 +172,7 @@ int main() {
         };
 
         const auto exportArtifacts = ResultFileExporter::exportSolution(contactModel, exportOptions);
+        AppRuntimeSupport::runPostprocessorIfEnabled(exportOptions.outputDirectory);
 
         std::cout << "Far-plane no-contact scenario" << std::endl;
         std::cout << "success=true" << std::endl;

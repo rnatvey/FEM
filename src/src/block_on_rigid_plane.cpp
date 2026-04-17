@@ -5,6 +5,7 @@
 #include <limits>
 #include <memory>
 
+#include "AppRuntimeSupport.h"
 #include "FEMModel.h"
 #include "ResultFileExporter.h"
 #include "assembly.h"
@@ -142,7 +143,8 @@ int main() {
 
         if (success) {
             ResultFileExportOptions exportOptions;
-            exportOptions.outputDirectory = std::filesystem::path("results") / "block_on_rigid_plane";
+            exportOptions.outputDirectory =
+                AppRuntimeSupport::caseOutputDirectory("block_on_rigid_plane");
             exportOptions.baseName = "solution";
             exportOptions.extraStringMetrics = {
                 {"case_name", "block_on_rigid_plane"}
@@ -152,6 +154,7 @@ int main() {
                 {"candidate_contact_facets", static_cast<double>(contactFacets.size())}
             };
             const auto exportArtifacts = ResultFileExporter::exportSolution(*model, exportOptions);
+            AppRuntimeSupport::runPostprocessorIfEnabled(exportOptions.outputDirectory);
             std::cout << "results_vtu=" << exportArtifacts.vtuPath.string() << std::endl;
             std::cout << "results_metrics_json=" << exportArtifacts.metricsJsonPath.string() << std::endl;
         }

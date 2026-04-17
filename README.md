@@ -27,6 +27,9 @@
   Маленький sanity-case для контактного контура.
 - `FEMRingContactStudy`
   Серия расчетов по штрафному параметру и типу сетки.
+- `FEMMainScaleContactStudy`
+  Более тяжелая серия contact-расчетов на параметрах из старого `main.cpp`,
+  где одновременно отслеживаются влияние `penalty` и влияние contact-focused сетки.
 - `FEMContactNoContactRegression`
   Проверка, что `solveContact()` не портит решение при отсутствии контакта.
 - `FEMContactBlockRegression`
@@ -38,7 +41,7 @@
 
 ```powershell
 cmake -S . -B build
-cmake --build build --config Release --target FEM FEMBlockOnRigidPlane FEMRingContactStudy
+cmake --build build --config Release --target FEM FEMBlockOnRigidPlane FEMRingContactStudy FEMMainScaleContactStudy
 ```
 
 Если `cmake` не лежит в `PATH`, можно использовать `cmake.exe` из установки Visual Studio.
@@ -52,8 +55,11 @@ cmake --build build --config Release --target FEM FEMBlockOnRigidPlane FEMRingCo
 Этот target использует файл [src/src/tire_contact_single_case.cpp](/c:/Users/Admin/Fem_diplom/FEM/src/src/tire_contact_single_case.cpp:1)
 как канонический пример.
 
-По умолчанию примеры пишут результаты в `results/...` относительно текущей рабочей директории.
-Если запускать из корня репозитория, результаты появятся в:
+Примеры и study-сценарии теперь всегда пишут результаты в `results/...` в корне репозитория,
+независимо от текущей рабочей директории.
+После успешного расчета Python-постпроцессор запускается автоматически, поэтому рядом с
+`solution.vtu` и `metrics.json` сразу появляются PNG-графики.
+Для `FEM.exe` результаты появятся в:
 
 - [results/tire_contact_single_case/solution.vtu](/c:/Users/Admin/Fem_diplom/FEM/results/tire_contact_single_case/solution.vtu)
 - [results/tire_contact_single_case/metrics.json](/c:/Users/Admin/Fem_diplom/FEM/results/tire_contact_single_case/metrics.json)
@@ -73,6 +79,29 @@ cmake --build build --config Release --target FEM FEMBlockOnRigidPlane FEMRingCo
 
 ```powershell
 .\build\bin\Release\FEMRingContactStudy.exe
+```
+
+### Запуск main-scale contact study
+
+```powershell
+.\build\bin\Release\FEMMainScaleContactStudy.exe
+```
+
+Этот target использует геометрию и материал из старого [src/src/main.cpp](/c:/Users/Admin/Fem_diplom/FEM/src/src/main.cpp:1),
+но решает уже контактную задачу с жесткой плоскостью.
+По умолчанию это тяжелый прогон по нескольким уровням сетки и нескольким значениям `penalty`.
+
+Результаты:
+
+- [results/main_scale_contact_study/study_summary.csv](/c:/Users/Admin/Fem_diplom/FEM/results/main_scale_contact_study/study_summary.csv)
+- [results/main_scale_contact_study/summary_metrics.png](/c:/Users/Admin/Fem_diplom/FEM/results/main_scale_contact_study/summary_metrics.png)
+- [results/main_scale_contact_study/summary_contact_metrics.png](/c:/Users/Admin/Fem_diplom/FEM/results/main_scale_contact_study/summary_contact_metrics.png)
+
+Для быстрой sanity-проверки можно ограничить прогон одной комбинацией `mesh x penalty`:
+
+```powershell
+$env:FEM_MAIN_SCALE_CONTACT_QUICK='1'
+.\build\bin\Release\FEMMainScaleContactStudy.exe
 ```
 
 Результаты:
@@ -155,13 +184,13 @@ Facet-level экспорт для контактного постпроцесс�
 python -m pip install pyvista vtk matplotlib
 ```
 
-Пример запуска для одиночного case:
+Пример ручного запуска для одиночного case:
 
 ```powershell
 python scripts/postprocess_results.py results/tire_contact_single_case
 ```
 
-Пример запуска для серии расчетов:
+Пример ручного запуска для серии расчетов:
 
 ```powershell
 python scripts/postprocess_results.py results/ring_contact_study
@@ -174,9 +203,11 @@ python scripts/postprocess_results.py results/ring_contact_study
 - сам строит PNG по кейсам
 - строит summary plot по серии расчетов
 - сохраняет обзорный `case_overview.png` с ключевыми метриками
+- использует строгий технический стиль с русскими подписями, единицами измерения и шрифтом `Times New Roman`
 
 Типовые файлы, которые появляются рядом с `solution.vtu`:
 
+- `computational_mesh.png`
 - `displacement_magnitude.png`
 - `sigma_yy.png`
 - `von_mises_stress.png`

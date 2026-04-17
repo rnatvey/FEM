@@ -90,11 +90,62 @@ double vectorMagnitude(const Eigen::Vector2d& vector) {
     return vector.norm();
 }
 
-double computeVonMisesStress(const Eigen::Vector3d& stress2d) {
+double resolveRepresentativePoissonsRatio(const Assembly& assembly) {
+    const auto& elements = assembly.getElements();
+    if (!elements.empty()) {
+        double poissonsRatioSum = 0.0;
+        int contributingElementCount = 0;
+        for (const auto& element : elements) {
+            const auto material = assembly.getMaterial(element->getMaterialId());
+            if (!material) {
+                continue;
+            }
+
+            poissonsRatioSum += material->getPoissonsRatio();
+            ++contributingElementCount;
+        }
+
+        if (contributingElementCount > 0) {
+            return poissonsRatioSum / static_cast<double>(contributingElementCount);
+        }
+    }
+
+    const auto& materials = assembly.getMaterials();
+    if (!materials.empty()) {
+        double poissonsRatioSum = 0.0;
+        int materialCount = 0;
+        for (const auto& [materialId, material] : materials) {
+            (void)materialId;
+            if (!material) {
+                continue;
+            }
+
+            poissonsRatioSum += material->getPoissonsRatio();
+            ++materialCount;
+        }
+
+        if (materialCount > 0) {
+            return poissonsRatioSum / static_cast<double>(materialCount);
+        }
+    }
+
+    return 0.0;
+}
+
+double computePlaneStrainSigmaZZ(const Eigen::Vector3d& stress2d, double poissonsRatio) {
+    return poissonsRatio * (stress2d.x() + stress2d.y());
+}
+
+double computeVonMisesStress(const Eigen::Vector3d& stress2d, double poissonsRatio) {
     const double sxx = stress2d.x();
     const double syy = stress2d.y();
     const double txy = stress2d.z();
-    return std::sqrt(std::max(0.0, sxx * sxx - sxx * syy + syy * syy + 3.0 * txy * txy));
+    const double szz = computePlaneStrainSigmaZZ(stress2d, poissonsRatio);
+    return std::sqrt(std::max(
+        0.0,
+        sxx * sxx - sxx * syy + syy * syy
+            + szz * szz - syy * szz - sxx * szz
+            + 3.0 * txy * txy));
 }
 
 int vtkCellTypeForNodeCount(int nodeCount) {
@@ -203,6 +254,7 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
     const auto nodalSignedDistances = model.getNodalContactSignedDistances();
     const auto nodalPenetrations = model.getNodalContactPenetrations();
     const auto performanceMetrics = model.getPerformanceMetrics();
+    const double representativePoissonsRatio = resolveRepresentativePoissonsRatio(*assembly);
 
     std::unordered_map<int, int> nodeIdToPointIndex;
     nodeIdToPointIndex.reserve(nodes.size());
@@ -334,10 +386,16 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
                 ? nodalStresses[index].z()
                 : 0.0);
         });
+    writeScalarDataArray(vtuStream, "sigma_zz", static_cast<int>(nodes.size()),
+        [&](int index) {
+            return formatNumber(index < static_cast<int>(nodalStresses.size())
+                ? computePlaneStrainSigmaZZ(nodalStresses[index], representativePoissonsRatio)
+                : 0.0);
+        });
     writeScalarDataArray(vtuStream, "von_mises_stress", static_cast<int>(nodes.size()),
         [&](int index) {
             return formatNumber(index < static_cast<int>(nodalStresses.size())
-                ? computeVonMisesStress(nodalStresses[index])
+                ? computeVonMisesStress(nodalStresses[index], representativePoissonsRatio)
                 : 0.0);
         });
 
@@ -656,6 +714,9 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
     metricsStream << "  \"extra\": {\n";
 
     bool wroteExtraMetric = false;
+    metricsStream << "    \"plane_strain_poissons_ratio_for_von_mises\": "
+                  << formatNumber(representativePoissonsRatio);
+    wroteExtraMetric = true;
     for (const auto& [name, value] : options.extraStringMetrics) {
         if (wroteExtraMetric) {
             metricsStream << ",\n";

@@ -4,6 +4,7 @@
 #include <limits>
 #include <memory>
 
+#include "AppRuntimeSupport.h"
 #include "FEMModel.h"
 #include "ResultFileExporter.h"
 #include "assembly.h"
@@ -96,7 +97,8 @@ int main() {
         }
 
         ResultFileExportOptions exportOptions;
-        exportOptions.outputDirectory = std::filesystem::path("results") / "tire_contact_single_case";
+        exportOptions.outputDirectory =
+            AppRuntimeSupport::caseOutputDirectory("tire_contact_single_case");
         exportOptions.baseName = "solution";
         exportOptions.extraStringMetrics = {
             {"case_name", "tire_contact_single_case"},
@@ -128,6 +130,7 @@ int main() {
         };
 
         const auto exportArtifacts = ResultFileExporter::exportSolution(model, exportOptions);
+        AppRuntimeSupport::runPostprocessorIfEnabled(exportOptions.outputDirectory);
         const auto& metrics = model.getPerformanceMetrics();
 
         std::cout << "Tire contact single-case example" << std::endl;

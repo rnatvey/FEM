@@ -14,9 +14,9 @@
     "prescribed_dofs": 61
   },
   "timings": {
-    "assembly_time_seconds": 0.0049413000000000009,
-    "solve_time_seconds": 0.072149699999999997,
-    "total_time_seconds": 0.081007400000000007
+    "assembly_time_seconds": 0.0031413999999999995,
+    "solve_time_seconds": 0.046498700000000004,
+    "total_time_seconds": 0.052111500000000005
   },
   "iterations": {
     "nonlinear_iterations": 5,
@@ -57,6 +57,7 @@
     "max_contact_force_magnitude": 353.957176302162
   },
   "extra": {
+    "plane_strain_poissons_ratio_for_von_mises": 0.29999999999999949,
     "case_name": "tire_contact_single_case",
     "mesh_label": "graded",
     "geometry_family": "tire_ring",

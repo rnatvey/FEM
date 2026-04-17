@@ -191,11 +191,13 @@ void MeshGenerator::createAnnulusGraded(const Eigen::Vector2d& center,
         endRad += TWO_PI;
     }
 
-    std::vector<double> angularParams;
+    const std::vector<double> uniformAngularParams =
+        buildDensityMappedParameters(circumferentialNodes, [](double) { return 1.0; });
+    std::vector<double> biasedAngularParams;
     if (grading.useAngularBias && grading.contactHalfAngle > 0.0) {
         double centerAngle = normalizeAngleToSweep(grading.contactCenterAngle, startRad, endRad);
         double halfAngle = std::abs(grading.contactHalfAngle);
-        angularParams = buildDensityMappedParameters(
+        biasedAngularParams = buildDensityMappedParameters(
             circumferentialNodes,
             [=](double s) {
                 double angle = startRad + s * (endRad - startRad);
@@ -205,7 +207,7 @@ void MeshGenerator::createAnnulusGraded(const Eigen::Vector2d& center,
             });
     }
     else {
-        angularParams = buildDensityMappedParameters(circumferentialNodes, [](double) { return 1.0; });
+        biasedAngularParams = uniformAngularParams;
     }
 
     std::vector<double> radialParams;
@@ -220,21 +222,38 @@ void MeshGenerator::createAnnulusGraded(const Eigen::Vector2d& center,
         radialParams = buildDensityMappedParameters(radialLayers, [](double) { return 1.0; });
     }
 
-    std::vector<double> angles(circumferentialNodes);
-    for (int i = 0; i < circumferentialNodes; ++i) {
-        angles[i] = startRad + angularParams[i] * (endRad - startRad);
-    }
-
     std::vector<double> radii(radialLayers);
     for (int i = 0; i < radialLayers; ++i) {
         radii[i] = innerRadius + radialParams[i] * (outerRadius - innerRadius);
     }
 
+    std::vector<std::vector<double>> anglesByLayer(
+        radialLayers,
+        std::vector<double>(circumferentialNodes, startRad));
+    for (int layer = 0; layer < radialLayers; ++layer) {
+        const double physicalRadialCoordinate =
+            (radii[layer] - innerRadius) / std::max(outerRadius - innerRadius, 1.0e-15);
+        const double angularBiasBlend = grading.localizeAngularBiasToOuterSurface
+            ? std::clamp(
+                std::pow(std::clamp(physicalRadialCoordinate, 0.0, 1.0),
+                    std::max(grading.angularBiasOuterLocalizationPower, 1.0)),
+                0.0, 1.0)
+            : 1.0;
+
+        for (int node = 0; node < circumferentialNodes; ++node) {
+            const double blendedParameter =
+                uniformAngularParams[node] +
+                angularBiasBlend * (biasedAngularParams[node] - uniformAngularParams[node]);
+            anglesByLayer[layer][node] = startRad + blendedParameter * (endRad - startRad);
+        }
+    }
+
     std::vector<std::vector<int>> nodeGrid(radialLayers, std::vector<int>(circumferentialNodes, 0));
     for (int layer = 0; layer < radialLayers; ++layer) {
         for (int node = 0; node < circumferentialNodes; ++node) {
-            double x = center.x() + radii[layer] * std::cos(angles[node]);
-            double y = center.y() + radii[layer] * std::sin(angles[node]);
+            const double angle = anglesByLayer[layer][node];
+            double x = center.x() + radii[layer] * std::cos(angle);
+            double y = center.y() + radii[layer] * std::sin(angle);
 
             int nodeId = nextNodeId_++;
             assembly_->addNode(std::make_shared<Node>(nodeId, x, y));
@@ -265,10 +284,12 @@ MeshGenerator::RingMeshDiagnostics MeshGenerator::generateTireRingGraded(
     AnnulusGrading grading;
     grading.useAngularBias = control.useAngularBias;
     grading.useRadialBias = control.useRadialBias;
+    grading.localizeAngularBiasToOuterSurface = control.localizeAngularBiasToOuterSurface;
     grading.contactCenterAngle = control.contactCenterAngle;
     grading.contactHalfAngle = control.contactHalfAngle;
     grading.angularBiasStrength = control.angularBiasStrength;
     grading.radialBiasToOuterStrength = control.radialBiasToOuterStrength;
+    grading.angularBiasOuterLocalizationPower = control.angularBiasOuterLocalizationPower;
 
     createAnnulusGraded(center,
         innerRadius,
@@ -290,12 +311,14 @@ MeshGenerator::RingMeshDiagnostics MeshGenerator::generateTireRingGraded(
         endRad += TWO_PI;
     }
 
-    std::vector<double> angularParams;
+    const std::vector<double> uniformAngularParams =
+        buildDensityMappedParameters(control.circumferentialNodes, [](double) { return 1.0; });
+    std::vector<double> biasedAngularParams;
     if (grading.useAngularBias && grading.contactHalfAngle > 0.0) {
         const double centerAngle =
             normalizeAngleToSweep(grading.contactCenterAngle, startRad, endRad);
         const double halfAngle = std::abs(grading.contactHalfAngle);
-        angularParams = buildDensityMappedParameters(
+        biasedAngularParams = buildDensityMappedParameters(
             control.circumferentialNodes,
             [=](double s) {
                 const double angle = startRad + s * (endRad - startRad);
@@ -306,9 +329,7 @@ MeshGenerator::RingMeshDiagnostics MeshGenerator::generateTireRingGraded(
             });
     }
     else {
-        angularParams = buildDensityMappedParameters(
-            control.circumferentialNodes,
-            [](double) { return 1.0; });
+        biasedAngularParams = uniformAngularParams;
     }
 
     std::vector<double> radialParams;
@@ -323,17 +344,33 @@ MeshGenerator::RingMeshDiagnostics MeshGenerator::generateTireRingGraded(
         radialParams = buildDensityMappedParameters(control.radialLayers, [](double) { return 1.0; });
     }
 
-    std::vector<double> angles(control.circumferentialNodes, 0.0);
-    for (int i = 0; i < control.circumferentialNodes; ++i) {
-        angles[i] = startRad + angularParams[i] * (endRad - startRad);
-    }
-
     std::vector<double> radii(control.radialLayers, 0.0);
     for (int i = 0; i < control.radialLayers; ++i) {
         radii[i] = innerRadius + radialParams[i] * (outerRadius - innerRadius);
     }
 
-    return buildRingMeshDiagnostics(radii, angles, outerRadius);
+    std::vector<std::vector<double>> anglesByLayer(
+        control.radialLayers,
+        std::vector<double>(control.circumferentialNodes, startRad));
+    for (int layer = 0; layer < control.radialLayers; ++layer) {
+        const double physicalRadialCoordinate =
+            (radii[layer] - innerRadius) / std::max(outerRadius - innerRadius, 1.0e-15);
+        const double angularBiasBlend = grading.localizeAngularBiasToOuterSurface
+            ? std::clamp(
+                std::pow(std::clamp(physicalRadialCoordinate, 0.0, 1.0),
+                    std::max(grading.angularBiasOuterLocalizationPower, 1.0)),
+                0.0, 1.0)
+            : 1.0;
+
+        for (int node = 0; node < control.circumferentialNodes; ++node) {
+            const double blendedParameter =
+                uniformAngularParams[node] +
+                angularBiasBlend * (biasedAngularParams[node] - uniformAngularParams[node]);
+            anglesByLayer[layer][node] = startRad + blendedParameter * (endRad - startRad);
+        }
+    }
+
+    return buildRingMeshDiagnostics(radii, anglesByLayer, outerRadius);
 }
 
 MeshGenerator::TireContactMeshResult MeshGenerator::generateTireContactRingMesh(
@@ -359,10 +396,13 @@ MeshGenerator::TireContactMeshResult MeshGenerator::generateTireContactRingMesh(
     ringControl.materialId = control.materialId;
     ringControl.useAngularBias = control.refineCircumferentiallyNearContact;
     ringControl.useRadialBias = control.refineRadiallyToOuterSurface;
+    ringControl.localizeAngularBiasToOuterSurface =
+        control.localizeCircumferentialRefinementToOuterSurface;
     ringControl.contactCenterAngle = control.expectedContactCenterAngle;
     ringControl.contactHalfAngle = control.expectedContactHalfAngle;
     ringControl.angularBiasStrength = control.circumferentialRefinementStrength;
     ringControl.radialBiasToOuterStrength = control.radialRefinementStrength;
+    ringControl.angularBiasOuterLocalizationPower = control.circumferentialLocalizationPower;
 
     TireContactMeshResult result;
     result.diagnostics = generateTireRingGraded(
@@ -807,10 +847,10 @@ double MeshGenerator::normalizeAngleToSweep(double angle, double startAngle, dou
 
 MeshGenerator::RingMeshDiagnostics MeshGenerator::buildRingMeshDiagnostics(
     const std::vector<double>& radii,
-    const std::vector<double>& angles,
+    const std::vector<std::vector<double>>& anglesByLayer,
     double outerRadius) {
     RingMeshDiagnostics diagnostics;
-    if (radii.size() < 2 || angles.size() < 2) {
+    if (radii.size() < 2 || anglesByLayer.size() != radii.size() || anglesByLayer.front().size() < 2) {
         return diagnostics;
     }
 
@@ -825,11 +865,10 @@ MeshGenerator::RingMeshDiagnostics MeshGenerator::buildRingMeshDiagnostics(
         diagnostics.maxRadialStep = std::max(diagnostics.maxRadialStep, radialStep);
     }
 
-    for (size_t i = 0; i + 1 < angles.size(); ++i) {
-        const double angularStep = std::abs(angles[i + 1] - angles[i]);
+    const auto& outerAngles = anglesByLayer.back();
+    for (size_t i = 0; i + 1 < outerAngles.size(); ++i) {
+        const double angularStep = std::abs(outerAngles[i + 1] - outerAngles[i]);
         const double outerArcStep = outerRadius * angularStep;
-        diagnostics.minAngularStep = std::min(diagnostics.minAngularStep, angularStep);
-        diagnostics.maxAngularStep = std::max(diagnostics.maxAngularStep, angularStep);
         diagnostics.minOuterArcStep = std::min(diagnostics.minOuterArcStep, outerArcStep);
         diagnostics.maxOuterArcStep = std::max(diagnostics.maxOuterArcStep, outerArcStep);
     }
@@ -837,9 +876,20 @@ MeshGenerator::RingMeshDiagnostics MeshGenerator::buildRingMeshDiagnostics(
     for (size_t radialIndex = 0; radialIndex + 1 < radii.size(); ++radialIndex) {
         const double radialStep = std::abs(radii[radialIndex + 1] - radii[radialIndex]);
         const double meanRadius = 0.5 * (radii[radialIndex + 1] + radii[radialIndex]);
-        for (size_t angleIndex = 0; angleIndex + 1 < angles.size(); ++angleIndex) {
-            const double angularStep = std::abs(angles[angleIndex + 1] - angles[angleIndex]);
-            const double tangentialStep = meanRadius * angularStep;
+        const auto& lowerAngles = anglesByLayer[radialIndex];
+        const auto& upperAngles = anglesByLayer[radialIndex + 1];
+        for (size_t angleIndex = 0; angleIndex + 1 < lowerAngles.size(); ++angleIndex) {
+            const double lowerAngularStep =
+                std::abs(lowerAngles[angleIndex + 1] - lowerAngles[angleIndex]);
+            const double upperAngularStep =
+                std::abs(upperAngles[angleIndex + 1] - upperAngles[angleIndex]);
+            const double representativeAngularStep = 0.5 * (lowerAngularStep + upperAngularStep);
+            diagnostics.minAngularStep =
+                std::min(diagnostics.minAngularStep, representativeAngularStep);
+            diagnostics.maxAngularStep =
+                std::max(diagnostics.maxAngularStep, representativeAngularStep);
+
+            const double tangentialStep = meanRadius * representativeAngularStep;
             const double longerStep = std::max(radialStep, tangentialStep);
             const double shorterStep = std::max(1.0e-15, std::min(radialStep, tangentialStep));
             const double aspectRatio = longerStep / shorterStep;

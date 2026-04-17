@@ -13,9 +13,9 @@
     "prescribed_dofs": 11
   },
   "timings": {
-    "assembly_time_seconds": 0.00045170000000000003,
-    "solve_time_seconds": 0.00050640000000000006,
-    "total_time_seconds": 0.0013144000000000001
+    "assembly_time_seconds": 0.00080820000000000002,
+    "solve_time_seconds": 0.00062080000000000002,
+    "total_time_seconds": 0.0020731
   },
   "iterations": {
     "nonlinear_iterations": 0,
@@ -56,6 +56,7 @@
     "max_contact_force_magnitude": 0
   },
   "extra": {
+    "plane_strain_poissons_ratio_for_von_mises": 0.30000000000000049,
     "case_name": "basic_linear_reference",
     "verification_category": "linear_baseline",
     "prescribed_top_edge_dy": -0.02,

@@ -4,6 +4,7 @@
 #include <limits>
 #include <memory>
 
+#include "AppRuntimeSupport.h"
 #include "FEMModel.h"
 #include "ResultFileExporter.h"
 #include "assembly.h"
@@ -154,7 +155,8 @@ int main() {
         }
 
         ResultFileExportOptions exportOptions;
-        exportOptions.outputDirectory = std::filesystem::path("results") / "basic_linear_reference";
+        exportOptions.outputDirectory =
+            AppRuntimeSupport::caseOutputDirectory("basic_linear_reference");
         exportOptions.baseName = "solution";
         exportOptions.extraStringMetrics = {
             {"case_name", "basic_linear_reference"},
@@ -170,6 +172,7 @@ int main() {
         };
 
         const auto exportArtifacts = ResultFileExporter::exportSolution(model, exportOptions);
+        AppRuntimeSupport::runPostprocessorIfEnabled(exportOptions.outputDirectory);
 
         std::cout << "Basic linear reference scenario" << std::endl;
         std::cout << "success=true" << std::endl;

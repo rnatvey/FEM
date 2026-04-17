@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "AppRuntimeSupport.h"
 #include "FEMModel.h"
 #include "ResultFileExporter.h"
 #include "assembly.h"
@@ -212,7 +213,7 @@ int main() {
     try {
         const std::vector<double> penalties = {1.0e6, 1.0e7, 1.0e8};
         const std::filesystem::path outputRoot =
-            std::filesystem::path("results") / "ring_contact_study";
+            AppRuntimeSupport::caseOutputDirectory("ring_contact_study");
         std::filesystem::create_directories(outputRoot);
         std::ofstream summaryStream(outputRoot / "study_summary.csv");
         if (!summaryStream.is_open()) {
@@ -233,6 +234,8 @@ int main() {
             std::cout << row << std::endl;
             summaryStream << row << '\n';
         }
+
+        AppRuntimeSupport::runPostprocessorIfEnabled(outputRoot);
 
         return 0;
     }
