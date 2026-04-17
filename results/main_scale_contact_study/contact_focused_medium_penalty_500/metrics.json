@@ -5,6 +5,15 @@
     "metrics": "metrics.json",
     "contact_facets": "contact_facets.csv"
   },
+  "units": {
+    "length": "mm",
+    "stress": "MPa",
+    "pressure": "MPa",
+    "elastic_modulus": "MPa",
+    "strain": "1",
+    "force_internal": "N",
+    "force_display": "kN"
+  },
   "counts": {
     "nodes": 25521,
     "elements": 25200,
@@ -14,9 +23,9 @@
     "prescribed_dofs": 181
   },
   "timings": {
-    "assembly_time_seconds": 0.33943940000000006,
-    "solve_time_seconds": 28.5646804,
-    "total_time_seconds": 29.283160300000002
+    "assembly_time_seconds": 0.57049479999999997,
+    "solve_time_seconds": 49.851944600000003,
+    "total_time_seconds": 50.906341700000006
   },
   "iterations": {
     "nonlinear_iterations": 8,
@@ -28,32 +37,38 @@
     "used_direct_solver": true
   },
   "residuals": {
-    "linear_residual_estimate": 3.2549096011567982e-05,
-    "linear_relative_residual_norm": 6.2244160095436386e-15,
-    "equilibrium_residual_norm": 3.2301893279771801e-10
+    "linear_residual_estimate": 3.4366144249709694e-05,
+    "linear_relative_residual_norm": 6.1375802026566317e-15,
+    "equilibrium_residual_norm": 3.0620267286175276e-10
   },
   "matrix": {
     "nnz": 907246
   },
   "contact": {
     "configured": true,
+    "method": "penalty",
     "candidate_contact_facets": 120,
     "active_contact_facets": 114,
-    "contact_force_norm": 227.79865616146296,
+    "active_contact_gauss_points": 0,
+    "contact_force_norm": 227.79865616186626,
+    "contact_state_update_norm": 0,
+    "contact_state_relative_update_norm": 0,
+    "max_normal_multiplier": 0,
+    "mean_normal_multiplier": 0,
     "max_penetration": 0.0049714696306750739,
     "max_nodal_penetration": 0.0049714857458980077,
     "minimum_signed_distance": -0.0049714857458980077,
-    "total_normal_force": 227.79865616146287,
+    "total_normal_force": 227.79865616186609,
     "active_contact_area": 113.89556870819028,
     "contact_patch_length": 113.89556870819028,
     "max_facet_average_pressure": 2.4857238084763367,
-    "mean_active_pressure": 2.000066014377623,
-    "center_of_pressure_x": 1.8907036143010468e-11,
-    "center_of_pressure_y": -298.54964051418347
+    "mean_active_pressure": 2.0000660143811633,
+    "center_of_pressure_x": -1.522454403361924e-11,
+    "center_of_pressure_y": -298.54964051417898
   },
   "extrema": {
-    "max_displacement_magnitude": 18.360817145640954,
-    "max_reaction_force_magnitude": 3.5753808577891206,
+    "max_displacement_magnitude": 18.360817145491691,
+    "max_reaction_force_magnitude": 3.5753808577938777,
     "max_contact_force_magnitude": 6.0206334305004452
   },
   "extra": {
@@ -62,6 +77,9 @@
     "mesh_label": "contact_focused_medium",
     "geometry_family": "tire_ring",
     "study_family": "main_scale_contact",
+    "contact_method": "penalty",
+    "contact_parameter_name": "penalty_parameter",
+    "contact_parameter_value": 500,
     "penalty_parameter": 500,
     "youngs_modulus": 11.84,
     "poissons_ratio": 0.47999999999999998,

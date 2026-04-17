@@ -53,8 +53,10 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
     static const std::vector<double> gaussWeights = {1.0, 1.0};
 
     state = {};
+    state.method = getMethod();
     state.activeFacetIds.reserve(facets_.size());
     state.facetResults.reserve(facets_.size());
+    state.gaussPointStates.reserve(facets_.size() * 2);
 
     for (size_t facetIndex = 0; facetIndex < facets_.size(); ++facetIndex) {
         const auto& facet = facets_[facetIndex];
@@ -123,6 +125,15 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
             const double gap = plane_.signedDistance(xGp + uGp);
             const double penetration = std::max(0.0, -gap);
 
+            ContactGaussPointState gaussPointState;
+            gaussPointState.facetId = static_cast<int>(facetIndex);
+            gaussPointState.gaussPointIndex = static_cast<int>(gpIndex);
+            gaussPointState.surfaceParameter = gaussPoints[gpIndex];
+            gaussPointState.xi = xi;
+            gaussPointState.eta = eta;
+            gaussPointState.gapN = gap;
+            gaussPointState.penetrationN = penetration;
+
             facetResult.integratedArea += ds;
             facetResult.facetLength += lengthContribution;
             facetResult.averageGap += gap * ds;
@@ -130,17 +141,21 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
             facetResult.maximumPenetration = std::max(facetResult.maximumPenetration, penetration);
 
             if (gap >= 0.0) {
+                state.gaussPointStates.push_back(gaussPointState);
                 continue;
             }
 
             facetActive = true;
             facetResult.active = true;
             facetResult.activeGaussPointCount += 1;
+            state.activeGaussPointCount += 1;
             facetResult.activeArea += ds;
             facetResult.activeLength += lengthContribution;
             state.maxPenetration = std::max(state.maxPenetration, -gap);
 
             const Eigen::Vector2d traction = (-penaltyParameter_ * gap) * plane_.normal;
+            gaussPointState.active = true;
+            gaussPointState.pressureN = traction.norm();
             facetResult.integratedNormalForce += traction.norm() * ds;
 
             for (int i = 0; i < 4; ++i) {
@@ -158,6 +173,7 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
             }
 
             state.contactForceNorm += traction.norm() * ds;
+            state.gaussPointStates.push_back(gaussPointState);
         }
 
         if (facetActive) {
@@ -177,6 +193,15 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
     contactK.resize(totalDof, totalDof);
     contactK.setFromTriplets(triplets.begin(), triplets.end());
     contactK.makeCompressed();
+}
+
+ContactSolverUpdateInfo RigidPlaneContactSolver::updateState(
+    const Eigen::VectorXd& fullDisplacements) {
+    (void)fullDisplacements;
+    return {};
+}
+
+void RigidPlaneContactSolver::resetState() {
 }
 
 std::pair<double, double> RigidPlaneContactSolver::mapSurfaceCoordinates(int surfaceIndex,

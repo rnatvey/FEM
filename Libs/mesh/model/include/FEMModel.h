@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "ContactTypes.h"
-#include "RigidPlaneContactSolver.h"
+#include "IRigidPlaneContactSolver.h"
 #include "assembly.h"
 #include "solver.h"
 
@@ -25,9 +25,15 @@ public:
         double linearResidualNorm = 0.0;
         double equilibriumResidualNorm = 0.0;
         double contactForceNorm = 0.0;
+        double contactStateUpdateNorm = 0.0;
+        double contactStateRelativeUpdateNorm = 0.0;
+        double maxNormalContactMultiplier = 0.0;
+        double meanNormalContactMultiplier = 0.0;
+        int activeContactGaussPoints = 0;
         bool linearSolveConverged = false;
         bool usedDirectLinearSolver = false;
         std::string linearSolverBackend = "uninitialized";
+        std::string contactMethod = "none";
         Eigen::Index matrixNonZeros = 0;
     };
 
@@ -41,10 +47,16 @@ public:
     void setMaxIterations(int maxIter) { maxIterations_ = maxIter; }
     void setPenaltyParameter(double penalty) { penaltyParameter_ = penalty; }
 
-    void setContactSolver(std::unique_ptr<RigidPlaneContactSolver> contactSolver);
+    void setContactSolver(std::unique_ptr<IRigidPlaneContactSolver> contactSolver);
     void configureRigidPlaneContact(const RigidPlane2D& plane,
         const std::vector<ContactFacet>& facets,
         double penaltyParameter);
+    void configureRigidPlanePenaltyContact(const RigidPlane2D& plane,
+        const std::vector<ContactFacet>& facets,
+        double penaltyParameter);
+    void configureRigidPlaneAugmentedLagrangianContact(const RigidPlane2D& plane,
+        const std::vector<ContactFacet>& facets,
+        const AugmentedLagrangianSettings& settings);
     bool hasContactSolver() const { return contactSolver_ != nullptr; }
 
     bool solve();
@@ -91,7 +103,7 @@ private:
 
     std::shared_ptr<Assembly> assembly_;
     std::unique_ptr<LinearSolver> solver_;
-    std::unique_ptr<RigidPlaneContactSolver> contactSolver_;
+    std::unique_ptr<IRigidPlaneContactSolver> contactSolver_;
 
     Eigen::VectorXd displacements_;
     Eigen::VectorXd reactionForces_;
@@ -99,6 +111,7 @@ private:
     double tolerance_ = 1.0e-8;
     int maxIterations_ = 100;
     double penaltyParameter_ = 1.0e6;
+    AugmentedLagrangianSettings augmentedLagrangianSettings_;
     int iterationCount_ = 0;
 
     Eigen::SparseMatrix<double> globalK_;

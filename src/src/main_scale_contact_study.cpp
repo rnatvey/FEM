@@ -94,9 +94,12 @@ std::string makeCaseToken(const std::string& meshLabel, double penalty) {
 }
 
 std::string buildStudyHeader() {
-    return "mesh,penalty,success,nodes,elements,candidate_facets,active_facets,"
+    return "contact_method,contact_parameter_name,contact_parameter_value,mesh,success,"
+           "nodes,elements,candidate_facets,active_facets,active_gauss_points,"
            "nonlinear_iterations,linear_iterations,max_penetration,minimum_signed_distance,"
-           "contact_force_norm,assembly_time_seconds,solve_time_seconds,total_time_seconds,"
+           "contact_force_norm_n,contact_force_norm_kn,max_normal_multiplier,"
+           "mean_normal_multiplier,contact_state_relative_update_norm,"
+           "assembly_time_seconds,solve_time_seconds,total_time_seconds,"
            "matrix_nonzeros,min_radial_step,max_radial_step,min_angular_step,max_angular_step,"
            "min_outer_arc_step,max_outer_arc_step,min_aspect_ratio,max_aspect_ratio,linear_solver_backend";
 }
@@ -104,18 +107,25 @@ std::string buildStudyHeader() {
 std::string buildStudyRow(const StudyResult& result) {
     std::ostringstream stream;
     stream << std::fixed << std::setprecision(8)
-           << result.meshLabel << ','
+           << "penalty" << ','
+           << "penalty_parameter" << ','
            << result.penalty << ','
+           << result.meshLabel << ','
            << std::boolalpha << result.success << ','
            << result.nodeCount << ','
            << result.elementCount << ','
            << result.candidateFacetCount << ','
            << result.metrics.activeSetSize << ','
+           << result.metrics.activeContactGaussPoints << ','
            << result.metrics.nonlinearIterations << ','
            << result.metrics.linearIterations << ','
            << result.metrics.maxPenetration << ','
            << result.minimumSignedDistance << ','
            << result.metrics.contactForceNorm << ','
+           << (1.0e-3 * result.metrics.contactForceNorm) << ','
+           << result.metrics.maxNormalContactMultiplier << ','
+           << result.metrics.meanNormalContactMultiplier << ','
+           << result.metrics.contactStateRelativeUpdateNorm << ','
            << result.metrics.assemblyTimeSeconds << ','
            << result.metrics.solveTimeSeconds << ','
            << result.metrics.totalTimeSeconds << ','
@@ -224,9 +234,12 @@ StudyResult runStudyCase(const std::filesystem::path& outputRoot,
         {"case_name", makeCaseToken(meshVariant.label, penalty)},
         {"mesh_label", meshVariant.label},
         {"geometry_family", "tire_ring"},
-        {"study_family", "main_scale_contact"}
+        {"study_family", "main_scale_contact"},
+        {"contact_method", "penalty"},
+        {"contact_parameter_name", "penalty_parameter"}
     };
     exportOptions.extraNumericMetrics = {
+        {"contact_parameter_value", penalty},
         {"penalty_parameter", penalty},
         {"youngs_modulus", kYoungsModulus},
         {"poissons_ratio", kPoissonsRatio},

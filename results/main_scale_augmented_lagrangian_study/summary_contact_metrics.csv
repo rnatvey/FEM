@@ -1,0 +1,2 @@
+case_name,contact_method,contact_parameter_name,contact_parameter_value,mesh_label,group_label,contact_patch_length,max_average_pressure_mpa,mean_active_pressure_mpa,total_normal_force_kn,center_of_pressure_arc
+augmented_lagrangian_contact_focused_medium_parameter_500,augmented_lagrangian,augmentation_parameter,500.0,contact focused medium,Расширенный метод Лагранжа / contact focused medium,118.34865295525182,4385.816717240587,2791.963301343571,330.42509581450946,-3.170796958329447e-11

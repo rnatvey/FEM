@@ -5,6 +5,7 @@ import argparse
 import csv
 import json
 import math
+import os
 from pathlib import Path
 from typing import Any
 
@@ -20,12 +21,13 @@ except ImportError as exc:  # pragma: no cover - import guard for runtime enviro
     ) from exc
 
 
-PASCAL_TO_MPA = 1.0e-6
-LENGTH_UNIT_LABEL = "ед. длины"
-FORCE_UNIT_LABEL = "ед. силы"
-
-LENGTH_UNIT_LABEL = "ед. длины"
-FORCE_UNIT_LABEL = "ед. силы"
+LENGTH_UNIT_LABEL = "мм"
+STRESS_UNIT_LABEL = "МПа"
+MODULUS_UNIT_LABEL = "МПа"
+FORCE_UNIT_LABEL = "кН"
+STRESS_TO_MPA = 1.0
+PRESSURE_TO_MPA = 1.0
+FORCE_TO_KN = 1.0e-3
 
 TECHNICAL_COLORS = {
     "blue": "#1f4e79",
@@ -125,6 +127,62 @@ def humanize_mesh_label(label: str) -> str:
     for english, russian in replacements.items():
         translated = translated.replace(english, russian)
     return translated
+
+
+def humanize_contact_method(method_name: str) -> str:
+    mapping = {
+        "penalty": "Штрафной метод",
+        "augmented_lagrangian": "Расширенный метод Лагранжа",
+    }
+    return mapping.get(method_name, method_name.replace("_", " "))
+
+
+def humanize_contact_parameter_name(parameter_name: str, method_name: str) -> str:
+    mapping = {
+        "penalty_parameter": "Параметр штрафа",
+        "augmentation_parameter": "Параметр расширенного Лагранжа",
+        "contact_parameter": "Контактный параметр",
+    }
+    if parameter_name in mapping:
+        return mapping[parameter_name]
+    if not parameter_name:
+        return (
+            "Параметр штрафа"
+            if method_name == "penalty"
+            else "Параметр расширенного Лагранжа"
+        )
+    return parameter_name.replace("_", " ")
+
+
+def case_contact_method(metrics: dict[str, Any]) -> str:
+    return str(
+        metric_path(metrics, "extra", "contact_method")
+        or metric_path(metrics, "contact", "method")
+        or "penalty"
+    )
+
+
+def case_contact_parameter_info(metrics: dict[str, Any]) -> tuple[str, float]:
+    method_name = case_contact_method(metrics)
+    parameter_name = str(
+        metric_path(metrics, "extra", "contact_parameter_name")
+        or (
+            "augmentation_parameter"
+            if method_name == "augmented_lagrangian"
+            else "penalty_parameter"
+        )
+    )
+    parameter_value = float(
+        metric_path(metrics, "extra", "contact_parameter_value", default=math.nan)
+    )
+    if not math.isfinite(parameter_value):
+        fallback_key = (
+            "augmentation_parameter"
+            if method_name == "augmented_lagrangian"
+            else "penalty_parameter"
+        )
+        parameter_value = float(metric_path(metrics, "extra", fallback_key, default=math.nan))
+    return parameter_name, parameter_value
 
 
 def configure_plotter(plotter: pv.Plotter) -> None:
@@ -632,7 +690,7 @@ def save_ring_contour_profiles(case: dict[str, Any], ring_metadata: dict[str, An
         for field_name, _, axis in axis_specs:
             axis.plot(
                 x_values,
-                fields[field_name][ordered_indices] * PASCAL_TO_MPA,
+                fields[field_name][ordered_indices] * STRESS_TO_MPA,
                 color=contour_styles[contour_key][0],
                 linewidth=2.0,
                 label=contour_styles[contour_key][1],
@@ -644,9 +702,9 @@ def save_ring_contour_profiles(case: dict[str, Any], ring_metadata: dict[str, An
                     contour_key,
                     fields["relative_angles_deg"][ordered_index],
                     fields["radii"][ordered_index],
-                    fields["sigma_rr"][ordered_index] * PASCAL_TO_MPA,
-                    fields["sigma_tt"][ordered_index] * PASCAL_TO_MPA,
-                    fields["tau_rt"][ordered_index] * PASCAL_TO_MPA,
+                    fields["sigma_rr"][ordered_index] * STRESS_TO_MPA,
+                    fields["sigma_tt"][ordered_index] * STRESS_TO_MPA,
+                    fields["tau_rt"][ordered_index] * STRESS_TO_MPA,
                 ]
             )
 
@@ -695,8 +753,8 @@ def save_ring_radial_profiles(case: dict[str, Any], ring_metadata: dict[str, Any
         [
             radii[i],
             fields["relative_angles_deg"][ordered_indices[i]],
-            fields["sigma_rr"][ordered_indices[i]] * PASCAL_TO_MPA,
-            fields["sigma_tt"][ordered_indices[i]] * PASCAL_TO_MPA,
+            fields["sigma_rr"][ordered_indices[i]] * STRESS_TO_MPA,
+            fields["sigma_tt"][ordered_indices[i]] * STRESS_TO_MPA,
             fields["radial_displacement"][ordered_indices[i]],
         ]
         for i in range(len(ordered_indices))
@@ -705,13 +763,13 @@ def save_ring_radial_profiles(case: dict[str, Any], ring_metadata: dict[str, Any
     fig, axes = plt.subplots(3, 1, figsize=(10, 11), sharex=True)
     axes[0].plot(
         radii,
-        fields["sigma_rr"][ordered_indices] * PASCAL_TO_MPA,
+        fields["sigma_rr"][ordered_indices] * STRESS_TO_MPA,
         color=TECHNICAL_COLORS["blue"],
         linewidth=2.0,
     )
     axes[1].plot(
         radii,
-        fields["sigma_tt"][ordered_indices] * PASCAL_TO_MPA,
+        fields["sigma_tt"][ordered_indices] * STRESS_TO_MPA,
         color=TECHNICAL_COLORS["orange"],
         linewidth=2.0,
     )
@@ -764,7 +822,7 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
             dtype=float,
         )
         average_pressure = np.array(
-            [float(row["average_pressure"]) * PASCAL_TO_MPA for row in contact_facet_rows],
+            [float(row["average_pressure"]) * PRESSURE_TO_MPA for row in contact_facet_rows],
             dtype=float,
         )
         active_length = np.array(
@@ -786,7 +844,7 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
                 active_length[i],
                 average_penetration[i],
                 maximum_penetration[i],
-                integrated_normal_force[i],
+                integrated_normal_force[i] * FORCE_TO_KN,
                 average_pressure[i],
             ]
             for i in range(len(contact_facet_rows))
@@ -809,12 +867,22 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
             linewidth=2.0,
             label="Среднее проникновение",
         )
-        axes[1].plot(arc_coordinate, integrated_normal_force, color=TECHNICAL_COLORS["blue"], linewidth=2.0)
-        axes[2].plot(arc_coordinate, average_pressure, color=TECHNICAL_COLORS["teal"], linewidth=2.0)
+        axes[1].plot(
+            arc_coordinate,
+            integrated_normal_force * FORCE_TO_KN,
+            color=TECHNICAL_COLORS["blue"],
+            linewidth=2.0,
+        )
+        axes[2].plot(
+            arc_coordinate,
+            average_pressure * PRESSURE_TO_MPA,
+            color=TECHNICAL_COLORS["teal"],
+            linewidth=2.0,
+        )
         axes[2].fill_between(
             arc_coordinate,
             0.0,
-            average_pressure,
+            average_pressure * PRESSURE_TO_MPA,
             where=active_mask,
             alpha=0.25,
             color=TECHNICAL_COLORS["teal"],
@@ -844,7 +912,7 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
                 "active_length",
                 "average_penetration",
                 "maximum_penetration",
-                "integrated_normal_force",
+                "integrated_normal_force_kn",
                 "average_pressure_mpa",
             ],
             csv_rows,
@@ -895,18 +963,23 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
             math.degrees(ordered_relative_angles[i]),
             fields["penetration"][ordered_indices[i]],
             fields["signed_distance"][ordered_indices[i]],
-            contact_force[i],
-            traction_estimate[i] * PASCAL_TO_MPA,
+            contact_force[i] * FORCE_TO_KN,
+            traction_estimate[i] * PRESSURE_TO_MPA,
         ]
         for i in range(len(ordered_indices))
     ]
 
     fig, axes = plt.subplots(3, 1, figsize=(10, 11), sharex=True)
     axes[0].plot(arc_coordinate, fields["penetration"][ordered_indices], color=TECHNICAL_COLORS["red"], linewidth=2.0)
-    axes[1].plot(arc_coordinate, contact_force, color=TECHNICAL_COLORS["blue"], linewidth=2.0)
+    axes[1].plot(
+        arc_coordinate,
+        contact_force * FORCE_TO_KN,
+        color=TECHNICAL_COLORS["blue"],
+        linewidth=2.0,
+    )
     axes[2].plot(
         arc_coordinate,
-        traction_estimate * PASCAL_TO_MPA,
+        traction_estimate * PRESSURE_TO_MPA,
         color=TECHNICAL_COLORS["teal"],
         linewidth=2.0,
     )
@@ -931,7 +1004,7 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
             "relative_angle_deg",
             "penetration",
             "signed_distance",
-            "contact_normal_force",
+            "contact_normal_force_kn",
             "normal_traction_estimate_mpa",
         ],
         csv_rows,
@@ -1010,6 +1083,8 @@ def run_checks(case: dict[str, Any]) -> list[str]:
 def save_case_metric_overview(case: dict[str, Any]) -> None:
     case_dir = case["case_dir"]
     metrics = case["metrics"]
+    contact_method = case_contact_method(metrics)
+    parameter_name, parameter_value = case_contact_parameter_info(metrics)
 
     timing_labels = ["assembly", "solve", "total"]
     timing_values = [
@@ -1019,6 +1094,8 @@ def save_case_metric_overview(case: dict[str, Any]) -> None:
     ]
 
     summary_lines = [
+        f"Контактный метод: {humanize_contact_method(contact_method)}",
+        f"{humanize_contact_parameter_name(parameter_name, contact_method)}: {format_scientific(parameter_value) if math.isfinite(parameter_value) else 'н/д'}",
         f"Узлы: {metric_path(metrics, 'counts', 'nodes', default='н/д')}",
         f"Элементы: {metric_path(metrics, 'counts', 'elements', default='н/д')}",
         f"Всего степеней свободы: {metric_path(metrics, 'counts', 'total_dofs', default='н/д')}",
@@ -1027,10 +1104,14 @@ def save_case_metric_overview(case: dict[str, Any]) -> None:
         f"Линейные итерации: {metric_path(metrics, 'iterations', 'linear_iterations', default='н/д')}",
         f"Нелинейные итерации: {metric_path(metrics, 'iterations', 'nonlinear_iterations', default='н/д')}",
         f"Активные контактные фасетки: {metric_path(metrics, 'contact', 'active_contact_facets', default='н/д')}",
+        f"Активные контактные точки Гаусса: {metric_path(metrics, 'contact', 'active_contact_gauss_points', default='н/д')}",
         f"Макс. проникновение: {format_metric_with_unit(metric_path(metrics, 'contact', 'max_penetration'), unit=LENGTH_UNIT_LABEL)}",
         f"Длина пятна контакта: {format_metric_with_unit(metric_path(metrics, 'contact', 'contact_patch_length'), unit=LENGTH_UNIT_LABEL)}",
-        f"Макс. среднее давление: {format_metric_with_unit(metric_path(metrics, 'contact', 'max_facet_average_pressure'), scale=PASCAL_TO_MPA, unit='МПа')}",
-        f"Суммарная нормальная сила: {format_metric_with_unit(metric_path(metrics, 'contact', 'total_normal_force'), unit=FORCE_UNIT_LABEL)}",
+        f"Макс. среднее давление: {format_metric_with_unit(metric_path(metrics, 'contact', 'max_facet_average_pressure'), scale=PRESSURE_TO_MPA, unit=STRESS_UNIT_LABEL)}",
+        f"Суммарная нормальная сила: {format_metric_with_unit(metric_path(metrics, 'contact', 'total_normal_force'), scale=FORCE_TO_KN, unit=FORCE_UNIT_LABEL)}",
+        f"Макс. нормальный множитель: {format_metric_with_unit(metric_path(metrics, 'contact', 'max_normal_multiplier'), unit=STRESS_UNIT_LABEL)}",
+        f"Средний нормальный множитель: {format_metric_with_unit(metric_path(metrics, 'contact', 'mean_normal_multiplier'), unit=STRESS_UNIT_LABEL)}",
+        f"Относительное обновление контактного состояния: {format_metric_with_unit(metric_path(metrics, 'contact', 'contact_state_relative_update_norm'))}",
         f"Макс. модуль перемещения: {format_metric_with_unit(metric_path(metrics, 'extrema', 'max_displacement_magnitude'), unit=LENGTH_UNIT_LABEL)}",
     ]
 
@@ -1084,14 +1165,14 @@ def save_case_plots(case: dict[str, Any], warp_factor: float) -> None:
             1.0,
             False,
         ),
-        ("sigma_yy", "sigma_yy.png", "Напряжение σ_yy, МПа", "coolwarm", PASCAL_TO_MPA, False),
-        ("von_mises_stress", "von_mises_stress.png", "Эквивалентное напряжение Мизеса, МПа", "plasma", PASCAL_TO_MPA, False),
+        ("sigma_yy", "sigma_yy.png", f"Напряжение σ_yy, {STRESS_UNIT_LABEL}", "coolwarm", STRESS_TO_MPA, False),
+        ("von_mises_stress", "von_mises_stress.png", f"Эквивалентное напряжение Мизеса, {STRESS_UNIT_LABEL}", "plasma", STRESS_TO_MPA, False),
         (
             "reaction_force_magnitude",
             "reaction_force_magnitude.png",
             f"Модуль реакций опор, {FORCE_UNIT_LABEL}",
             "magma",
-            1.0,
+            FORCE_TO_KN,
             False,
         ),
         ("active_contact_facet", "active_contact_facet.png", "Активные контактные фасетки, индикатор", "binary", 1.0, True),
@@ -1110,7 +1191,7 @@ def save_case_plots(case: dict[str, Any], warp_factor: float) -> None:
         )
     if "contact_force_magnitude" in mesh.point_data:
         plot_specs.append(
-            ("contact_force_magnitude", "contact_force_magnitude.png", f"Модуль контактной силы, {FORCE_UNIT_LABEL}", "magma", 1.0, False)
+            ("contact_force_magnitude", "contact_force_magnitude.png", f"Модуль контактной силы, {FORCE_UNIT_LABEL}", "magma", FORCE_TO_KN, False)
         )
     if "rigid_plane_signed_distance" in mesh.point_data:
         plot_specs.append(
@@ -1158,14 +1239,19 @@ def build_summary_plot(cases: list[dict[str, Any]], output_root: Path, output_na
     for case in cases:
         metrics = case["metrics"]
         extra = metrics.get("extra", {})
+        method_name = case_contact_method(metrics)
+        parameter_name, parameter_value = case_contact_parameter_info(metrics)
         mesh_label = humanize_mesh_label(extra.get("mesh_label", case["case_dir"].name))
-        penalty = float(extra.get("penalty_parameter", math.nan))
         max_penetration = float(metric_path(metrics, "contact", "max_penetration", default=math.nan))
         total_time = float(metric_path(metrics, "timings", "total_time_seconds", default=math.nan))
         rows.append(
             {
+                "method_name": method_name,
+                "parameter_name": parameter_name,
+                "method_label": humanize_contact_method(method_name),
                 "mesh_label": mesh_label,
-                "penalty": penalty,
+                "group_label": f"{humanize_contact_method(method_name)} / {mesh_label}",
+                "parameter_value": parameter_value,
                 "max_penetration": max_penetration,
                 "total_time": total_time,
             }
@@ -1174,36 +1260,47 @@ def build_summary_plot(cases: list[dict[str, Any]], output_root: Path, output_na
     valid_rows = [
         row
         for row in rows
-        if math.isfinite(row["penalty"]) and row["penalty"] > 0.0
+        if math.isfinite(row["parameter_value"]) and row["parameter_value"] > 0.0
     ]
     if not valid_rows:
         return False
 
-    grouped_labels = sorted({row["mesh_label"] for row in valid_rows})
+    grouped_labels = sorted({row["group_label"] for row in valid_rows})
+    unique_parameter_labels = sorted(
+        {
+            humanize_contact_parameter_name(row["parameter_name"], row["method_name"])
+            for row in valid_rows
+        }
+    )
+    x_axis_label = (
+        unique_parameter_labels[0]
+        if len(unique_parameter_labels) == 1
+        else "Контактный параметр"
+    )
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-    for mesh_label in grouped_labels:
+    for group_label in grouped_labels:
         group = sorted(
-            [row for row in valid_rows if row["mesh_label"] == mesh_label],
-            key=lambda row: row["penalty"],
+            [row for row in valid_rows if row["group_label"] == group_label],
+            key=lambda row: row["parameter_value"],
         )
-        penalties = [row["penalty"] for row in group]
+        parameter_values = [row["parameter_value"] for row in group]
         penetrations = [row["max_penetration"] for row in group]
         total_times = [row["total_time"] for row in group]
 
-        axes[0].plot(penalties, penetrations, marker="o", label=mesh_label)
-        axes[1].plot(penalties, total_times, marker="o", label=mesh_label)
+        axes[0].plot(parameter_values, penetrations, marker="o", label=group_label)
+        axes[1].plot(parameter_values, total_times, marker="o", label=group_label)
 
     axes[0].set_xscale("log")
-    axes[0].set_xlabel("Параметр штрафа")
+    axes[0].set_xlabel(x_axis_label)
     axes[0].set_ylabel(f"Максимальное проникновение, {LENGTH_UNIT_LABEL}")
-    axes[0].set_title("Зависимость проникновения от параметра штрафа")
+    axes[0].set_title("Зависимость проникновения от контактного параметра")
     apply_axes_style(axes[0], x_minor=False)
 
     axes[1].set_xscale("log")
-    axes[1].set_xlabel("Параметр штрафа")
+    axes[1].set_xlabel(x_axis_label)
     axes[1].set_ylabel("Полное время расчета, с")
-    axes[1].set_title("Зависимость времени расчета от параметра штрафа")
+    axes[1].set_title("Зависимость времени расчета от контактного параметра")
     apply_axes_style(axes[1], x_minor=False)
 
     for axis in axes:
@@ -1223,8 +1320,9 @@ def build_contact_summary_plot(cases: list[dict[str, Any]], output_root: Path) -
     for case in cases:
         metrics = case["metrics"]
         extra = metrics.get("extra", {})
+        method_name = case_contact_method(metrics)
+        parameter_name, parameter_value = case_contact_parameter_info(metrics)
         mesh_label = humanize_mesh_label(extra.get("mesh_label", case["case_dir"].name))
-        penalty = float(extra.get("penalty_parameter", math.nan))
         ring_metadata = load_ring_metadata(case)
         facet_summary = summarize_contact_facet_rows(
             case.get("contact_facet_rows", []),
@@ -1247,19 +1345,23 @@ def build_contact_summary_plot(cases: list[dict[str, Any]], output_root: Path) -
                 "max_average_pressure",
                 metric_path(metrics, "contact", "max_facet_average_pressure", default=math.nan),
             )
-        ) * PASCAL_TO_MPA
+        ) * PRESSURE_TO_MPA
         mean_active_pressure = float(
             facet_summary.get(
                 "mean_active_pressure",
                 metric_path(metrics, "contact", "mean_active_pressure", default=math.nan),
             )
-        ) * PASCAL_TO_MPA
+        ) * PRESSURE_TO_MPA
 
         row = {
             "case_name": case["case_dir"].name,
+            "method_name": method_name,
+            "parameter_name": parameter_name,
+            "method_label": humanize_contact_method(method_name),
             "mesh_label": mesh_label,
-            "penalty": penalty,
-            "total_normal_force": total_normal_force,
+            "group_label": f"{humanize_contact_method(method_name)} / {mesh_label}",
+            "parameter_value": parameter_value,
+            "total_normal_force": total_normal_force * FORCE_TO_KN,
             "contact_patch_length": contact_patch_length,
             "max_average_pressure": max_average_pressure,
             "mean_active_pressure": mean_active_pressure,
@@ -1283,12 +1385,23 @@ def build_contact_summary_plot(cases: list[dict[str, Any]], output_root: Path) -
     valid_rows = [
         row
         for row in rows
-        if math.isfinite(row["penalty"]) and row["penalty"] > 0.0
+        if math.isfinite(row["parameter_value"]) and row["parameter_value"] > 0.0
     ]
     if not valid_rows:
         return False
 
-    grouped_labels = sorted({row["mesh_label"] for row in valid_rows})
+    grouped_labels = sorted({row["group_label"] for row in valid_rows})
+    unique_parameter_labels = sorted(
+        {
+            humanize_contact_parameter_name(row["parameter_name"], row["method_name"])
+            for row in valid_rows
+        }
+    )
+    x_axis_label = (
+        unique_parameter_labels[0]
+        if len(unique_parameter_labels) == 1
+        else "Контактный параметр"
+    )
 
     fig, axes = plt.subplots(2, 2, figsize=(13, 10))
     axis_specs = [
@@ -1298,17 +1411,17 @@ def build_contact_summary_plot(cases: list[dict[str, Any]], output_root: Path) -
         ("mean_active_pressure", "Среднее активное контактное давление, МПа", axes[1, 1]),
     ]
 
-    for mesh_label in grouped_labels:
+    for group_label in grouped_labels:
         group = sorted(
-            [row for row in valid_rows if row["mesh_label"] == mesh_label],
-            key=lambda row: row["penalty"],
+            [row for row in valid_rows if row["group_label"] == group_label],
+            key=lambda row: row["parameter_value"],
         )
-        penalties = [row["penalty"] for row in group]
+        parameter_values = [row["parameter_value"] for row in group]
         for field_name, title, axis in axis_specs:
             values = [row[field_name] for row in group]
-            axis.plot(penalties, values, marker="o", linewidth=2.0, label=mesh_label)
+            axis.plot(parameter_values, values, marker="o", linewidth=2.0, label=group_label)
             axis.set_xscale("log")
-            axis.set_xlabel("Параметр штрафа")
+            axis.set_xlabel(x_axis_label)
             axis.set_ylabel(title)
             axis.set_title(title)
             apply_axes_style(axis, x_minor=False)
@@ -1324,19 +1437,25 @@ def build_contact_summary_plot(cases: list[dict[str, Any]], output_root: Path) -
         output_root / "summary_contact_metrics.csv",
         [
             "case_name",
+            "contact_method",
+            "contact_parameter_name",
+            "contact_parameter_value",
             "mesh_label",
-            "penalty",
+            "group_label",
             "contact_patch_length",
             "max_average_pressure_mpa",
             "mean_active_pressure_mpa",
-            "total_normal_force",
+            "total_normal_force_kn",
             "center_of_pressure_arc",
         ],
         [
             [
                 row["case_name"],
+                row["method_name"],
+                row["parameter_name"],
+                row["parameter_value"],
                 row["mesh_label"],
-                row["penalty"],
+                row["group_label"],
                 row["contact_patch_length"],
                 row["max_average_pressure"],
                 row["mean_active_pressure"],
@@ -1359,7 +1478,8 @@ def main() -> int:
         raise SystemExit("No exported case directories were found.")
 
     loaded_cases = [load_case(case_dir) for case_dir in case_dirs]
-    common_root = Path(args.paths[0])
+    resolved_input_paths = [str(Path(path).resolve()) for path in args.paths]
+    common_root = Path(os.path.commonpath(resolved_input_paths))
 
     for case in loaded_cases:
         checks = run_checks(case)

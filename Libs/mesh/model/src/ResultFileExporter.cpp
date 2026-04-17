@@ -660,6 +660,15 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
         metricsStream << "\n";
     }
     metricsStream << "  },\n";
+    metricsStream << "  \"units\": {\n";
+    metricsStream << "    \"length\": \"mm\",\n";
+    metricsStream << "    \"stress\": \"MPa\",\n";
+    metricsStream << "    \"pressure\": \"MPa\",\n";
+    metricsStream << "    \"elastic_modulus\": \"MPa\",\n";
+    metricsStream << "    \"strain\": \"1\",\n";
+    metricsStream << "    \"force_internal\": \"N\",\n";
+    metricsStream << "    \"force_display\": \"kN\"\n";
+    metricsStream << "  },\n";
     metricsStream << "  \"counts\": {\n";
     metricsStream << "    \"nodes\": " << nodeCount << ",\n";
     metricsStream << "    \"elements\": " << elementCount << ",\n";
@@ -692,9 +701,20 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
     metricsStream << "  },\n";
     metricsStream << "  \"contact\": {\n";
     metricsStream << "    \"configured\": " << (model.hasContactSolver() ? "true" : "false") << ",\n";
+    metricsStream << "    \"method\": \"" << jsonEscape(performanceMetrics.contactMethod) << "\",\n";
     metricsStream << "    \"candidate_contact_facets\": " << candidateFacetCount << ",\n";
     metricsStream << "    \"active_contact_facets\": " << activeFacetCountLongLong << ",\n";
+    metricsStream << "    \"active_contact_gauss_points\": "
+                  << performanceMetrics.activeContactGaussPoints << ",\n";
     metricsStream << "    \"contact_force_norm\": " << formatNumber(performanceMetrics.contactForceNorm) << ",\n";
+    metricsStream << "    \"contact_state_update_norm\": "
+                  << formatNumber(performanceMetrics.contactStateUpdateNorm) << ",\n";
+    metricsStream << "    \"contact_state_relative_update_norm\": "
+                  << formatNumber(performanceMetrics.contactStateRelativeUpdateNorm) << ",\n";
+    metricsStream << "    \"max_normal_multiplier\": "
+                  << formatNumber(performanceMetrics.maxNormalContactMultiplier) << ",\n";
+    metricsStream << "    \"mean_normal_multiplier\": "
+                  << formatNumber(performanceMetrics.meanNormalContactMultiplier) << ",\n";
     metricsStream << "    \"max_penetration\": " << formatNumber(performanceMetrics.maxPenetration) << ",\n";
     metricsStream << "    \"max_nodal_penetration\": " << formatNumber(maxNodalPenetration) << ",\n";
     metricsStream << "    \"minimum_signed_distance\": " << formatNumber(minSignedDistance) << ",\n";

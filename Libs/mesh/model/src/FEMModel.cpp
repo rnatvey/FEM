@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 #include "ContactTypes.h"
+#include "RigidPlaneAugmentedLagrangianContactSolver.h"
 #include "RigidPlaneContactSolver.h"
 #include "planeisometric/Planeisoparametric.h"
 
@@ -21,15 +22,30 @@ void FEModel::setAssembly(std::shared_ptr<Assembly> assembly) {
     nodalDataCalculated_ = false;
 }
 
-void FEModel::setContactSolver(std::unique_ptr<RigidPlaneContactSolver> contactSolver) {
+void FEModel::setContactSolver(std::unique_ptr<IRigidPlaneContactSolver> contactSolver) {
     contactSolver_ = std::move(contactSolver);
 }
 
 void FEModel::configureRigidPlaneContact(const RigidPlane2D& plane,
     const std::vector<ContactFacet>& facets,
     double penaltyParameter) {
+    configureRigidPlanePenaltyContact(plane, facets, penaltyParameter);
+}
+
+void FEModel::configureRigidPlanePenaltyContact(const RigidPlane2D& plane,
+    const std::vector<ContactFacet>& facets,
+    double penaltyParameter) {
     penaltyParameter_ = penaltyParameter;
     contactSolver_ = std::make_unique<RigidPlaneContactSolver>(assembly_, plane, penaltyParameter_);
+    contactSolver_->setContactFacets(facets);
+}
+
+void FEModel::configureRigidPlaneAugmentedLagrangianContact(const RigidPlane2D& plane,
+    const std::vector<ContactFacet>& facets,
+    const AugmentedLagrangianSettings& settings) {
+    augmentedLagrangianSettings_ = settings;
+    contactSolver_ = std::make_unique<RigidPlaneAugmentedLagrangianContactSolver>(
+        assembly_, plane, augmentedLagrangianSettings_);
     contactSolver_->setContactFacets(facets);
 }
 
@@ -86,9 +102,11 @@ bool FEModel::solveContact() {
 
     nodalDataCalculated_ = false;
     performanceMetrics_ = {};
+    performanceMetrics_.contactMethod = std::string(contactSolver_->getMethodName());
     iterationCount_ = 0;
 
     try {
+        contactSolver_->resetState();
         return solveContactIterative();
     }
     catch (const std::exception& e) {
@@ -233,6 +251,7 @@ bool FEModel::solveContactIterative() {
         }
 
         ContactIterationInfo convergedStateInfo;
+        convergedStateInfo.updateInfo = contactSolver_->updateState(displacements_);
         applyContactConditions(displacements_, convergedStateInfo);
 
         double relativeError =
@@ -240,15 +259,26 @@ bool FEModel::solveContactIterative() {
             (displacements_.norm() + 1.0e-15);
         bool activeSetStable =
             (convergedStateInfo.state.activeFacetIds == contactInfo.state.activeFacetIds);
+        const bool contactStateConverged = convergedStateInfo.updateInfo.converged;
 
         performanceMetrics_.activeSetSize =
             static_cast<int>(convergedStateInfo.state.activeFacetIds.size());
+        performanceMetrics_.activeContactGaussPoints =
+            convergedStateInfo.updateInfo.activeGaussPointCount;
         performanceMetrics_.maxPenetration = convergedStateInfo.state.maxPenetration;
         performanceMetrics_.contactForceNorm = convergedStateInfo.state.contactForceNorm;
+        performanceMetrics_.contactStateUpdateNorm =
+            convergedStateInfo.updateInfo.stateUpdateNorm;
+        performanceMetrics_.contactStateRelativeUpdateNorm =
+            convergedStateInfo.updateInfo.relativeStateUpdateNorm;
+        performanceMetrics_.maxNormalContactMultiplier =
+            convergedStateInfo.updateInfo.maxNormalMultiplier;
+        performanceMetrics_.meanNormalContactMultiplier =
+            convergedStateInfo.updateInfo.meanNormalMultiplier;
 
         previousDisplacements = displacements_;
 
-        if (relativeError < tolerance_ && activeSetStable) {
+        if (relativeError < tolerance_ && activeSetStable && contactStateConverged) {
             converged = true;
             break;
         }

@@ -6,30 +6,41 @@
 #include <vector>
 
 #include "ContactTypes.h"
+#include "IRigidPlaneContactSolver.h"
 
 class Assembly;
 class Material;
 class Node;
 class PlaneIsoparametricElement;
 
-class RigidPlaneContactSolver {
+class RigidPlaneContactSolver : public IRigidPlaneContactSolver {
 public:
     RigidPlaneContactSolver(std::shared_ptr<Assembly> assembly,
         const RigidPlane2D& plane,
         double penaltyParameter);
 
-    void setContactFacets(std::vector<ContactFacet> facets);
-    void setPlane(const RigidPlane2D& plane);
+    RigidPlaneContactMethod getMethod() const override {
+        return RigidPlaneContactMethod::Penalty;
+    }
+    std::string_view getMethodName() const override {
+        return rigidPlaneContactMethodName(getMethod());
+    }
+
+    void setContactFacets(std::vector<ContactFacet> facets) override;
+    void setPlane(const RigidPlane2D& plane) override;
     void setPenaltyParameter(double penaltyParameter);
 
-    const RigidPlane2D& getPlane() const { return plane_; }
+    const RigidPlane2D& getPlane() const override { return plane_; }
     double getPenaltyParameter() const { return penaltyParameter_; }
-    const std::vector<ContactFacet>& getContactFacets() const { return facets_; }
+    const std::vector<ContactFacet>& getContactFacets() const override { return facets_; }
 
     void assembleContact(const Eigen::VectorXd& fullDisplacements,
         Eigen::SparseMatrix<double>& contactK,
         Eigen::VectorXd& contactF,
-        ContactState& state) const;
+        ContactState& state) const override;
+
+    ContactSolverUpdateInfo updateState(const Eigen::VectorXd& fullDisplacements) override;
+    void resetState() override;
 
 private:
     static std::pair<double, double> mapSurfaceCoordinates(int surfaceIndex, double surfaceParameter);

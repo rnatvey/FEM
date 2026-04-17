@@ -14,9 +14,9 @@
     "prescribed_dofs": 11
   },
   "timings": {
-    "assembly_time_seconds": 0.00037200000000000004,
-    "solve_time_seconds": 0.00091390000000000004,
-    "total_time_seconds": 0.0016182000000000002
+    "assembly_time_seconds": 0.00033790000000000003,
+    "solve_time_seconds": 0.00085939999999999996,
+    "total_time_seconds": 0.0015215000000000001
   },
   "iterations": {
     "nonlinear_iterations": 1,
