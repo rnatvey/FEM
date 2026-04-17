@@ -1,0 +1,2 @@
+case_name,mesh_label,penalty,contact_patch_length,max_average_pressure,mean_active_pressure,total_normal_force,center_of_pressure_arc
+tire_contact_single_case,graded,10000000.0,0.2895757971871891,35533.77217632069,26432.468903128774,7654.2032542491015,-1.2097434165525556e-11

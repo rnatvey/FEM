@@ -1,0 +1,68 @@
+{
+  "base_name": "solution",
+  "files": {
+    "vtu": "solution.vtu",
+    "metrics": "metrics.json"
+  },
+  "counts": {
+    "nodes": 121,
+    "elements": 100,
+    "total_dofs": 242,
+    "free_dofs": 230,
+    "constrained_dofs": 12,
+    "prescribed_dofs": 11
+  },
+  "timings": {
+    "assembly_time_seconds": 0.00045170000000000003,
+    "solve_time_seconds": 0.00050640000000000006,
+    "total_time_seconds": 0.0013144000000000001
+  },
+  "iterations": {
+    "nonlinear_iterations": 0,
+    "linear_iterations": 38
+  },
+  "solver": {
+    "backend": "ConjugateGradient",
+    "converged": true,
+    "used_direct_solver": false
+  },
+  "residuals": {
+    "linear_residual_estimate": 4.5268621723072437e-11,
+    "linear_relative_residual_norm": 4.5268805011091501e-11,
+    "equilibrium_residual_norm": 7.5673133946450764e-07
+  },
+  "matrix": {
+    "nnz": 3616
+  },
+  "contact": {
+    "configured": false,
+    "candidate_contact_facets": 0,
+    "active_contact_facets": 0,
+    "contact_force_norm": 0,
+    "max_penetration": 0,
+    "max_nodal_penetration": 0,
+    "minimum_signed_distance": 0,
+    "total_normal_force": 0,
+    "active_contact_area": 0,
+    "contact_patch_length": 0,
+    "max_facet_average_pressure": 0,
+    "mean_active_pressure": 0,
+    "center_of_pressure_x": 0,
+    "center_of_pressure_y": 0
+  },
+  "extrema": {
+    "max_displacement_magnitude": 0.020000000000658054,
+    "max_reaction_force_magnitude": 2.3820290962469542e-07,
+    "max_contact_force_magnitude": 0
+  },
+  "extra": {
+    "case_name": "basic_linear_reference",
+    "verification_category": "linear_baseline",
+    "prescribed_top_edge_dy": -0.02,
+    "top_edge_node_count": 11,
+    "anchor_node_id": 111,
+    "maximum_prescribed_displacement_error": 0,
+    "reaction_force_sum_x": 2.5010300667395986e-12,
+    "reaction_force_sum_y": 1.4702721433675724e-11
+  }
+}

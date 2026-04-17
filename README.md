@@ -17,8 +17,12 @@
 
 После конфигурации CMake доступны основные исполняемые файлы:
 
+- `FEMBasicLinearReference`
+  Базовая линейная verification-задача без контакта.
 - `FEM`
   Канонический одиночный расчет контакта шины с жесткой плоскостью.
+- `FEMContactFarPlaneScenario`
+  Contact-enabled сценарий, в котором плоскость вынесена далеко и контакта быть не должно.
 - `FEMBlockOnRigidPlane`
   Маленький sanity-case для контактного контура.
 - `FEMRingContactStudy`
@@ -205,6 +209,11 @@ python scripts/postprocess_results.py results/ring_contact_study
 - `summary_contact_metrics.csv`
 
 Python не содержит логику решателя и используется только для анализа/визуализации.
+
+## Verification
+
+Полная карта Stage 6 с целями сценариев, критериями успеха и обязательным postprocessing
+собрана в [docs/verification_scenarios.md](/c:/Users/Admin/Fem_diplom/FEM/docs/verification_scenarios.md:1).
 
 ## Как собрать задачу с нуля в пустом `main`
 
