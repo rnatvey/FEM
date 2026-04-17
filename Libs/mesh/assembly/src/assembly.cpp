@@ -1,5 +1,6 @@
 #include "assembly.h"
 #include "solver.h"
+#include <cmath>
 #include <stdexcept>
 #include <iostream>
 #include "planeisometric/Planeisoparametric.h"
@@ -120,6 +121,7 @@ void Assembly::assembleGlobalStiffnessMatrix(Eigen::SparseMatrix<double>& global
     globalK.setZero();
 
     std::vector<Eigen::Triplet<double>> triplets;
+    triplets.reserve(elements_.size() * 64);
 
     for (const auto& element : elements_) {
         auto material = getMaterial(element->getMaterialId());
@@ -128,6 +130,7 @@ void Assembly::assembleGlobalStiffnessMatrix(Eigen::SparseMatrix<double>& global
         }
 
         std::vector<std::shared_ptr<Node>> elementNodes;
+        elementNodes.reserve(element->getNodeIds().size());
         for (int nodeId : element->getNodeIds()) {
             auto node = getNode(nodeId);
             if (node) elementNodes.push_back(node);
@@ -150,6 +153,7 @@ void Assembly::assembleGlobalStiffnessMatrix(Eigen::SparseMatrix<double>& global
     }
 
     globalK.setFromTriplets(triplets.begin(), triplets.end());
+    globalK.makeCompressed();
 }
 
 void Assembly::assembleGlobalForceVector(Eigen::VectorXd& globalF, const Eigen::VectorXd& bodyForces) const {
@@ -247,6 +251,25 @@ void Assembly::applyBoundaryConditions(Eigen::SparseMatrix<double>& globalK,
             dofs.push_back(dof);
         }
     };
+    auto appendOrValidatePrescribedDof =
+        [](std::vector<int>& dofs, std::vector<double>& values, int dof, double value) {
+            auto dofIt = std::find(dofs.begin(), dofs.end(), dof);
+            if (dofIt == dofs.end()) {
+                dofs.push_back(dof);
+                values.push_back(value);
+                return;
+            }
+
+            const size_t index = static_cast<size_t>(std::distance(dofs.begin(), dofIt));
+            if (index >= values.size()) {
+                throw std::runtime_error("Internal prescribed DOF bookkeeping mismatch");
+            }
+
+            if (std::abs(values[index] - value) > 1.0e-12) {
+                throw std::runtime_error("Conflicting prescribed displacement for DOF " +
+                    std::to_string(dof));
+            }
+        };
 
     // Собираем граничные условия
     for (const auto& bc : boundaryConditions_) {
@@ -256,8 +279,7 @@ void Assembly::applyBoundaryConditions(Eigen::SparseMatrix<double>& globalK,
         if (bc.fixX) {
             int dofX = getGlobalDofIndex(bc.nodeId, 0);
             if (bc.hasPrescribedDisplacement) {
-                appendUniqueDof(prescribedDofs, dofX);
-                prescribedValues.push_back(bc.prescribedDx);
+                appendOrValidatePrescribedDof(prescribedDofs, prescribedValues, dofX, bc.prescribedDx);
             }
             else {
                 appendUniqueDof(fixedZeroDofs, dofX);
@@ -267,8 +289,7 @@ void Assembly::applyBoundaryConditions(Eigen::SparseMatrix<double>& globalK,
         if (bc.fixY) {
             int dofY = getGlobalDofIndex(bc.nodeId, 1);
             if (bc.hasPrescribedDisplacement) {
-                appendUniqueDof(prescribedDofs, dofY);
-                prescribedValues.push_back(bc.prescribedDy);
+                appendOrValidatePrescribedDof(prescribedDofs, prescribedValues, dofY, bc.prescribedDy);
             }
             else {
                 appendUniqueDof(fixedZeroDofs, dofY);
@@ -296,20 +317,22 @@ void Assembly::applyBoundaryConditions(Eigen::SparseMatrix<double>& globalK,
     dofMapping_.prescribedDofs = prescribedDofs;
     dofMapping_.prescribedValues = prescribedValues;
 
-    // Сначала учитываем предписанные перемещения на полной системе,
-    // затем исключаем закрепленные/заданные DOF редукцией.
-    if (!prescribedDofs.empty()) {
-        Eigen::VectorXd reactions;
-        solver.applyPrescribedDisplacements(globalK, globalF, prescribedDofs, prescribedValues, reactions);
-    }
-
+    // Apply all constraints through sparse reduction to avoid mutating the
+    // matrix structure for prescribed displacements.
     // Исключаем закрепленные DOF из системы
     if (!constrainedDofs.empty()) {
         Eigen::SparseMatrix<double> reducedK;
         Eigen::VectorXd reducedF;
         std::vector<int> activeDofs;
 
-        solver.reduceSystem(globalK, globalF, constrainedDofs, reducedK, reducedF, activeDofs);
+        solver.reduceSystem(globalK,
+            globalF,
+            constrainedDofs,
+            prescribedDofs,
+            prescribedValues,
+            reducedK,
+            reducedF,
+            activeDofs);
         globalK = std::move(reducedK);
         globalF = std::move(reducedF);
     }

@@ -85,6 +85,7 @@ bool FEModel::solveContact() {
 
     nodalDataCalculated_ = false;
     performanceMetrics_ = {};
+    iterationCount_ = 0;
 
     try {
         return solveContactIterative();
@@ -149,7 +150,20 @@ bool FEModel::solveContactIterative() {
     }
 
     const auto totalStartTime = std::chrono::high_resolution_clock::now();
-    if (!solve()) {
+    const auto assemblyStartTime = std::chrono::high_resolution_clock::now();
+    assembly_->assembleGlobalStiffnessMatrix(globalK_);
+    assembleExternalForces(globalF_);
+    assembly_->applyBoundaryConditions(globalK_, globalF_);
+    const auto assemblyEndTime = std::chrono::high_resolution_clock::now();
+
+    performanceMetrics_.assemblyTimeSeconds =
+        std::chrono::duration<double>(assemblyEndTime - assemblyStartTime).count();
+    performanceMetrics_.matrixNonZeros = globalK_.nonZeros();
+
+    const Eigen::SparseMatrix<double> structuralReducedK = globalK_;
+    const Eigen::VectorXd structuralReducedF = globalF_;
+
+    if (!solveLinearSystem()) {
         return false;
     }
 
@@ -159,21 +173,25 @@ bool FEModel::solveContactIterative() {
     bool converged = false;
 
     for (iterationCount_ = 1; iterationCount_ <= maxIterations_; ++iterationCount_) {
-        const auto assemblyStartTime = std::chrono::high_resolution_clock::now();
-
-        assembly_->assembleGlobalStiffnessMatrix(globalK_);
-        assembleExternalForces(globalF_);
+        const auto iterationAssemblyStartTime = std::chrono::high_resolution_clock::now();
 
         ContactIterationInfo contactInfo;
         applyContactConditions(previousDisplacements, contactInfo);
 
-        globalK_ += contactInfo.stiffness;
-        globalF_ += contactInfo.force + contactInfo.stiffness * previousDisplacements;
-        assembly_->applyBoundaryConditions(globalK_, globalF_);
+        Eigen::SparseMatrix<double> reducedContactK = contactInfo.stiffness;
+        Eigen::VectorXd reducedContactF =
+            contactInfo.force + contactInfo.stiffness * previousDisplacements;
+        assembly_->applyBoundaryConditions(reducedContactK, reducedContactF);
 
-        const auto assemblyEndTime = std::chrono::high_resolution_clock::now();
+        globalK_ = structuralReducedK;
+        globalK_ += reducedContactK;
+        globalK_.makeCompressed();
+        globalF_ = structuralReducedF + reducedContactF;
+
+        const auto iterationAssemblyEndTime = std::chrono::high_resolution_clock::now();
         accumulatedAssemblyTime +=
-            std::chrono::duration<double>(assemblyEndTime - assemblyStartTime).count();
+            std::chrono::duration<double>(
+                iterationAssemblyEndTime - iterationAssemblyStartTime).count();
         performanceMetrics_.assemblyTimeSeconds = accumulatedAssemblyTime;
         performanceMetrics_.matrixNonZeros = globalK_.nonZeros();
         performanceMetrics_.nonlinearIterations = iterationCount_;

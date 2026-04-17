@@ -53,6 +53,15 @@ public:
         Eigen::VectorXd& reducedF,
         std::vector<int>& activeDofs) const;
 
+    void reduceSystem(const Eigen::SparseMatrix<double>& fullK,
+        const Eigen::VectorXd& fullF,
+        const std::vector<int>& constrainedDofs,
+        const std::vector<int>& prescribedDofs,
+        const std::vector<double>& prescribedValues,
+        Eigen::SparseMatrix<double>& reducedK,
+        Eigen::VectorXd& reducedF,
+        std::vector<int>& activeDofs) const;
+
     void expandSolution(const Eigen::VectorXd& reducedU,
         const std::vector<int>& fixedDofs,
         const std::vector<int>& activeDofs,

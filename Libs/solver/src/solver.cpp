@@ -190,6 +190,24 @@ void LinearSolver::reduceSystem(const Eigen::SparseMatrix<double>& fullK,
     Eigen::SparseMatrix<double>& reducedK,
     Eigen::VectorXd& reducedF,
     std::vector<int>& activeDofs) const {
+    reduceSystem(fullK,
+        fullF,
+        fixedDofs,
+        {},
+        {},
+        reducedK,
+        reducedF,
+        activeDofs);
+}
+
+void LinearSolver::reduceSystem(const Eigen::SparseMatrix<double>& fullK,
+    const Eigen::VectorXd& fullF,
+    const std::vector<int>& constrainedDofs,
+    const std::vector<int>& prescribedDofs,
+    const std::vector<double>& prescribedValues,
+    Eigen::SparseMatrix<double>& reducedK,
+    Eigen::VectorXd& reducedF,
+    std::vector<int>& activeDofs) const {
     int totalDof = fullK.rows();
 
     if (totalDof == 0) {
@@ -200,18 +218,34 @@ void LinearSolver::reduceSystem(const Eigen::SparseMatrix<double>& fullK,
         throw std::runtime_error("Matrix and vector size mismatch in reduceSystem");
     }
 
-    std::vector<char> isFixed(totalDof, 0);
-    for (int dof : fixedDofs) {
+    if (prescribedDofs.size() != prescribedValues.size()) {
+        throw std::invalid_argument("Prescribed DOFs and values size mismatch in reduceSystem");
+    }
+
+    std::vector<char> isConstrained(totalDof, 0);
+    for (int dof : constrainedDofs) {
         if (dof < 0 || dof >= totalDof) {
-            throw std::runtime_error("Invalid fixed DOF index: " + std::to_string(dof));
+            throw std::runtime_error("Invalid constrained DOF index: " + std::to_string(dof));
         }
-        isFixed[dof] = 1;
+        isConstrained[dof] = 1;
+    }
+
+    std::vector<char> isPrescribed(totalDof, 0);
+    std::vector<double> prescribedValueByDof(totalDof, 0.0);
+    for (size_t i = 0; i < prescribedDofs.size(); ++i) {
+        int dof = prescribedDofs[i];
+        if (dof < 0 || dof >= totalDof) {
+            throw std::runtime_error("Invalid prescribed DOF index: " + std::to_string(dof));
+        }
+        isConstrained[dof] = 1;
+        isPrescribed[dof] = 1;
+        prescribedValueByDof[dof] = prescribedValues[i];
     }
 
     activeDofs.clear();
-    activeDofs.reserve(totalDof - static_cast<int>(fixedDofs.size()));
+    activeDofs.reserve(totalDof - static_cast<int>(constrainedDofs.size()));
     for (int i = 0; i < totalDof; ++i) {
-        if (!isFixed[i]) {
+        if (!isConstrained[i]) {
             activeDofs.push_back(i);
         }
     }
@@ -239,8 +273,11 @@ void LinearSolver::reduceSystem(const Eigen::SparseMatrix<double>& fullK,
             int globalI = it.row();
             int globalJ = it.col();
 
-            if (!isFixed[globalI] && !isFixed[globalJ]) {
+            if (!isConstrained[globalI] && !isConstrained[globalJ]) {
                 triplets.emplace_back(globalToActive[globalI], globalToActive[globalJ], it.value());
+            }
+            else if (!isConstrained[globalI] && isPrescribed[globalJ]) {
+                reducedF(globalToActive[globalI]) -= it.value() * prescribedValueByDof[globalJ];
             }
         }
     }

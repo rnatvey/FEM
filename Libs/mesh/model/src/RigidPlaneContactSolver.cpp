@@ -46,13 +46,14 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
     contactF = Eigen::VectorXd::Zero(totalDof);
 
     std::vector<Eigen::Triplet<double>> triplets;
-    triplets.reserve(facets_.size() * 32);
+    triplets.reserve(facets_.size() * 128);
 
     static constexpr double gaussPoint = 0.577350269189626;
     static const std::vector<double> gaussPoints = {-gaussPoint, gaussPoint};
     static const std::vector<double> gaussWeights = {1.0, 1.0};
 
     state = {};
+    state.activeFacetIds.reserve(facets_.size());
 
     for (size_t facetIndex = 0; facetIndex < facets_.size(); ++facetIndex) {
         const auto& facet = facets_[facetIndex];
