@@ -1,0 +1,85 @@
+{
+  "base_name": "solution",
+  "files": {
+    "vtu": "solution.vtu",
+    "metrics": "metrics.json",
+    "contact_facets": "contact_facets.csv"
+  },
+  "counts": {
+    "nodes": 549,
+    "elements": 480,
+    "total_dofs": 1098,
+    "free_dofs": 1036,
+    "constrained_dofs": 62,
+    "prescribed_dofs": 61
+  },
+  "timings": {
+    "assembly_time_seconds": 0.0049413000000000009,
+    "solve_time_seconds": 0.072149699999999997,
+    "total_time_seconds": 0.081007400000000007
+  },
+  "iterations": {
+    "nonlinear_iterations": 5,
+    "linear_iterations": 229
+  },
+  "solver": {
+    "backend": "ConjugateGradient",
+    "converged": true,
+    "used_direct_solver": false
+  },
+  "residuals": {
+    "linear_residual_estimate": 8.6259594397930426e-11,
+    "linear_relative_residual_norm": 8.6260135488218982e-11,
+    "equilibrium_residual_norm": 4.8035936564515938e-06
+  },
+  "matrix": {
+    "nnz": 16822
+  },
+  "contact": {
+    "configured": true,
+    "candidate_contact_facets": 60,
+    "active_contact_facets": 48,
+    "contact_force_norm": 7654.2032542491006,
+    "max_penetration": 0.0035535827789724556,
+    "max_nodal_penetration": 0.0035537332603176874,
+    "minimum_signed_distance": -0.0035537332603176874,
+    "total_normal_force": 7654.2032542491033,
+    "active_contact_area": 0.28957579718718923,
+    "contact_patch_length": 0.28957579718718923,
+    "max_facet_average_pressure": 35533.772176320686,
+    "mean_active_pressure": 26432.468903128771,
+    "center_of_pressure_x": -1.1978811952346872e-11,
+    "center_of_pressure_y": 0.084902797312495823
+  },
+  "extrema": {
+    "max_displacement_magnitude": 0.12005226639435139,
+    "max_reaction_force_magnitude": 435.45764122613781,
+    "max_contact_force_magnitude": 353.957176302162
+  },
+  "extra": {
+    "case_name": "tire_contact_single_case",
+    "mesh_label": "graded",
+    "geometry_family": "tire_ring",
+    "penalty_parameter": 10000000,
+    "candidate_contact_facets": 60,
+    "ring_center_x": 0,
+    "ring_center_y": 0.57999999999999996,
+    "ring_inner_radius": 0.25,
+    "ring_outer_radius": 0.5,
+    "ring_start_angle_rad": -2.0943951023931953,
+    "ring_end_angle_rad": -1.0471975511965976,
+    "ring_contact_center_angle_rad": -1.5707963267948966,
+    "ring_contact_half_angle_rad": 0.20943951023931956,
+    "ring_radial_layers": 9,
+    "ring_circumferential_nodes": 61,
+    "rigid_plane_normal_x": 0,
+    "rigid_plane_normal_y": 1,
+    "rigid_plane_offset": 0,
+    "mesh_min_radial_step": 0.01719439541675849,
+    "mesh_max_radial_step": 0.055065404078657565,
+    "mesh_min_angular_step": 0.0051485085731373115,
+    "mesh_max_angular_step": 0.036014385818152306,
+    "mesh_min_aspect_ratio": 1.0105698268706305,
+    "mesh_max_aspect_ratio": 38.537472363107703
+  }
+}

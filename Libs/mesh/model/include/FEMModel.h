@@ -52,15 +52,24 @@ public:
 
     const Eigen::VectorXd& getDisplacements() const { return displacements_; }
     const Eigen::VectorXd& getReactionForces() const { return reactionForces_; }
+    const Eigen::VectorXd& getContactForces() const { return contactForces_; }
     double getSolutionTime() const { return performanceMetrics_.totalTimeSeconds; }
     int getIterationCount() const { return iterationCount_; }
     const PerformanceMetrics& getPerformanceMetrics() const { return performanceMetrics_; }
+    RigidPlane2D getContactPlane() const;
+    std::vector<ContactFacet> getContactFacets() const;
+    std::vector<ContactFacetResult> getContactFacetResults() const;
+    ContactState evaluateCurrentContactState() const;
 
     Eigen::Vector3d getElementStress(int elementId, double xi, double eta) const;
     Eigen::Vector3d getElementStrain(int elementId, double xi, double eta) const;
 
     std::vector<Eigen::Vector3d> getNodalStresses() const;
     std::vector<Eigen::Vector2d> getNodalDisplacements() const;
+    std::vector<Eigen::Vector2d> getNodalReactionForces() const;
+    std::vector<Eigen::Vector2d> getNodalContactForces() const;
+    std::vector<double> getNodalContactSignedDistances() const;
+    std::vector<double> getNodalContactPenetrations() const;
     std::vector<Eigen::Vector3d> getNodalStrains() const;
 
     Eigen::Vector3d getNodeStress(int nodeId) const;

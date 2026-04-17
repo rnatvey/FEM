@@ -1,0 +1,56 @@
+{
+  "base_name": "solution",
+  "files": {
+    "vtu": "solution.vtu",
+    "metrics": "metrics.json"
+  },
+  "counts": {
+    "nodes": 121,
+    "elements": 100,
+    "total_dofs": 242,
+    "free_dofs": 230,
+    "constrained_dofs": 12,
+    "prescribed_dofs": 11
+  },
+  "timings": {
+    "assembly_time_seconds": 0.00059170000000000002,
+    "solve_time_seconds": 0.0013554000000000001,
+    "total_time_seconds": 0.0024088
+  },
+  "iterations": {
+    "nonlinear_iterations": 2,
+    "linear_iterations": 34
+  },
+  "solver": {
+    "backend": "ConjugateGradient",
+    "converged": true,
+    "used_direct_solver": false
+  },
+  "residuals": {
+    "linear_residual_estimate": 3.9161175123029839e-11,
+    "linear_relative_residual_norm": 3.9161119137414614e-11,
+    "equilibrium_residual_norm": 6.8655981124683405e-06
+  },
+  "matrix": {
+    "nnz": 3616
+  },
+  "contact": {
+    "configured": true,
+    "candidate_contact_facets": 10,
+    "active_contact_facets": 10,
+    "contact_force_norm": 10752.688172576703,
+    "max_penetration": 0.0010752688178970599,
+    "max_nodal_penetration": 0.0010752688179238301,
+    "minimum_signed_distance": -0.0010752688179238301
+  },
+  "extrema": {
+    "max_displacement_magnitude": 0.1021745868703941,
+    "max_reaction_force_magnitude": 1075.2688174888501,
+    "max_contact_force_magnitude": 1075.2688178359801
+  },
+  "extra": {
+    "case_name": "block_on_rigid_plane",
+    "minimum_signed_distance": -0.0010752688179238301,
+    "candidate_contact_facets": 10
+  }
+}

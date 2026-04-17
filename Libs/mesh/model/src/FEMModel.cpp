@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cmath>
 #include <iostream>
+#include <stdexcept>
 
 #include "ContactTypes.h"
 #include "RigidPlaneContactSolver.h"
@@ -94,6 +95,37 @@ bool FEModel::solveContact() {
         std::cerr << "FEModel: Contact solution error - " << e.what() << std::endl;
         return false;
     }
+}
+
+RigidPlane2D FEModel::getContactPlane() const {
+    if (!contactSolver_) {
+        throw std::runtime_error("Contact plane requested, but no contact solver is configured");
+    }
+    return contactSolver_->getPlane();
+}
+
+std::vector<ContactFacet> FEModel::getContactFacets() const {
+    if (!contactSolver_) {
+        return {};
+    }
+    return contactSolver_->getContactFacets();
+}
+
+std::vector<ContactFacetResult> FEModel::getContactFacetResults() const {
+    return evaluateCurrentContactState().facetResults;
+}
+
+ContactState FEModel::evaluateCurrentContactState() const {
+    if (!contactSolver_ || !assembly_ ||
+        displacements_.size() != assembly_->getTotalDofCount()) {
+        return {};
+    }
+
+    Eigen::SparseMatrix<double> contactK;
+    Eigen::VectorXd contactF;
+    ContactState state;
+    contactSolver_->assembleContact(displacements_, contactK, contactF, state);
+    return state;
 }
 
 bool FEModel::solveLinearSystem() {
@@ -377,6 +409,84 @@ std::vector<Eigen::Vector3d> FEModel::getNodalStresses() const {
 std::vector<Eigen::Vector2d> FEModel::getNodalDisplacements() const {
     calculateNodalAverages();
     return nodalDisplacements_;
+}
+
+std::vector<Eigen::Vector2d> FEModel::getNodalReactionForces() const {
+    if (!assembly_) {
+        return {};
+    }
+
+    const auto& nodes = assembly_->getNodes();
+    std::vector<Eigen::Vector2d> nodalReactionForces(
+        nodes.size(), Eigen::Vector2d::Zero());
+
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        const int nodeId = nodes[i]->getId();
+        const int dofX = assembly_->getGlobalDofIndex(nodeId, 0);
+        const int dofY = assembly_->getGlobalDofIndex(nodeId, 1);
+        if (dofX >= 0 && dofX < reactionForces_.size()) {
+            nodalReactionForces[i].x() = reactionForces_(dofX);
+        }
+        if (dofY >= 0 && dofY < reactionForces_.size()) {
+            nodalReactionForces[i].y() = reactionForces_(dofY);
+        }
+    }
+
+    return nodalReactionForces;
+}
+
+std::vector<Eigen::Vector2d> FEModel::getNodalContactForces() const {
+    if (!assembly_) {
+        return {};
+    }
+
+    const auto& nodes = assembly_->getNodes();
+    std::vector<Eigen::Vector2d> nodalContactForces(
+        nodes.size(), Eigen::Vector2d::Zero());
+
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        const int nodeId = nodes[i]->getId();
+        const int dofX = assembly_->getGlobalDofIndex(nodeId, 0);
+        const int dofY = assembly_->getGlobalDofIndex(nodeId, 1);
+        if (dofX >= 0 && dofX < contactForces_.size()) {
+            nodalContactForces[i].x() = contactForces_(dofX);
+        }
+        if (dofY >= 0 && dofY < contactForces_.size()) {
+            nodalContactForces[i].y() = contactForces_(dofY);
+        }
+    }
+
+    return nodalContactForces;
+}
+
+std::vector<double> FEModel::getNodalContactSignedDistances() const {
+    if (!assembly_) {
+        return {};
+    }
+
+    const auto& nodes = assembly_->getNodes();
+    std::vector<double> signedDistances(nodes.size(), 0.0);
+    if (!contactSolver_) {
+        return signedDistances;
+    }
+
+    const auto nodalDisplacements = getNodalDisplacements();
+    const RigidPlane2D plane = contactSolver_->getPlane();
+    for (size_t i = 0; i < nodes.size() && i < nodalDisplacements.size(); ++i) {
+        signedDistances[i] =
+            plane.signedDistance(nodes[i]->getCoordinates() + nodalDisplacements[i]);
+    }
+
+    return signedDistances;
+}
+
+std::vector<double> FEModel::getNodalContactPenetrations() const {
+    const auto signedDistances = getNodalContactSignedDistances();
+    std::vector<double> penetrations(signedDistances.size(), 0.0);
+    for (size_t i = 0; i < signedDistances.size(); ++i) {
+        penetrations[i] = std::max(0.0, -signedDistances[i]);
+    }
+    return penetrations;
 }
 
 std::vector<Eigen::Vector3d> FEModel::getNodalStrains() const {

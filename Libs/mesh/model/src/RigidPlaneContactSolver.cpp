@@ -54,6 +54,7 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
 
     state = {};
     state.activeFacetIds.reserve(facets_.size());
+    state.facetResults.reserve(facets_.size());
 
     for (size_t facetIndex = 0; facetIndex < facets_.size(); ++facetIndex) {
         const auto& facet = facets_[facetIndex];
@@ -70,7 +71,31 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
 
         std::vector<std::shared_ptr<Node>> elementNodes = getElementNodes(facet.elementId);
         std::vector<int> dofIndices = assembly_->getElementFullDofIndices(facet.elementId);
+        ContactFacetResult facetResult;
+        facetResult.facetId = static_cast<int>(facetIndex);
+        facetResult.elementId = facet.elementId;
+        facetResult.surfaceIndex = facet.surfaceIndex;
+        facetResult.normal = plane_.normal;
+        facetResult.thickness = material->getThickness();
         bool facetActive = false;
+
+        auto [midXi, midEta] = mapSurfaceCoordinates(facet.surfaceIndex, 0.0);
+        Eigen::Vector4d midpointShapeFunctions =
+            evaluateScalarShapeFunctions(*planeElement, midXi, midEta);
+        for (int localNode = 0; localNode < 4; ++localNode) {
+            facetResult.referenceMidpoint +=
+                midpointShapeFunctions(localNode) * elementNodes[localNode]->getCoordinates();
+            const int dofX = dofIndices[2 * localNode];
+            const int dofY = dofIndices[2 * localNode + 1];
+            if (dofX >= 0 && dofY >= 0 &&
+                dofX < fullDisplacements.size() && dofY < fullDisplacements.size()) {
+                facetResult.deformedMidpoint.x() +=
+                    midpointShapeFunctions(localNode) * fullDisplacements(dofX);
+                facetResult.deformedMidpoint.y() +=
+                    midpointShapeFunctions(localNode) * fullDisplacements(dofY);
+            }
+        }
+        facetResult.deformedMidpoint += facetResult.referenceMidpoint;
 
         for (size_t gpIndex = 0; gpIndex < gaussPoints.size(); ++gpIndex) {
             auto [xi, eta] = mapSurfaceCoordinates(facet.surfaceIndex, gaussPoints[gpIndex]);
@@ -89,20 +114,34 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
                 }
             }
 
-            double gap = plane_.signedDistance(xGp + uGp);
+            const double thickness = std::max(material->getThickness(), 1.0e-15);
+            const double ds = computeSurfaceJacobian(
+                facet.surfaceIndex, *planeElement, elementNodes, xi, eta) *
+                gaussWeights[gpIndex] *
+                thickness;
+            const double lengthContribution = ds / thickness;
+            const double gap = plane_.signedDistance(xGp + uGp);
+            const double penetration = std::max(0.0, -gap);
+
+            facetResult.integratedArea += ds;
+            facetResult.facetLength += lengthContribution;
+            facetResult.averageGap += gap * ds;
+            facetResult.averagePenetration += penetration * ds;
+            facetResult.maximumPenetration = std::max(facetResult.maximumPenetration, penetration);
+
             if (gap >= 0.0) {
                 continue;
             }
 
             facetActive = true;
+            facetResult.active = true;
+            facetResult.activeGaussPointCount += 1;
+            facetResult.activeArea += ds;
+            facetResult.activeLength += lengthContribution;
             state.maxPenetration = std::max(state.maxPenetration, -gap);
 
-            double ds = computeSurfaceJacobian(
-                facet.surfaceIndex, *planeElement, elementNodes, xi, eta) *
-                gaussWeights[gpIndex] *
-                material->getThickness();
-
-            Eigen::Vector2d traction = (-penaltyParameter_ * gap) * plane_.normal;
+            const Eigen::Vector2d traction = (-penaltyParameter_ * gap) * plane_.normal;
+            facetResult.integratedNormalForce += traction.norm() * ds;
 
             for (int i = 0; i < 4; ++i) {
                 contactF(dofIndices[2 * i]) += N(i) * traction.x() * ds;
@@ -124,6 +163,15 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
         if (facetActive) {
             state.activeFacetIds.push_back(static_cast<int>(facetIndex));
         }
+
+        if (facetResult.integratedArea > 0.0) {
+            facetResult.averageGap /= facetResult.integratedArea;
+            facetResult.averagePenetration /= facetResult.integratedArea;
+            facetResult.averagePressure =
+                facetResult.integratedNormalForce / facetResult.integratedArea;
+        }
+
+        state.facetResults.push_back(facetResult);
     }
 
     contactK.resize(totalDof, totalDof);

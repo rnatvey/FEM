@@ -1,10 +1,12 @@
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 #include <iostream>
 #include <limits>
 #include <memory>
 
 #include "FEMModel.h"
+#include "ResultFileExporter.h"
 #include "assembly.h"
 #include "material.h"
 #include "meshgenerator.h"
@@ -137,6 +139,22 @@ int main() {
         std::cout << "assembly_time_seconds=" << metrics.assemblyTimeSeconds << std::endl;
         std::cout << "solve_time_seconds=" << metrics.solveTimeSeconds << std::endl;
         std::cout << "matrix_nonzeros=" << metrics.matrixNonZeros << std::endl;
+
+        if (success) {
+            ResultFileExportOptions exportOptions;
+            exportOptions.outputDirectory = std::filesystem::path("results") / "block_on_rigid_plane";
+            exportOptions.baseName = "solution";
+            exportOptions.extraStringMetrics = {
+                {"case_name", "block_on_rigid_plane"}
+            };
+            exportOptions.extraNumericMetrics = {
+                {"minimum_signed_distance", minimumSignedDistance},
+                {"candidate_contact_facets", static_cast<double>(contactFacets.size())}
+            };
+            const auto exportArtifacts = ResultFileExporter::exportSolution(*model, exportOptions);
+            std::cout << "results_vtu=" << exportArtifacts.vtuPath.string() << std::endl;
+            std::cout << "results_metrics_json=" << exportArtifacts.metricsJsonPath.string() << std::endl;
+        }
 
         return success ? 0 : 1;
     }

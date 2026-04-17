@@ -1,13 +1,17 @@
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
 #include "FEMModel.h"
+#include "ResultFileExporter.h"
 #include "assembly.h"
 #include "constants.h"
 #include "material.h"
@@ -16,6 +20,16 @@
 using namespace Constants;
 
 namespace {
+
+const Eigen::Vector2d kTireCenter(0.0, 0.58);
+constexpr double kTireInnerRadius = 0.25;
+constexpr double kTireOuterRadius = 0.50;
+constexpr double kTireStartAngle = -120.0 * DEG_TO_RAD;
+constexpr double kTireEndAngle = -60.0 * DEG_TO_RAD;
+constexpr int kTireRadialLayers = 9;
+constexpr int kTireCircumferentialNodes = 61;
+constexpr double kContactCenterAngle = -90.0 * DEG_TO_RAD;
+constexpr double kContactHalfAngle = 12.0 * DEG_TO_RAD;
 
 struct StudyResult {
     std::string meshLabel;
@@ -27,6 +41,46 @@ struct StudyResult {
     FEModel::PerformanceMetrics metrics;
 };
 
+std::string makeCaseToken(const std::string& meshLabel, double penalty) {
+    std::ostringstream stream;
+    stream << meshLabel << "_penalty_" << std::llround(penalty);
+    return stream.str();
+}
+
+std::string buildStudyHeader() {
+    return "mesh,penalty,success,candidate_facets,active_facets,nonlinear_iterations,"
+           "max_penetration,minimum_signed_distance,contact_force_norm,"
+           "assembly_time_seconds,solve_time_seconds,equilibrium_residual_norm,"
+           "linear_residual_norm,min_radial_step,max_radial_step,min_angular_step,"
+           "max_angular_step,min_aspect_ratio,max_aspect_ratio,linear_solver_backend";
+}
+
+std::string buildStudyRow(const StudyResult& result) {
+    std::ostringstream stream;
+    stream << std::fixed << std::setprecision(8)
+           << result.meshLabel << ','
+           << result.penalty << ','
+           << std::boolalpha << result.success << ','
+           << result.contactFacetCount << ','
+           << result.metrics.activeSetSize << ','
+           << result.metrics.nonlinearIterations << ','
+           << result.metrics.maxPenetration << ','
+           << result.minimumSignedDistance << ','
+           << result.metrics.contactForceNorm << ','
+           << result.metrics.assemblyTimeSeconds << ','
+           << result.metrics.solveTimeSeconds << ','
+           << result.metrics.equilibriumResidualNorm << ','
+           << result.metrics.linearResidualNorm << ','
+           << result.meshDiagnostics.minRadialStep << ','
+           << result.meshDiagnostics.maxRadialStep << ','
+           << result.meshDiagnostics.minAngularStep << ','
+           << result.meshDiagnostics.maxAngularStep << ','
+           << result.meshDiagnostics.minAspectRatio << ','
+           << result.meshDiagnostics.maxAspectRatio << ','
+           << result.metrics.linearSolverBackend;
+    return stream.str();
+}
+
 std::shared_ptr<Assembly> buildRingAssembly(bool graded,
     MeshGenerator::RingMeshDiagnostics& diagnostics,
     int& contactFacetCount,
@@ -37,25 +91,20 @@ std::shared_ptr<Assembly> buildRingAssembly(bool graded,
     assembly->addMaterial(material);
 
     MeshGenerator meshGenerator(assembly);
-    const Eigen::Vector2d center(0.0, 0.58);
-    const double innerRadius = 0.25;
-    const double outerRadius = 0.50;
-    const double startAngle = -120.0 * DEG_TO_RAD;
-    const double endAngle = -60.0 * DEG_TO_RAD;
 
     MeshGenerator::TireContactAnalysisControl control;
-    control.mesh.center = center;
-    control.mesh.innerRadius = innerRadius;
-    control.mesh.outerRadius = outerRadius;
-    control.mesh.startAngle = startAngle;
-    control.mesh.endAngle = endAngle;
-    control.mesh.radialLayers = 9;
-    control.mesh.circumferentialNodes = 61;
+    control.mesh.center = kTireCenter;
+    control.mesh.innerRadius = kTireInnerRadius;
+    control.mesh.outerRadius = kTireOuterRadius;
+    control.mesh.startAngle = kTireStartAngle;
+    control.mesh.endAngle = kTireEndAngle;
+    control.mesh.radialLayers = kTireRadialLayers;
+    control.mesh.circumferentialNodes = kTireCircumferentialNodes;
     control.mesh.materialId = material->getId();
     control.mesh.refineCircumferentiallyNearContact = graded;
     control.mesh.refineRadiallyToOuterSurface = graded;
-    control.mesh.expectedContactCenterAngle = -90.0 * DEG_TO_RAD;
-    control.mesh.expectedContactHalfAngle = 12.0 * DEG_TO_RAD;
+    control.mesh.expectedContactCenterAngle = kContactCenterAngle;
+    control.mesh.expectedContactHalfAngle = kContactHalfAngle;
     control.mesh.circumferentialRefinementStrength = 6.0;
     control.mesh.radialRefinementStrength = 2.5;
     control.mesh.candidateFacetWindowScale = 3.0;
@@ -88,7 +137,10 @@ double computeMinimumSignedDistance(const FEModel& model,
     return minimumSignedDistance;
 }
 
-StudyResult runStudyCase(const std::string& meshLabel, bool graded, double penalty) {
+StudyResult runStudyCase(const std::filesystem::path& outputRoot,
+    const std::string& meshLabel,
+    bool graded,
+    double penalty) {
     StudyResult result;
     result.meshLabel = meshLabel;
     result.penalty = penalty;
@@ -114,32 +166,44 @@ StudyResult runStudyCase(const std::string& meshLabel, bool graded, double penal
         result.minimumSignedDistance = computeMinimumSignedDistance(model, assembly, rigidPlane);
     }
 
-    return result;
-}
+    const std::filesystem::path caseOutputDirectory =
+        outputRoot / makeCaseToken(meshLabel, penalty);
+    ResultFileExportOptions exportOptions;
+    exportOptions.outputDirectory = caseOutputDirectory;
+    exportOptions.baseName = "solution";
+    exportOptions.extraStringMetrics = {
+        {"mesh_label", meshLabel},
+        {"geometry_family", "tire_ring"}
+    };
+    exportOptions.extraNumericMetrics = {
+        {"penalty_parameter", penalty},
+        {"ring_center_x", kTireCenter.x()},
+        {"ring_center_y", kTireCenter.y()},
+        {"ring_inner_radius", kTireInnerRadius},
+        {"ring_outer_radius", kTireOuterRadius},
+        {"ring_start_angle_rad", kTireStartAngle},
+        {"ring_end_angle_rad", kTireEndAngle},
+        {"ring_contact_center_angle_rad", kContactCenterAngle},
+        {"ring_contact_half_angle_rad", kContactHalfAngle},
+        {"ring_radial_layers", static_cast<double>(kTireRadialLayers)},
+        {"ring_circumferential_nodes", static_cast<double>(kTireCircumferentialNodes)},
+        {"rigid_plane_normal_x", rigidPlane.normal.x()},
+        {"rigid_plane_normal_y", rigidPlane.normal.y()},
+        {"rigid_plane_offset", rigidPlane.offset},
+        {"mesh_min_radial_step", result.meshDiagnostics.minRadialStep},
+        {"mesh_max_radial_step", result.meshDiagnostics.maxRadialStep},
+        {"mesh_min_angular_step", result.meshDiagnostics.minAngularStep},
+        {"mesh_max_angular_step", result.meshDiagnostics.maxAngularStep},
+        {"mesh_min_aspect_ratio", result.meshDiagnostics.minAspectRatio},
+        {"mesh_max_aspect_ratio", result.meshDiagnostics.maxAspectRatio}
+    };
+    if (std::isfinite(result.minimumSignedDistance)) {
+        exportOptions.extraNumericMetrics.push_back(
+            {"minimum_signed_distance", result.minimumSignedDistance});
+    }
+    ResultFileExporter::exportSolution(model, exportOptions);
 
-void printStudyRow(const StudyResult& result) {
-    std::cout << std::fixed << std::setprecision(8)
-              << result.meshLabel << ','
-              << result.penalty << ','
-              << std::boolalpha << result.success << ','
-              << result.contactFacetCount << ','
-              << result.metrics.activeSetSize << ','
-              << result.metrics.nonlinearIterations << ','
-              << result.metrics.maxPenetration << ','
-              << result.minimumSignedDistance << ','
-              << result.metrics.contactForceNorm << ','
-              << result.metrics.assemblyTimeSeconds << ','
-              << result.metrics.solveTimeSeconds << ','
-              << result.metrics.equilibriumResidualNorm << ','
-              << result.metrics.linearResidualNorm << ','
-              << result.meshDiagnostics.minRadialStep << ','
-              << result.meshDiagnostics.maxRadialStep << ','
-              << result.meshDiagnostics.minAngularStep << ','
-              << result.meshDiagnostics.maxAngularStep << ','
-              << result.meshDiagnostics.minAspectRatio << ','
-              << result.meshDiagnostics.maxAspectRatio << ','
-              << result.metrics.linearSolverBackend
-              << std::endl;
+    return result;
 }
 
 } // namespace
@@ -147,19 +211,27 @@ void printStudyRow(const StudyResult& result) {
 int main() {
     try {
         const std::vector<double> penalties = {1.0e6, 1.0e7, 1.0e8};
+        const std::filesystem::path outputRoot =
+            std::filesystem::path("results") / "ring_contact_study";
+        std::filesystem::create_directories(outputRoot);
+        std::ofstream summaryStream(outputRoot / "study_summary.csv");
+        if (!summaryStream.is_open()) {
+            throw std::runtime_error("Failed to open study summary CSV file");
+        }
 
-        std::cout << "mesh,penalty,success,candidate_facets,active_facets,nonlinear_iterations,"
-                     "max_penetration,minimum_signed_distance,contact_force_norm,"
-                     "assembly_time_seconds,solve_time_seconds,equilibrium_residual_norm,"
-                     "linear_residual_norm,min_radial_step,max_radial_step,min_angular_step,"
-                     "max_angular_step,min_aspect_ratio,max_aspect_ratio,linear_solver_backend"
-                  << std::endl;
+        const std::string header = buildStudyHeader();
+        std::cout << header << std::endl;
+        summaryStream << header << '\n';
 
         for (double penalty : penalties) {
-            printStudyRow(runStudyCase("uniform", false, penalty));
+            const auto row = buildStudyRow(runStudyCase(outputRoot, "uniform", false, penalty));
+            std::cout << row << std::endl;
+            summaryStream << row << '\n';
         }
         for (double penalty : penalties) {
-            printStudyRow(runStudyCase("graded", true, penalty));
+            const auto row = buildStudyRow(runStudyCase(outputRoot, "graded", true, penalty));
+            std::cout << row << std::endl;
+            summaryStream << row << '\n';
         }
 
         return 0;

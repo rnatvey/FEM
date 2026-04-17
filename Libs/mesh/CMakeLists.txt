@@ -11,6 +11,7 @@ target_sources(mesh PRIVATE
     model/src/FEMModel.cpp
     model/src/geometry.cpp
     model/src/loadFunction.cpp
+    model/src/ResultFileExporter.cpp
     model/src/RigidPlaneContactSolver.cpp
 )
 

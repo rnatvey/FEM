@@ -33,7 +33,7 @@ function(fem_configure_app target source_file)
     endif()
 endfunction()
 
-fem_configure_app(FEM src/main.cpp)
+fem_configure_app(FEM src/tire_contact_single_case.cpp)
 fem_configure_app(FEMBlockOnRigidPlane src/block_on_rigid_plane.cpp)
 fem_configure_app(FEMContactBlockRegression src/contact_block_regression.cpp)
 fem_configure_app(FEMContactNoContactRegression src/contact_no_contact_regression.cpp)
