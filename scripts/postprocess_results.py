@@ -1112,6 +1112,7 @@ def save_case_metric_overview(case: dict[str, Any]) -> None:
         f"Макс. нормальный множитель: {format_metric_with_unit(metric_path(metrics, 'contact', 'max_normal_multiplier'), unit=STRESS_UNIT_LABEL)}",
         f"Средний нормальный множитель: {format_metric_with_unit(metric_path(metrics, 'contact', 'mean_normal_multiplier'), unit=STRESS_UNIT_LABEL)}",
         f"Относительное обновление контактного состояния: {format_metric_with_unit(metric_path(metrics, 'contact', 'contact_state_relative_update_norm'))}",
+        f"Относительное обновление по max-норме: {format_metric_with_unit(metric_path(metrics, 'contact', 'contact_state_relative_max_update'))}",
         f"Макс. модуль перемещения: {format_metric_with_unit(metric_path(metrics, 'extrema', 'max_displacement_magnitude'), unit=LENGTH_UNIT_LABEL)}",
     ]
 
@@ -1468,6 +1469,186 @@ def build_contact_summary_plot(cases: list[dict[str, Any]], output_root: Path) -
     return True
 
 
+def build_method_comparison_plot(cases: list[dict[str, Any]], output_root: Path) -> bool:
+    if not cases:
+        return False
+
+    summary_by_key: dict[tuple[str, float], dict[str, dict[str, Any]]] = {}
+    for case in cases:
+        metrics = case["metrics"]
+        method_name = case_contact_method(metrics)
+        parameter_name, parameter_value = case_contact_parameter_info(metrics)
+        if not math.isfinite(parameter_value) or parameter_value <= 0.0:
+            continue
+
+        extra = metrics.get("extra", {})
+        mesh_label = humanize_mesh_label(extra.get("mesh_label", case["case_dir"].name))
+        ring_metadata = load_ring_metadata(case)
+        facet_summary = summarize_contact_facet_rows(
+            case.get("contact_facet_rows", []),
+            ring_metadata,
+        )
+
+        summary_by_key.setdefault((mesh_label, parameter_value), {})[method_name] = {
+            "case_name": case["case_dir"].name,
+            "contact_method": method_name,
+            "contact_parameter_name": parameter_name,
+            "contact_parameter_value": parameter_value,
+            "mesh_label": mesh_label,
+            "max_penetration": float(
+                metric_path(metrics, "contact", "max_penetration", default=math.nan)
+            ),
+            "total_time_seconds": float(
+                metric_path(metrics, "timings", "total_time_seconds", default=math.nan)
+            ),
+            "total_normal_force_kn": float(
+                facet_summary.get(
+                    "total_normal_force",
+                    metric_path(metrics, "contact", "total_normal_force", default=math.nan),
+                )
+            )
+            * FORCE_TO_KN,
+            "contact_patch_length": float(
+                facet_summary.get(
+                    "contact_patch_length",
+                    metric_path(metrics, "contact", "contact_patch_length", default=math.nan),
+                )
+            ),
+        }
+
+    paired_rows: list[dict[str, Any]] = []
+    for (mesh_label, parameter_value), methods in summary_by_key.items():
+        if "penalty" not in methods or "augmented_lagrangian" not in methods:
+            continue
+
+        penalty_row = methods["penalty"]
+        al_row = methods["augmented_lagrangian"]
+        paired_rows.append(
+            {
+                "mesh_label": mesh_label,
+                "contact_parameter_value": parameter_value,
+                "penalty_case_name": penalty_row["case_name"],
+                "al_case_name": al_row["case_name"],
+                "penalty_max_penetration": penalty_row["max_penetration"],
+                "al_max_penetration": al_row["max_penetration"],
+                "penalty_total_time_seconds": penalty_row["total_time_seconds"],
+                "al_total_time_seconds": al_row["total_time_seconds"],
+                "penalty_total_normal_force_kn": penalty_row["total_normal_force_kn"],
+                "al_total_normal_force_kn": al_row["total_normal_force_kn"],
+                "penalty_contact_patch_length": penalty_row["contact_patch_length"],
+                "al_contact_patch_length": al_row["contact_patch_length"],
+            }
+        )
+
+    if not paired_rows:
+        return False
+
+    paired_rows.sort(key=lambda row: (row["mesh_label"], row["contact_parameter_value"]))
+
+    color_cycle = [
+        TECHNICAL_COLORS["blue"],
+        TECHNICAL_COLORS["red"],
+        TECHNICAL_COLORS["green"],
+        TECHNICAL_COLORS["orange"],
+        TECHNICAL_COLORS["teal"],
+    ]
+    mesh_colors = {
+        mesh_label: color_cycle[index % len(color_cycle)]
+        for index, mesh_label in enumerate(sorted({row["mesh_label"] for row in paired_rows}))
+    }
+    method_styles = {
+        "penalty": {"label": "Штрафной метод", "linestyle": "-", "marker": "o"},
+        "augmented_lagrangian": {
+            "label": "Расширенный метод Лагранжа",
+            "linestyle": "--",
+            "marker": "s",
+        },
+    }
+    method_field_prefix = {
+        "penalty": "penalty",
+        "augmented_lagrangian": "al",
+    }
+
+    fig, axes = plt.subplots(2, 2, figsize=(13, 10))
+    axis_specs = [
+        ("max_penetration", f"Максимальное проникновение, {LENGTH_UNIT_LABEL}", axes[0, 0]),
+        ("total_time_seconds", "Полное время расчета, с", axes[0, 1]),
+        ("total_normal_force_kn", f"Суммарная нормальная сила, {FORCE_UNIT_LABEL}", axes[1, 0]),
+        ("contact_patch_length", f"Длина пятна контакта, {LENGTH_UNIT_LABEL}", axes[1, 1]),
+    ]
+
+    for mesh_label in sorted({row["mesh_label"] for row in paired_rows}):
+        group = sorted(
+            [row for row in paired_rows if row["mesh_label"] == mesh_label],
+            key=lambda row: row["contact_parameter_value"],
+        )
+        parameter_values = [row["contact_parameter_value"] for row in group]
+        mesh_color = mesh_colors[mesh_label]
+
+        for method_name in ["penalty", "augmented_lagrangian"]:
+            method_style = method_styles[method_name]
+            field_prefix = method_field_prefix[method_name]
+            for field_stub, title, axis in axis_specs:
+                values = [row[f"{field_prefix}_{field_stub}"] for row in group]
+                axis.plot(
+                    parameter_values,
+                    values,
+                    color=mesh_color,
+                    linestyle=method_style["linestyle"],
+                    marker=method_style["marker"],
+                    linewidth=2.0,
+                    label=f"{method_style['label']} / {mesh_label}",
+                )
+                axis.set_xscale("log")
+                axis.set_xlabel("Контактный параметр")
+                axis.set_ylabel(title)
+                axis.set_title(title)
+                apply_axes_style(axis, x_minor=False)
+
+    for axis in axes.flatten():
+        axis.legend(fontsize=8)
+
+    fig.tight_layout()
+    fig.savefig(output_root / "method_comparison_metrics.png", dpi=180)
+    plt.close(fig)
+
+    write_rows_csv(
+        output_root / "method_comparison_metrics.csv",
+        [
+            "mesh_label",
+            "contact_parameter_value",
+            "penalty_case_name",
+            "al_case_name",
+            "penalty_max_penetration",
+            "al_max_penetration",
+            "penalty_total_time_seconds",
+            "al_total_time_seconds",
+            "penalty_total_normal_force_kn",
+            "al_total_normal_force_kn",
+            "penalty_contact_patch_length",
+            "al_contact_patch_length",
+        ],
+        [
+            [
+                row["mesh_label"],
+                row["contact_parameter_value"],
+                row["penalty_case_name"],
+                row["al_case_name"],
+                row["penalty_max_penetration"],
+                row["al_max_penetration"],
+                row["penalty_total_time_seconds"],
+                row["al_total_time_seconds"],
+                row["penalty_total_normal_force_kn"],
+                row["al_total_normal_force_kn"],
+                row["penalty_contact_patch_length"],
+                row["al_contact_patch_length"],
+            ]
+            for row in paired_rows
+        ],
+    )
+    return True
+
+
 def main() -> int:
     args = parse_args()
     configure_plot_style()
@@ -1492,6 +1673,8 @@ def main() -> int:
         print(f"Saved summary plot to {common_root / args.summary_name}")
     if build_contact_summary_plot(loaded_cases, common_root):
         print(f"Saved contact summary plots to {common_root / 'summary_contact_metrics.png'}")
+    if build_method_comparison_plot(loaded_cases, common_root):
+        print(f"Saved method comparison plots to {common_root / 'method_comparison_metrics.png'}")
     return 0
 
 

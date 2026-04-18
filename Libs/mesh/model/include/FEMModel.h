@@ -27,6 +27,8 @@ public:
         double contactForceNorm = 0.0;
         double contactStateUpdateNorm = 0.0;
         double contactStateRelativeUpdateNorm = 0.0;
+        double contactStateMaxUpdateMagnitude = 0.0;
+        double contactStateRelativeMaxUpdate = 0.0;
         double maxNormalContactMultiplier = 0.0;
         double meanNormalContactMultiplier = 0.0;
         int activeContactGaussPoints = 0;

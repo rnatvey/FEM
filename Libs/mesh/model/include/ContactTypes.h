@@ -37,6 +37,8 @@ inline std::string_view rigidPlaneContactMethodName(const RigidPlaneContactMetho
 struct AugmentedLagrangianSettings {
     double augmentationParameter = 1.0e6;
     double multiplierTolerance = 1.0e-8;
+    double absoluteMultiplierTolerance = 2.0e-6;
+    double penetrationTolerance = 1.0e-8;
 };
 
 struct ContactGaussPointState {
@@ -87,6 +89,9 @@ struct ContactSolverUpdateInfo {
     bool converged = true;
     double stateUpdateNorm = 0.0;
     double relativeStateUpdateNorm = 0.0;
+    double maxStateUpdateMagnitude = 0.0;
+    double relativeMaxStateUpdate = 0.0;
+    double maxPenetration = 0.0;
     int activeGaussPointCount = 0;
     double maxNormalMultiplier = 0.0;
     double meanNormalMultiplier = 0.0;

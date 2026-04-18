@@ -711,6 +711,10 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
                   << formatNumber(performanceMetrics.contactStateUpdateNorm) << ",\n";
     metricsStream << "    \"contact_state_relative_update_norm\": "
                   << formatNumber(performanceMetrics.contactStateRelativeUpdateNorm) << ",\n";
+    metricsStream << "    \"contact_state_max_update_magnitude\": "
+                  << formatNumber(performanceMetrics.contactStateMaxUpdateMagnitude) << ",\n";
+    metricsStream << "    \"contact_state_relative_max_update\": "
+                  << formatNumber(performanceMetrics.contactStateRelativeMaxUpdate) << ",\n";
     metricsStream << "    \"max_normal_multiplier\": "
                   << formatNumber(performanceMetrics.maxNormalContactMultiplier) << ",\n";
     metricsStream << "    \"mean_normal_multiplier\": "

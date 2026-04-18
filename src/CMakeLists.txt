@@ -45,6 +45,7 @@ fem_configure_app(FEMContactNoContactRegression src/contact_no_contact_regressio
 fem_configure_app(FEMRingContactStudy src/ring_contact_study.cpp)
 fem_configure_app(FEMMainScaleContactStudy src/main_scale_contact_study.cpp)
 fem_configure_app(FEMMainScaleAugmentedLagrangianStudy src/main_scale_augmented_lagrangian_study.cpp)
+fem_configure_app(FEMMainScaleContactMethodComparisonStudy src/main_scale_contact_method_comparison_study.cpp)
 
 enable_testing()
 add_test(NAME FEMBasicLinearReference COMMAND FEMBasicLinearReference)

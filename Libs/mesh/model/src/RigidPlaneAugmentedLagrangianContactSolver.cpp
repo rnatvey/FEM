@@ -35,6 +35,12 @@ RigidPlaneAugmentedLagrangianContactSolver::RigidPlaneAugmentedLagrangianContact
     if (settings_.multiplierTolerance < 0.0) {
         throw std::invalid_argument("Multiplier tolerance must be non-negative");
     }
+    if (settings_.absoluteMultiplierTolerance < 0.0) {
+        throw std::invalid_argument("Absolute multiplier tolerance must be non-negative");
+    }
+    if (settings_.penetrationTolerance < 0.0) {
+        throw std::invalid_argument("Penetration tolerance must be non-negative");
+    }
 
     plane_.normal.normalize();
 }
@@ -59,6 +65,12 @@ void RigidPlaneAugmentedLagrangianContactSolver::setSettings(
     }
     if (settings.multiplierTolerance < 0.0) {
         throw std::invalid_argument("Multiplier tolerance must be non-negative");
+    }
+    if (settings.absoluteMultiplierTolerance < 0.0) {
+        throw std::invalid_argument("Absolute multiplier tolerance must be non-negative");
+    }
+    if (settings.penetrationTolerance < 0.0) {
+        throw std::invalid_argument("Penetration tolerance must be non-negative");
     }
 
     settings_ = settings;
@@ -287,6 +299,10 @@ ContactSolverUpdateInfo RigidPlaneAugmentedLagrangianContactSolver::updateState(
             const double deltaLambda = updatedLambda - previousLambda;
             deltaLambdaSquaredNorm += deltaLambda * deltaLambda;
             lambdaSquaredNorm += updatedLambda * updatedLambda;
+            updateInfo.maxStateUpdateMagnitude =
+                std::max(updateInfo.maxStateUpdateMagnitude, std::abs(deltaLambda));
+            updateInfo.maxPenetration =
+                std::max(updateInfo.maxPenetration, penetration);
 
             if (gaussPointState.active) {
                 updateInfo.activeGaussPointCount += 1;
@@ -300,12 +316,17 @@ ContactSolverUpdateInfo RigidPlaneAugmentedLagrangianContactSolver::updateState(
     updateInfo.stateUpdateNorm = std::sqrt(deltaLambdaSquaredNorm);
     updateInfo.relativeStateUpdateNorm =
         updateInfo.stateUpdateNorm / (std::sqrt(lambdaSquaredNorm) + 1.0e-15);
+    updateInfo.relativeMaxStateUpdate =
+        updateInfo.maxStateUpdateMagnitude / (updateInfo.maxNormalMultiplier + 1.0e-15);
     updateInfo.meanNormalMultiplier =
         updateInfo.activeGaussPointCount > 0
         ? lambdaSum / static_cast<double>(updateInfo.activeGaussPointCount)
         : 0.0;
     updateInfo.converged =
-        updateInfo.relativeStateUpdateNorm <= settings_.multiplierTolerance;
+        updateInfo.maxPenetration <= settings_.penetrationTolerance &&
+        (updateInfo.relativeStateUpdateNorm <= settings_.multiplierTolerance ||
+            updateInfo.relativeMaxStateUpdate <= settings_.multiplierTolerance ||
+            updateInfo.stateUpdateNorm <= settings_.absoluteMultiplierTolerance);
     return updateInfo;
 }
 

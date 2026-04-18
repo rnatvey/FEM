@@ -280,6 +280,10 @@ bool FEModel::solveContactIterative() {
                 convergedStateInfo.updateInfo.stateUpdateNorm;
             performanceMetrics_.contactStateRelativeUpdateNorm =
                 convergedStateInfo.updateInfo.relativeStateUpdateNorm;
+            performanceMetrics_.contactStateMaxUpdateMagnitude =
+                convergedStateInfo.updateInfo.maxStateUpdateMagnitude;
+            performanceMetrics_.contactStateRelativeMaxUpdate =
+                convergedStateInfo.updateInfo.relativeMaxStateUpdate;
             performanceMetrics_.maxNormalContactMultiplier =
                 convergedStateInfo.updateInfo.maxNormalMultiplier;
             performanceMetrics_.meanNormalContactMultiplier =
@@ -383,6 +387,10 @@ bool FEModel::solveContactIterative() {
                 convergedStateInfo.updateInfo.stateUpdateNorm;
             performanceMetrics_.contactStateRelativeUpdateNorm =
                 convergedStateInfo.updateInfo.relativeStateUpdateNorm;
+            performanceMetrics_.contactStateMaxUpdateMagnitude =
+                convergedStateInfo.updateInfo.maxStateUpdateMagnitude;
+            performanceMetrics_.contactStateRelativeMaxUpdate =
+                convergedStateInfo.updateInfo.relativeMaxStateUpdate;
             performanceMetrics_.maxNormalContactMultiplier =
                 convergedStateInfo.updateInfo.maxNormalMultiplier;
             performanceMetrics_.meanNormalContactMultiplier =
