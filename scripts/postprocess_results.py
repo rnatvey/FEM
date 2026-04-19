@@ -11,6 +11,7 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.lines import Line2D
 from matplotlib.ticker import AutoMinorLocator
 
 try:
@@ -38,6 +39,15 @@ TECHNICAL_COLORS = {
     "light_gray": "#c9ced6",
     "teal": "#0b6e75",
 }
+
+FIELD_EDGE_HIDE_CELL_THRESHOLD = 30000
+FIELD_IMAGE_CROP_TOLERANCE = 245
+FIELD_IMAGE_CROP_PADDING_PX = 8
+DISPLAY_BOUNDS_PADDING_RATIO = 0.025
+PROFILE_LINE_WIDTH = 1.6
+PROFILE_SECONDARY_LINE_WIDTH = 1.3
+PROFILE_MARKER_SIZE = 4.2
+PROFILE_FILL_ALPHA = 0.18
 
 
 def configure_plot_style() -> None:
@@ -123,6 +133,13 @@ def humanize_mesh_label(label: str) -> str:
         "penalty": "штраф",
         "mesh": "сетка",
         "study": "исследование",
+        "contact focused": "контактно-ориентированная",
+        "very coarse": "очень грубая",
+        "coarse": "грубая",
+        "medium": "средняя",
+        "reference": "эталонная",
+        "dense": "плотная",
+        "heavy": "тяжелая",
     }
     for english, russian in replacements.items():
         translated = translated.replace(english, russian)
@@ -190,6 +207,239 @@ def configure_plotter(plotter: pv.Plotter) -> None:
     plotter.enable_parallel_projection()
 
 
+def summary_method_styles() -> dict[str, dict[str, Any]]:
+    return {
+        "penalty": {"label": "Штрафной метод", "linestyle": "-", "marker": "o"},
+        "augmented_lagrangian": {
+            "label": "Расширенный метод Лагранжа",
+            "linestyle": "--",
+            "marker": "s",
+        },
+    }
+
+
+def build_mesh_color_map(mesh_labels: list[str]) -> dict[str, str]:
+    color_cycle = [
+        TECHNICAL_COLORS["blue"],
+        TECHNICAL_COLORS["red"],
+        TECHNICAL_COLORS["green"],
+        TECHNICAL_COLORS["orange"],
+        TECHNICAL_COLORS["teal"],
+    ]
+    return {
+        mesh_label: color_cycle[index % len(color_cycle)]
+        for index, mesh_label in enumerate(sorted(mesh_labels))
+    }
+
+
+def plot_summary_series(
+    axis: plt.Axes,
+    x_values: list[float],
+    y_values: list[float],
+    *,
+    color: str,
+    method_style: dict[str, Any],
+) -> None:
+    axis.plot(
+        x_values,
+        y_values,
+        color=color,
+        linestyle=method_style["linestyle"],
+        marker=method_style["marker"],
+        linewidth=1.55,
+        markersize=4.8,
+        markerfacecolor="white",
+        markeredgecolor=color,
+        markeredgewidth=1.0,
+        alpha=0.95,
+        solid_capstyle="round",
+    )
+
+
+def add_summary_legends(
+    fig: plt.Figure,
+    *,
+    mesh_colors: dict[str, str],
+    method_names: list[str],
+) -> None:
+    method_styles = summary_method_styles()
+
+    mesh_handles = [
+        Line2D(
+            [0],
+            [0],
+            color=color,
+            linewidth=1.8,
+            label=mesh_label,
+        )
+        for mesh_label, color in mesh_colors.items()
+    ]
+    method_handles = [
+        Line2D(
+            [0],
+            [0],
+            color=TECHNICAL_COLORS["gray"],
+            linewidth=1.6,
+            linestyle=method_styles[method_name]["linestyle"],
+            marker=method_styles[method_name]["marker"],
+            markersize=4.8,
+            markerfacecolor="white",
+            markeredgecolor=TECHNICAL_COLORS["gray"],
+            markeredgewidth=1.0,
+            label=method_styles[method_name]["label"],
+        )
+        for method_name in method_names
+        if method_name in method_styles
+    ]
+
+    mesh_legend = fig.legend(
+        handles=mesh_handles,
+        loc="upper center",
+        bbox_to_anchor=(0.30, 1.015),
+        ncol=max(1, min(2, len(mesh_handles))),
+        title="Сетка",
+        fontsize=9,
+        title_fontsize=9,
+    )
+    fig.add_artist(mesh_legend)
+    fig.legend(
+        handles=method_handles,
+        loc="upper center",
+        bbox_to_anchor=(0.77, 1.01),
+        ncol=max(1, len(method_handles)),
+        title="Метод контакта",
+        fontsize=9,
+        title_fontsize=9,
+    )
+
+
+def profile_markevery(point_count: int) -> int:
+    if point_count <= 0:
+        return 1
+    return max(1, point_count // 14)
+
+
+def plot_profile_series(
+    axis: plt.Axes,
+    x_values: np.ndarray,
+    y_values: np.ndarray,
+    *,
+    color: str,
+    label: str | None = None,
+    linestyle: str = "-",
+    marker: str | None = None,
+    linewidth: float = PROFILE_LINE_WIDTH,
+    fill_under: bool = False,
+    fill_mask: np.ndarray | None = None,
+) -> None:
+    plot_kwargs: dict[str, Any] = {
+        "color": color,
+        "linestyle": linestyle,
+        "linewidth": linewidth,
+        "solid_capstyle": "round",
+        "alpha": 0.96,
+    }
+    if label is not None:
+        plot_kwargs["label"] = label
+    if marker is not None:
+        plot_kwargs.update(
+            {
+                "marker": marker,
+                "markersize": PROFILE_MARKER_SIZE,
+                "markevery": profile_markevery(len(x_values)),
+                "markerfacecolor": "white",
+                "markeredgecolor": color,
+                "markeredgewidth": 0.95,
+            }
+        )
+
+    axis.plot(x_values, y_values, **plot_kwargs)
+
+    if fill_under:
+        if fill_mask is None:
+            axis.fill_between(
+                x_values,
+                0.0,
+                y_values,
+                color=color,
+                alpha=PROFILE_FILL_ALPHA,
+            )
+        else:
+            axis.fill_between(
+                x_values,
+                0.0,
+                y_values,
+                where=fill_mask,
+                color=color,
+                alpha=PROFILE_FILL_ALPHA,
+            )
+
+
+def finalize_profile_axes(axes: np.ndarray | list[plt.Axes]) -> None:
+    flat_axes = np.ravel(axes)
+    for axis in flat_axes:
+        apply_axes_style(axis)
+
+
+def crop_rendered_image(image: np.ndarray) -> np.ndarray:
+    if image.ndim != 3 or image.shape[2] < 3:
+        return image
+
+    rgb = image[:, :, :3]
+    non_background_mask = np.any(rgb < FIELD_IMAGE_CROP_TOLERANCE, axis=2)
+    if not np.any(non_background_mask):
+        return image
+
+    rows, cols = np.nonzero(non_background_mask)
+    row_min = max(int(rows.min()) - FIELD_IMAGE_CROP_PADDING_PX, 0)
+    row_max = min(int(rows.max()) + FIELD_IMAGE_CROP_PADDING_PX + 1, image.shape[0])
+    col_min = max(int(cols.min()) - FIELD_IMAGE_CROP_PADDING_PX, 0)
+    col_max = min(int(cols.max()) + FIELD_IMAGE_CROP_PADDING_PX + 1, image.shape[1])
+    return image[row_min:row_max, col_min:col_max]
+
+
+def padded_bounds(
+    bounds: tuple[float, float, float, float],
+    *,
+    padding_ratio: float = DISPLAY_BOUNDS_PADDING_RATIO,
+) -> tuple[float, float, float, float]:
+    x_min, x_max, y_min, y_max = bounds
+    width = max(x_max - x_min, 1.0)
+    height = max(y_max - y_min, 1.0)
+    x_pad = padding_ratio * width
+    y_pad = padding_ratio * height
+    return (x_min - x_pad, x_max + x_pad, y_min - y_pad, y_max + y_pad)
+
+
+def figure_size_from_bounds(
+    bounds: tuple[float, float, float, float],
+    *,
+    has_colorbar: bool,
+) -> tuple[float, float]:
+    width = max(bounds[1] - bounds[0], 1.0)
+    height = max(bounds[3] - bounds[2], 1.0)
+    aspect_ratio = width / height
+    axes_height = 7.2
+    axes_width = min(max(axes_height * aspect_ratio, 6.2), 10.8)
+    colorbar_width = 1.0 if has_colorbar else 0.3
+    return (axes_width + colorbar_width, axes_height)
+
+
+def field_render_style(mesh: pv.DataSet) -> dict[str, Any]:
+    if mesh.n_cells >= FIELD_EDGE_HIDE_CELL_THRESHOLD:
+        return {
+            "show_edges": False,
+            "line_width": 0.0,
+            "draw_outline_only": True,
+        }
+
+    return {
+        "show_edges": True,
+        "line_width": 0.75,
+        "draw_outline_only": False,
+    }
+
+
 def save_rendered_image_figure(
     image: np.ndarray,
     bounds: tuple[float, float, float, float],
@@ -201,16 +451,30 @@ def save_rendered_image_figure(
     value_range: tuple[float, float] | None = None,
     indicator_ticks: list[float] | None = None,
 ) -> None:
-    fig, axis = plt.subplots(figsize=(10.5, 7.5))
+    image = crop_rendered_image(image)
+    displayed_bounds = padded_bounds(bounds)
+    fig, axis = plt.subplots(
+        figsize=figure_size_from_bounds(
+            displayed_bounds,
+            has_colorbar=colorbar_label is not None,
+        )
+    )
     axis.imshow(
         image,
-        extent=(bounds[0], bounds[1], bounds[2], bounds[3]),
+        extent=(
+            displayed_bounds[0],
+            displayed_bounds[1],
+            displayed_bounds[2],
+            displayed_bounds[3],
+        ),
         origin="upper",
     )
     axis.set_title(title)
     axis.set_xlabel(f"Координата X, {LENGTH_UNIT_LABEL}")
     axis.set_ylabel(f"Координата Y, {LENGTH_UNIT_LABEL}")
     axis.set_aspect("equal")
+    axis.set_xlim(displayed_bounds[0], displayed_bounds[1])
+    axis.set_ylim(displayed_bounds[2], displayed_bounds[3])
     apply_axes_style(axis)
 
     if colorbar_label and cmap and value_range is not None:
@@ -240,6 +504,7 @@ def save_scalar_field_plot(
 ) -> None:
     plotter = pv.Plotter(off_screen=True, window_size=(1400, 900))
     configure_plotter(plotter)
+    render_style = field_render_style(mesh)
 
     field_values = np.asarray(mesh[scalar_name])
     if scale != 1.0:
@@ -247,9 +512,9 @@ def save_scalar_field_plot(
 
     add_mesh_kwargs: dict[str, Any] = {
         "scalars": field_values,
-        "show_edges": True,
+        "show_edges": render_style["show_edges"],
         "edge_color": TECHNICAL_COLORS["gray"],
-        "line_width": 0.8,
+        "line_width": render_style["line_width"],
         "cmap": cmap,
         "show_scalar_bar": False,
         "lighting": False,
@@ -259,6 +524,18 @@ def save_scalar_field_plot(
         add_mesh_kwargs["n_colors"] = 2
 
     plotter.add_mesh(mesh, **add_mesh_kwargs)
+    if render_style["draw_outline_only"]:
+        outline = mesh.extract_feature_edges(
+            boundary_edges=True,
+            non_manifold_edges=False,
+            feature_edges=False,
+            manifold_edges=False,
+        )
+        plotter.add_mesh(
+            outline,
+            color=TECHNICAL_COLORS["gray"],
+            line_width=1.2,
+        )
     plotter.view_xy()
     plotter.camera.zoom(1.05)
     rendered_image = plotter.screenshot(return_img=True)
@@ -664,17 +941,29 @@ def save_ring_contour_profiles(case: dict[str, Any], ring_metadata: dict[str, An
         "outer": ring_metadata["outer_radius"],
     }
     contour_styles = {
-        "inner": (TECHNICAL_COLORS["blue"], "Внутренний контур"),
-        "mid": (TECHNICAL_COLORS["orange"], "Средний слой"),
-        "outer": (TECHNICAL_COLORS["green"], "Внешний контур"),
+        "inner": {
+            "color": TECHNICAL_COLORS["blue"],
+            "label": "Внутренний контур",
+            "marker": "o",
+        },
+        "mid": {
+            "color": TECHNICAL_COLORS["orange"],
+            "label": "Средний слой",
+            "marker": "s",
+        },
+        "outer": {
+            "color": TECHNICAL_COLORS["green"],
+            "label": "Внешний контур",
+            "marker": "^",
+        },
     }
 
     csv_rows: list[list[Any]] = []
     fig, axes = plt.subplots(3, 1, figsize=(10, 11), sharex=True)
     axis_specs = [
-        ("sigma_rr", "Radial Stress", axes[0]),
-        ("sigma_tt", "Circumferential Stress", axes[1]),
-        ("tau_rt", "Shear Stress", axes[2]),
+        ("sigma_rr", axes[0]),
+        ("sigma_tt", axes[1]),
+        ("tau_rt", axes[2]),
     ]
 
     for contour_key, target_radius in contour_targets.items():
@@ -687,13 +976,14 @@ def save_ring_contour_profiles(case: dict[str, Any], ring_metadata: dict[str, An
         ordered_indices = indices[order]
         x_values = fields["relative_angles_deg"][ordered_indices]
 
-        for field_name, _, axis in axis_specs:
-            axis.plot(
+        for field_name, axis in axis_specs:
+            plot_profile_series(
+                axis,
                 x_values,
                 fields[field_name][ordered_indices] * STRESS_TO_MPA,
-                color=contour_styles[contour_key][0],
-                linewidth=2.0,
-                label=contour_styles[contour_key][1],
+                color=contour_styles[contour_key]["color"],
+                label=contour_styles[contour_key]["label"],
+                marker=contour_styles[contour_key]["marker"],
             )
 
         for ordered_index in ordered_indices:
@@ -713,9 +1003,8 @@ def save_ring_contour_profiles(case: dict[str, Any], ring_metadata: dict[str, An
     axes[1].set_ylabel("σ_θθ, МПа")
     axes[2].set_ylabel("τ_rθ, МПа")
     axes[2].set_xlabel("Угол относительно центра контакта, град")
-    for axis in axes:
-        apply_axes_style(axis)
-        axis.legend(loc="best")
+    finalize_profile_axes(axes)
+    axes[0].legend(loc="upper center", ncol=3, fontsize=9)
 
     fig.tight_layout()
     fig.savefig(case_dir / "ring_contour_stress_profiles.png", dpi=180)
@@ -761,23 +1050,26 @@ def save_ring_radial_profiles(case: dict[str, Any], ring_metadata: dict[str, Any
     ]
 
     fig, axes = plt.subplots(3, 1, figsize=(10, 11), sharex=True)
-    axes[0].plot(
+    plot_profile_series(
+        axes[0],
         radii,
         fields["sigma_rr"][ordered_indices] * STRESS_TO_MPA,
         color=TECHNICAL_COLORS["blue"],
-        linewidth=2.0,
+        marker="o",
     )
-    axes[1].plot(
+    plot_profile_series(
+        axes[1],
         radii,
         fields["sigma_tt"][ordered_indices] * STRESS_TO_MPA,
         color=TECHNICAL_COLORS["orange"],
-        linewidth=2.0,
+        marker="s",
     )
-    axes[2].plot(
+    plot_profile_series(
+        axes[2],
         radii,
         fields["radial_displacement"][ordered_indices],
         color=TECHNICAL_COLORS["green"],
-        linewidth=2.0,
+        marker="^",
     )
 
     axes[0].set_title("Профили по радиальному сечению через центр контакта")
@@ -786,8 +1078,7 @@ def save_ring_radial_profiles(case: dict[str, Any], ring_metadata: dict[str, Any
     axes[2].set_ylabel(f"u_r, {LENGTH_UNIT_LABEL}")
     axes[2].set_xlabel(f"Радиальная координата, {LENGTH_UNIT_LABEL}")
 
-    for axis in axes:
-        apply_axes_style(axis)
+    finalize_profile_axes(axes)
 
     fig.tight_layout()
     fig.savefig(case_dir / "ring_radial_section_profiles.png", dpi=180)
@@ -851,41 +1142,38 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
         ]
 
         fig, axes = plt.subplots(3, 1, figsize=(10, 11), sharex=True)
-        axes[0].plot(arc_coordinate, average_penetration, color=TECHNICAL_COLORS["red"], linewidth=2.0)
-        axes[0].plot(
+        plot_profile_series(
+            axes[0],
             arc_coordinate,
             maximum_penetration,
             color=TECHNICAL_COLORS["gray"],
-            linewidth=1.5,
-            linestyle="--",
             label="Максимальное проникновение",
+            linestyle="--",
+            linewidth=PROFILE_SECONDARY_LINE_WIDTH,
         )
-        axes[0].plot(
+        plot_profile_series(
+            axes[0],
             arc_coordinate,
             average_penetration,
             color=TECHNICAL_COLORS["red"],
-            linewidth=2.0,
             label="Среднее проникновение",
+            marker="o",
         )
-        axes[1].plot(
+        plot_profile_series(
+            axes[1],
             arc_coordinate,
             integrated_normal_force * FORCE_TO_KN,
             color=TECHNICAL_COLORS["blue"],
-            linewidth=2.0,
+            marker="s",
         )
-        axes[2].plot(
+        plot_profile_series(
+            axes[2],
             arc_coordinate,
             average_pressure * PRESSURE_TO_MPA,
             color=TECHNICAL_COLORS["teal"],
-            linewidth=2.0,
-        )
-        axes[2].fill_between(
-            arc_coordinate,
-            0.0,
-            average_pressure * PRESSURE_TO_MPA,
-            where=active_mask,
-            alpha=0.25,
-            color=TECHNICAL_COLORS["teal"],
+            marker="^",
+            fill_under=True,
+            fill_mask=active_mask,
         )
 
         axes[0].set_title("Контактные характеристики по фасеткам")
@@ -894,8 +1182,7 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
         axes[2].set_ylabel("Среднее контактное давление, МПа")
         axes[2].set_xlabel(f"Дуговая координата относительно центра контакта, {LENGTH_UNIT_LABEL}")
 
-        for axis in axes:
-            apply_axes_style(axis)
+        finalize_profile_axes(axes)
         axes[0].legend(loc="best")
 
         fig.tight_layout()
@@ -970,18 +1257,26 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
     ]
 
     fig, axes = plt.subplots(3, 1, figsize=(10, 11), sharex=True)
-    axes[0].plot(arc_coordinate, fields["penetration"][ordered_indices], color=TECHNICAL_COLORS["red"], linewidth=2.0)
-    axes[1].plot(
+    plot_profile_series(
+        axes[0],
+        arc_coordinate,
+        fields["penetration"][ordered_indices],
+        color=TECHNICAL_COLORS["red"],
+        marker="o",
+    )
+    plot_profile_series(
+        axes[1],
         arc_coordinate,
         contact_force * FORCE_TO_KN,
         color=TECHNICAL_COLORS["blue"],
-        linewidth=2.0,
+        marker="s",
     )
-    axes[2].plot(
+    plot_profile_series(
+        axes[2],
         arc_coordinate,
         traction_estimate * PRESSURE_TO_MPA,
         color=TECHNICAL_COLORS["teal"],
-        linewidth=2.0,
+        marker="^",
     )
 
     axes[0].set_title("Контактные профили по внешнему контуру")
@@ -990,8 +1285,7 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
     axes[2].set_ylabel("Оценка нормального давления, МПа")
     axes[2].set_xlabel(f"Дуговая координата относительно центра контакта, {LENGTH_UNIT_LABEL}")
 
-    for axis in axes:
-        apply_axes_style(axis)
+    finalize_profile_axes(axes)
 
     fig.tight_layout()
     fig.savefig(case_dir / "contact_patch_profiles.png", dpi=180)
@@ -1107,6 +1401,7 @@ def save_case_metric_overview(case: dict[str, Any]) -> None:
         f"Активные контактные точки Гаусса: {metric_path(metrics, 'contact', 'active_contact_gauss_points', default='н/д')}",
         f"Макс. проникновение: {format_metric_with_unit(metric_path(metrics, 'contact', 'max_penetration'), unit=LENGTH_UNIT_LABEL)}",
         f"Длина пятна контакта: {format_metric_with_unit(metric_path(metrics, 'contact', 'contact_patch_length'), unit=LENGTH_UNIT_LABEL)}",
+        f"Толщина расчетного сечения: {format_metric_with_unit(metric_path(metrics, 'extra', 'thickness'), unit=LENGTH_UNIT_LABEL)}",
         f"Макс. среднее давление: {format_metric_with_unit(metric_path(metrics, 'contact', 'max_facet_average_pressure'), scale=PRESSURE_TO_MPA, unit=STRESS_UNIT_LABEL)}",
         f"Суммарная нормальная сила: {format_metric_with_unit(metric_path(metrics, 'contact', 'total_normal_force'), scale=FORCE_TO_KN, unit=FORCE_UNIT_LABEL)}",
         f"Макс. нормальный множитель: {format_metric_with_unit(metric_path(metrics, 'contact', 'max_normal_multiplier'), unit=STRESS_UNIT_LABEL)}",
@@ -1267,6 +1562,9 @@ def build_summary_plot(cases: list[dict[str, Any]], output_root: Path, output_na
         return False
 
     grouped_labels = sorted({row["group_label"] for row in valid_rows})
+    mesh_colors = build_mesh_color_map(sorted({row["mesh_label"] for row in valid_rows}))
+    method_names = sorted({row["method_name"] for row in valid_rows})
+    method_styles = summary_method_styles()
     unique_parameter_labels = sorted(
         {
             humanize_contact_parameter_name(row["parameter_name"], row["method_name"])
@@ -1285,12 +1583,26 @@ def build_summary_plot(cases: list[dict[str, Any]], output_root: Path, output_na
             [row for row in valid_rows if row["group_label"] == group_label],
             key=lambda row: row["parameter_value"],
         )
+        method_name = group[0]["method_name"]
+        mesh_label = group[0]["mesh_label"]
         parameter_values = [row["parameter_value"] for row in group]
         penetrations = [row["max_penetration"] for row in group]
         total_times = [row["total_time"] for row in group]
 
-        axes[0].plot(parameter_values, penetrations, marker="o", label=group_label)
-        axes[1].plot(parameter_values, total_times, marker="o", label=group_label)
+        plot_summary_series(
+            axes[0],
+            parameter_values,
+            penetrations,
+            color=mesh_colors[mesh_label],
+            method_style=method_styles[method_name],
+        )
+        plot_summary_series(
+            axes[1],
+            parameter_values,
+            total_times,
+            color=mesh_colors[mesh_label],
+            method_style=method_styles[method_name],
+        )
 
     axes[0].set_xscale("log")
     axes[0].set_xlabel(x_axis_label)
@@ -1304,10 +1616,13 @@ def build_summary_plot(cases: list[dict[str, Any]], output_root: Path, output_na
     axes[1].set_title("Зависимость времени расчета от контактного параметра")
     apply_axes_style(axes[1], x_minor=False)
 
-    for axis in axes:
-        axis.legend()
+    add_summary_legends(
+        fig,
+        mesh_colors=mesh_colors,
+        method_names=method_names,
+    )
 
-    fig.tight_layout()
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.88))
     fig.savefig(output_root / output_name, dpi=180)
     plt.close(fig)
     return True
@@ -1392,6 +1707,9 @@ def build_contact_summary_plot(cases: list[dict[str, Any]], output_root: Path) -
         return False
 
     grouped_labels = sorted({row["group_label"] for row in valid_rows})
+    mesh_colors = build_mesh_color_map(sorted({row["mesh_label"] for row in valid_rows}))
+    method_names = sorted({row["method_name"] for row in valid_rows})
+    method_styles = summary_method_styles()
     unique_parameter_labels = sorted(
         {
             humanize_contact_parameter_name(row["parameter_name"], row["method_name"])
@@ -1417,20 +1735,31 @@ def build_contact_summary_plot(cases: list[dict[str, Any]], output_root: Path) -
             [row for row in valid_rows if row["group_label"] == group_label],
             key=lambda row: row["parameter_value"],
         )
+        method_name = group[0]["method_name"]
+        mesh_label = group[0]["mesh_label"]
         parameter_values = [row["parameter_value"] for row in group]
         for field_name, title, axis in axis_specs:
             values = [row[field_name] for row in group]
-            axis.plot(parameter_values, values, marker="o", linewidth=2.0, label=group_label)
+            plot_summary_series(
+                axis,
+                parameter_values,
+                values,
+                color=mesh_colors[mesh_label],
+                method_style=method_styles[method_name],
+            )
             axis.set_xscale("log")
             axis.set_xlabel(x_axis_label)
             axis.set_ylabel(title)
             axis.set_title(title)
             apply_axes_style(axis, x_minor=False)
 
-    for axis in axes.flatten():
-        axis.legend()
+    add_summary_legends(
+        fig,
+        mesh_colors=mesh_colors,
+        method_names=method_names,
+    )
 
-    fig.tight_layout()
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.88))
     fig.savefig(output_root / "summary_contact_metrics.png", dpi=180)
     plt.close(fig)
 
@@ -1545,25 +1874,8 @@ def build_method_comparison_plot(cases: list[dict[str, Any]], output_root: Path)
 
     paired_rows.sort(key=lambda row: (row["mesh_label"], row["contact_parameter_value"]))
 
-    color_cycle = [
-        TECHNICAL_COLORS["blue"],
-        TECHNICAL_COLORS["red"],
-        TECHNICAL_COLORS["green"],
-        TECHNICAL_COLORS["orange"],
-        TECHNICAL_COLORS["teal"],
-    ]
-    mesh_colors = {
-        mesh_label: color_cycle[index % len(color_cycle)]
-        for index, mesh_label in enumerate(sorted({row["mesh_label"] for row in paired_rows}))
-    }
-    method_styles = {
-        "penalty": {"label": "Штрафной метод", "linestyle": "-", "marker": "o"},
-        "augmented_lagrangian": {
-            "label": "Расширенный метод Лагранжа",
-            "linestyle": "--",
-            "marker": "s",
-        },
-    }
+    mesh_colors = build_mesh_color_map(sorted({row["mesh_label"] for row in paired_rows}))
+    method_styles = summary_method_styles()
     method_field_prefix = {
         "penalty": "penalty",
         "augmented_lagrangian": "al",
@@ -1590,14 +1902,12 @@ def build_method_comparison_plot(cases: list[dict[str, Any]], output_root: Path)
             field_prefix = method_field_prefix[method_name]
             for field_stub, title, axis in axis_specs:
                 values = [row[f"{field_prefix}_{field_stub}"] for row in group]
-                axis.plot(
+                plot_summary_series(
+                    axis,
                     parameter_values,
                     values,
                     color=mesh_color,
-                    linestyle=method_style["linestyle"],
-                    marker=method_style["marker"],
-                    linewidth=2.0,
-                    label=f"{method_style['label']} / {mesh_label}",
+                    method_style=method_style,
                 )
                 axis.set_xscale("log")
                 axis.set_xlabel("Контактный параметр")
@@ -1605,10 +1915,13 @@ def build_method_comparison_plot(cases: list[dict[str, Any]], output_root: Path)
                 axis.set_title(title)
                 apply_axes_style(axis, x_minor=False)
 
-    for axis in axes.flatten():
-        axis.legend(fontsize=8)
+    add_summary_legends(
+        fig,
+        mesh_colors=mesh_colors,
+        method_names=["penalty", "augmented_lagrangian"],
+    )
 
-    fig.tight_layout()
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.88))
     fig.savefig(output_root / "method_comparison_metrics.png", dpi=180)
     plt.close(fig)
 

@@ -66,17 +66,64 @@ bool quickModeEnabled() {
     return false;
 }
 
-std::vector<double> buildPenaltyValues(bool quickMode) {
+bool longModeEnabled() {
+    if (const char* longModeValue = std::getenv("FEM_MAIN_SCALE_CONTACT_LONG");
+        longModeValue != nullptr && std::string_view(longModeValue) == "1") {
+        return true;
+    }
+    return false;
+}
+
+std::string environmentString(std::string_view variableName) {
+    if (const char* value = std::getenv(std::string(variableName).c_str());
+        value != nullptr) {
+        return value;
+    }
+    return {};
+}
+
+bool matchesOptionalFilter(std::string_view filterValue, std::string_view actualValue) {
+    return filterValue.empty() || filterValue == actualValue;
+}
+
+bool matchesOptionalNumericFilter(std::string_view filterValue, double actualValue) {
+    if (filterValue.empty()) {
+        return true;
+    }
+
+    try {
+        const double requestedValue = std::stod(std::string(filterValue));
+        return std::abs(requestedValue - actualValue) <=
+            1.0e-12 * std::max({1.0, std::abs(requestedValue), std::abs(actualValue)});
+    }
+    catch (const std::exception&) {
+        return false;
+    }
+}
+
+std::vector<double> buildPenaltyValues(bool quickMode, bool longMode) {
     if (quickMode) {
         return {5.0e2};
+    }
+    if (longMode) {
+        return {1.0e1, 2.5e1, 5.0e1, 1.0e2, 2.5e2, 5.0e2, 1.0e3, 2.0e3, 5.0e3, 1.0e4};
     }
     return {1.0e2, 5.0e2, 2.0e3};
 }
 
-std::vector<MeshVariant> buildMeshVariants(bool quickMode) {
+std::vector<MeshVariant> buildMeshVariants(bool quickMode, bool longMode) {
     if (quickMode) {
         return {
             {"contact_focused_medium", 141, 181, 10.0, 2.5, 2.5}
+        };
+    }
+    if (longMode) {
+        return {
+            {"contact_focused_very_coarse", 61, 81, 6.0, 1.4, 2.0},
+            {"contact_focused_coarse", 91, 121, 7.5, 1.8, 2.15},
+            {"contact_focused_medium", 181, 241, 10.0, 2.5, 2.5},
+            {"contact_focused_dense", 241, 321, 12.0, 3.0, 2.75},
+            {"contact_focused_heavy", 301, 401, 14.0, 3.5, 3.0},
         };
     }
 
@@ -285,11 +332,22 @@ StudyResult runStudyCase(const std::filesystem::path& outputRoot,
 int main() {
     try {
         const bool quickMode = quickModeEnabled();
-        const auto penalties = buildPenaltyValues(quickMode);
-        const auto meshVariants = buildMeshVariants(quickMode);
+        const bool longMode = longModeEnabled();
+        const std::string meshFilter = environmentString("FEM_MAIN_SCALE_CONTACT_MESH_FILTER");
+        const std::string penaltyFilter =
+            environmentString("FEM_MAIN_SCALE_CONTACT_PENALTY_FILTER");
+        const std::string outputSubdirectory =
+            environmentString("FEM_MAIN_SCALE_CONTACT_OUTPUT_SUBDIRECTORY");
+        const auto penalties = buildPenaltyValues(quickMode, longMode);
+        const auto meshVariants = buildMeshVariants(quickMode, longMode);
 
         const std::filesystem::path outputRoot =
-            AppRuntimeSupport::caseOutputDirectory("main_scale_contact_study");
+            AppRuntimeSupport::caseOutputDirectory(
+                !outputSubdirectory.empty()
+                ? outputSubdirectory
+                : (longMode
+                    ? "main_scale_contact_penalty_mesh_sensitivity"
+                    : "main_scale_contact_study"));
         std::filesystem::create_directories(outputRoot);
 
         std::ofstream summaryStream(outputRoot / "study_summary.csv");
@@ -302,7 +360,13 @@ int main() {
         summaryStream << header << '\n';
 
         for (const auto& meshVariant : meshVariants) {
+            if (!matchesOptionalFilter(meshFilter, meshVariant.label)) {
+                continue;
+            }
             for (double penalty : penalties) {
+                if (!matchesOptionalNumericFilter(penaltyFilter, penalty)) {
+                    continue;
+                }
                 const StudyResult result = runStudyCase(outputRoot, meshVariant, penalty);
                 const std::string row = buildStudyRow(result);
                 std::cout << row << std::endl;
