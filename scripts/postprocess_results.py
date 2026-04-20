@@ -156,17 +156,17 @@ def humanize_contact_method(method_name: str) -> str:
 
 def humanize_contact_parameter_name(parameter_name: str, method_name: str) -> str:
     mapping = {
-        "penalty_parameter": "Параметр штрафа",
-        "augmentation_parameter": "Параметр расширенного Лагранжа",
-        "contact_parameter": "Контактный параметр",
+        "penalty_parameter": f"Параметр штрафа, {STRESS_UNIT_LABEL}/{LENGTH_UNIT_LABEL}",
+        "augmentation_parameter": f"Параметр расширенного Лагранжа, {STRESS_UNIT_LABEL}/{LENGTH_UNIT_LABEL}",
+        "contact_parameter": f"Параметр контактного метода, {STRESS_UNIT_LABEL}/{LENGTH_UNIT_LABEL}",
     }
     if parameter_name in mapping:
         return mapping[parameter_name]
     if not parameter_name:
         return (
-            "Параметр штрафа"
+            f"Параметр штрафа, {STRESS_UNIT_LABEL}/{LENGTH_UNIT_LABEL}"
             if method_name == "penalty"
-            else "Параметр расширенного Лагранжа"
+            else f"Параметр расширенного Лагранжа, {STRESS_UNIT_LABEL}/{LENGTH_UNIT_LABEL}"
         )
     return parameter_name.replace("_", " ")
 
@@ -1574,7 +1574,7 @@ def build_summary_plot(cases: list[dict[str, Any]], output_root: Path, output_na
     x_axis_label = (
         unique_parameter_labels[0]
         if len(unique_parameter_labels) == 1
-        else "Контактный параметр"
+        else f"Параметр контактного метода, {STRESS_UNIT_LABEL}/{LENGTH_UNIT_LABEL}"
     )
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
@@ -1719,7 +1719,7 @@ def build_contact_summary_plot(cases: list[dict[str, Any]], output_root: Path) -
     x_axis_label = (
         unique_parameter_labels[0]
         if len(unique_parameter_labels) == 1
-        else "Контактный параметр"
+        else f"Параметр контактного метода, {STRESS_UNIT_LABEL}/{LENGTH_UNIT_LABEL}"
     )
 
     fig, axes = plt.subplots(2, 2, figsize=(13, 10))

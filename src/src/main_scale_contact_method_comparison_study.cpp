@@ -74,6 +74,14 @@ bool quickModeEnabled() {
     return false;
 }
 
+bool longModeEnabled() {
+    if (const char* longModeValue = std::getenv("FEM_MAIN_SCALE_COMPARISON_LONG");
+        longModeValue != nullptr && std::string_view(longModeValue) == "1") {
+        return true;
+    }
+    return false;
+}
+
 std::string environmentString(std::string_view variableName) {
     if (const char* value = std::getenv(std::string(variableName).c_str());
         value != nullptr) {
@@ -101,17 +109,29 @@ bool matchesOptionalNumericFilter(std::string_view filterValue, double actualVal
     }
 }
 
-std::vector<double> buildContactParameterValues(bool quickMode) {
+std::vector<double> buildContactParameterValues(bool quickMode, bool longMode) {
     if (quickMode) {
         return {5.0e2};
+    }
+    if (longMode) {
+        return {1.0e1, 2.5e1, 5.0e1, 1.0e2, 2.5e2, 5.0e2, 1.0e3, 2.0e3, 5.0e3, 1.0e4};
     }
     return {1.0e2, 5.0e2, 2.0e3};
 }
 
-std::vector<MeshVariant> buildMeshVariants(bool quickMode) {
+std::vector<MeshVariant> buildMeshVariants(bool quickMode, bool longMode) {
     if (quickMode) {
         return {
             {"contact_focused_medium", 141, 181, 10.0, 2.5, 2.5}
+        };
+    }
+    if (longMode) {
+        return {
+            {"contact_focused_very_coarse", 61, 81, 6.0, 1.4, 2.0},
+            {"contact_focused_coarse", 91, 121, 7.5, 1.8, 2.15},
+            {"contact_focused_medium", 181, 241, 10.0, 2.5, 2.5},
+            {"contact_focused_dense", 241, 321, 12.0, 3.0, 2.75},
+            {"contact_focused_heavy", 301, 401, 14.0, 3.5, 3.0},
         };
     }
 
@@ -376,19 +396,33 @@ StudyResult runStudyCase(const std::filesystem::path& outputRoot,
 int main() {
     try {
         const bool quickMode = quickModeEnabled();
-        const std::string methodFilter = environmentString("FEM_MAIN_SCALE_METHOD_FILTER");
-        const std::string meshFilter = environmentString("FEM_MAIN_SCALE_MESH_FILTER");
-        const std::string parameterFilter = environmentString("FEM_MAIN_SCALE_PARAMETER_FILTER");
+        const bool longMode = longModeEnabled();
+        const std::string methodFilter =
+            environmentString("FEM_MAIN_SCALE_COMPARISON_METHOD_FILTER").empty()
+            ? environmentString("FEM_MAIN_SCALE_METHOD_FILTER")
+            : environmentString("FEM_MAIN_SCALE_COMPARISON_METHOD_FILTER");
+        const std::string meshFilter =
+            environmentString("FEM_MAIN_SCALE_COMPARISON_MESH_FILTER").empty()
+            ? environmentString("FEM_MAIN_SCALE_MESH_FILTER")
+            : environmentString("FEM_MAIN_SCALE_COMPARISON_MESH_FILTER");
+        const std::string parameterFilter =
+            environmentString("FEM_MAIN_SCALE_COMPARISON_PARAMETER_FILTER").empty()
+            ? environmentString("FEM_MAIN_SCALE_PARAMETER_FILTER")
+            : environmentString("FEM_MAIN_SCALE_COMPARISON_PARAMETER_FILTER");
         const std::string outputSubdirectory =
-            environmentString("FEM_MAIN_SCALE_OUTPUT_SUBDIRECTORY");
+            environmentString("FEM_MAIN_SCALE_COMPARISON_OUTPUT_SUBDIRECTORY").empty()
+            ? environmentString("FEM_MAIN_SCALE_OUTPUT_SUBDIRECTORY")
+            : environmentString("FEM_MAIN_SCALE_COMPARISON_OUTPUT_SUBDIRECTORY");
         const auto methods = buildContactMethods();
-        const auto contactParameterValues = buildContactParameterValues(quickMode);
-        const auto meshVariants = buildMeshVariants(quickMode);
+        const auto contactParameterValues = buildContactParameterValues(quickMode, longMode);
+        const auto meshVariants = buildMeshVariants(quickMode, longMode);
 
         const std::filesystem::path outputRoot =
             AppRuntimeSupport::caseOutputDirectory(
                 outputSubdirectory.empty()
-                ? "main_scale_contact_method_comparison"
+                ? (longMode
+                    ? "main_scale_contact_method_comparison_mesh_sensitivity"
+                    : "main_scale_contact_method_comparison")
                 : outputSubdirectory);
         std::filesystem::create_directories(outputRoot);
 
