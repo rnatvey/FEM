@@ -795,7 +795,10 @@ def write_rows_csv(path: Path, headers: list[str], rows: list[list[Any]]) -> Non
 
 def build_ring_point_fields(case: dict[str, Any], ring_metadata: dict[str, Any]) -> dict[str, np.ndarray]:
     mesh = case["mesh"]
-    points = np.asarray(mesh.points)[:, :2]
+    if "deformed_position" in mesh.point_data:
+        points = np.asarray(mesh.point_data["deformed_position"])[:, :2]
+    else:
+        points = np.asarray(mesh.points)[:, :2]
     relative_points = points - ring_metadata["center"]
     radii = np.linalg.norm(relative_points, axis=1)
     angles = np.arctan2(relative_points[:, 1], relative_points[:, 0])
@@ -1379,6 +1382,7 @@ def save_case_metric_overview(case: dict[str, Any]) -> None:
     metrics = case["metrics"]
     contact_method = case_contact_method(metrics)
     parameter_name, parameter_value = case_contact_parameter_info(metrics)
+    is_finite_strain = bool(metric_path(metrics, "formulation", "finite_strain", default=False))
 
     timing_labels = ["assembly", "solve", "total"]
     timing_values = [
@@ -1410,6 +1414,23 @@ def save_case_metric_overview(case: dict[str, Any]) -> None:
         f"Относительное обновление по max-норме: {format_metric_with_unit(metric_path(metrics, 'contact', 'contact_state_relative_max_update'))}",
         f"Макс. модуль перемещения: {format_metric_with_unit(metric_path(metrics, 'extrema', 'max_displacement_magnitude'), unit=LENGTH_UNIT_LABEL)}",
     ]
+
+    summary_lines.insert(
+        2,
+        f"Кинематическая постановка: {'finite strain' if is_finite_strain else 'small strain'}",
+    )
+    if is_finite_strain:
+        summary_lines.extend(
+            [
+                f"Мера напряжений в VTU: {metric_path(metrics, 'formulation', 'point_stress_measure', default='n/a')}",
+                f"Мера деформаций в VTU: {metric_path(metrics, 'formulation', 'point_strain_measure', default='n/a')}",
+                f"Мин. det(F) по элементам: {format_metric_with_unit(metric_path(metrics, 'finite_strain', 'min_cell_jacobian_determinant'))}",
+                f"Ср. det(F) по элементам: {format_metric_with_unit(metric_path(metrics, 'finite_strain', 'mean_cell_jacobian_determinant'))}",
+                f"Макс. det(F) по элементам: {format_metric_with_unit(metric_path(metrics, 'finite_strain', 'max_cell_jacobian_determinant'))}",
+                f"Энергия деформации: {format_metric_with_unit(metric_path(metrics, 'finite_strain', 'strain_energy'))}",
+                f"Nearly incompressible материал: {'да' if metric_path(metrics, 'finite_strain', 'has_near_incompressible_material', default=False) else 'нет'}",
+            ]
+        )
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
     bars = axes[0].bar(
@@ -1492,6 +1513,15 @@ def save_case_plots(case: dict[str, Any], warp_factor: float) -> None:
     if "rigid_plane_signed_distance" in mesh.point_data:
         plot_specs.append(
             ("rigid_plane_signed_distance", "signed_distance.png", f"Подписанное расстояние до жесткой плоскости, {LENGTH_UNIT_LABEL}", "coolwarm", 1.0, False)
+        )
+
+    if "jacobian_determinant" in mesh.point_data:
+        plot_specs.append(
+            ("jacobian_determinant", "jacobian_determinant.png", "Определитель градиента деформации det(F), 1", "viridis", 1.0, False)
+        )
+    if "strain_energy_density" in mesh.point_data:
+        plot_specs.append(
+            ("strain_energy_density", "strain_energy_density.png", f"Плотность энергии деформации, {STRESS_UNIT_LABEL}", "plasma", STRESS_TO_MPA, False)
         )
 
     deformed_mesh = mesh

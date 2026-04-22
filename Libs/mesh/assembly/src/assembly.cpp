@@ -1,5 +1,6 @@
-#include "assembly.h"
+﻿#include "assembly.h"
 #include "solver.h"
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 #include <iostream>
@@ -13,7 +14,7 @@ void Assembly::addNode(std::shared_ptr<Node> node) {
         throw std::invalid_argument("Cannot add null node");
     }
 
-    // Проверяем уникальность ID
+    // РџСЂРѕРІРµСЂСЏРµРј СѓРЅРёРєР°Р»СЊРЅРѕСЃС‚СЊ ID
     for (const auto& existingNode : nodes_) {
         if (existingNode->getId() == node->getId()) {
             throw std::invalid_argument("Node with ID " + std::to_string(node->getId()) + " already exists");
@@ -21,7 +22,7 @@ void Assembly::addNode(std::shared_ptr<Node> node) {
     }
 
     nodes_.push_back(node);
-    buildNodeIndexMap(); // Обновляем карту индексов
+    buildNodeIndexMap(); // РћР±РЅРѕРІР»СЏРµРј РєР°СЂС‚Сѓ РёРЅРґРµРєСЃРѕРІ
 }
 
 void Assembly::addNodes(const std::vector<std::shared_ptr<Node>>& nodes) {
@@ -73,26 +74,49 @@ std::shared_ptr<Material> Assembly::getMaterial(int id) const {
     return nullptr;
 }
 
+void Assembly::addFiniteStrainMaterial(std::shared_ptr<FiniteStrainMaterial> material) {
+    if (!material) {
+        throw std::invalid_argument("Cannot add null finite-strain material");
+    }
+
+    const int materialId = material->getId();
+    if (finiteStrainMaterials_.find(materialId) != finiteStrainMaterials_.end()) {
+        throw std::invalid_argument(
+            "Finite-strain material with ID " + std::to_string(materialId) +
+            " already exists");
+    }
+
+    finiteStrainMaterials_[materialId] = std::move(material);
+}
+
+std::shared_ptr<FiniteStrainMaterial> Assembly::getFiniteStrainMaterial(int id) const {
+    auto it = finiteStrainMaterials_.find(id);
+    if (it != finiteStrainMaterials_.end()) {
+        return it->second;
+    }
+    return nullptr;
+}
+
 void Assembly::addElement(std::shared_ptr<BaseElement> element) {
     if (!element) {
         throw std::invalid_argument("Cannot add null element");
     }
 
-    // Проверяем уникальность ID
+    // РџСЂРѕРІРµСЂСЏРµРј СѓРЅРёРєР°Р»СЊРЅРѕСЃС‚СЊ ID
     for (const auto& existingElement : elements_) {
         if (existingElement->getId() == element->getId()) {
             throw std::invalid_argument("Element with ID " + std::to_string(element->getId()) + " already exists");
         }
     }
 
-    // Проверяем существование узлов
+    // РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ СѓР·Р»РѕРІ
     for (int nodeId : element->getNodeIds()) {
         if (!getNode(nodeId)) {
             throw std::invalid_argument("Node with ID " + std::to_string(nodeId) + " not found for element " + std::to_string(element->getId()));
         }
     }
 
-    // Проверяем существование материала
+    // РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ РјР°С‚РµСЂРёР°Р»Р°
     if (!getMaterial(element->getMaterialId())) {
         throw std::invalid_argument("Material with ID " + std::to_string(element->getMaterialId()) + " not found for element " + std::to_string(element->getId()));
     }
@@ -106,8 +130,56 @@ void Assembly::addElements(const std::vector<std::shared_ptr<BaseElement>>& elem
     }
 }
 
+void Assembly::addFiniteStrainElement(std::shared_ptr<FiniteStrainQ4Element> element) {
+    if (!element) {
+        throw std::invalid_argument("Cannot add null finite-strain element");
+    }
+
+    for (const auto& existingElement : finiteStrainElements_) {
+        if (existingElement->getId() == element->getId()) {
+            throw std::invalid_argument(
+                "Finite-strain element with ID " + std::to_string(element->getId()) +
+                " already exists");
+        }
+    }
+
+    for (int nodeId : element->getNodeIds()) {
+        if (!getNode(nodeId)) {
+            throw std::invalid_argument(
+                "Node with ID " + std::to_string(nodeId) +
+                " not found for finite-strain element " +
+                std::to_string(element->getId()));
+        }
+    }
+
+    if (!getFiniteStrainMaterial(element->getMaterialId())) {
+        throw std::invalid_argument(
+            "Finite-strain material with ID " +
+            std::to_string(element->getMaterialId()) +
+            " not found for element " + std::to_string(element->getId()));
+    }
+
+    finiteStrainElements_.push_back(std::move(element));
+}
+
+void Assembly::addFiniteStrainElements(
+    const std::vector<std::shared_ptr<FiniteStrainQ4Element>>& elements) {
+    for (const auto& element : elements) {
+        addFiniteStrainElement(element);
+    }
+}
+
 std::shared_ptr<BaseElement> Assembly::getElement(int id) const {
     for (const auto& element : elements_) {
+        if (element->getId() == id) {
+            return element;
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr<FiniteStrainQ4Element> Assembly::getFiniteStrainElement(int id) const {
+    for (const auto& element : finiteStrainElements_) {
         if (element->getId() == id) {
             return element;
         }
@@ -136,13 +208,13 @@ void Assembly::assembleGlobalStiffnessMatrix(Eigen::SparseMatrix<double>& global
             if (node) elementNodes.push_back(node);
         }
 
-        // Вычисляем матрицу жесткости элемента
+        // Р’С‹С‡РёСЃР»СЏРµРј РјР°С‚СЂРёС†Сѓ Р¶РµСЃС‚РєРѕСЃС‚Рё СЌР»РµРјРµРЅС‚Р°
         Eigen::MatrixXd ke = element->computeStiffnessMatrix(elementNodes, material);
 
         
         std::vector<int> dofIndices = getElementFullDofIndices(element->getId());
 
-        // Добавляем в глобальную матрицу
+        // Р”РѕР±Р°РІР»СЏРµРј РІ РіР»РѕР±Р°Р»СЊРЅСѓСЋ РјР°С‚СЂРёС†Сѓ
         for (int i = 0; i < dofIndices.size(); ++i) {
             for (int j = 0; j < dofIndices.size(); ++j) {
                 if (dofIndices[i] >= 0 && dofIndices[j] >= 0) {
@@ -173,7 +245,7 @@ void Assembly::assembleGlobalForceVector(Eigen::VectorXd& globalF, const Eigen::
 
         Eigen::VectorXd fe = element->computeEquivalentNodalForces(bodyForces, elementNodes, material);
 
-        // Используем ПОЛНЫЕ индексы
+        // РСЃРїРѕР»СЊР·СѓРµРј РџРћР›РќР«Р• РёРЅРґРµРєСЃС‹
         auto dofIndices = getElementFullDofIndices(element->getId());
 
         for (int i = 0; i < dofIndices.size(); ++i) {
@@ -181,6 +253,103 @@ void Assembly::assembleGlobalForceVector(Eigen::VectorXd& globalF, const Eigen::
                 globalF(dofIndices[i]) += fe(i);
             }
         }
+    }
+}
+
+void Assembly::assembleFiniteStrainSystem(const Eigen::VectorXd& fullDisplacements,
+    Eigen::SparseMatrix<double>& globalTangent,
+    Eigen::VectorXd& globalInternalForce,
+    double& totalStrainEnergy,
+    std::vector<FiniteStrainElementResponse>* elementResponses,
+    bool computeTangent) const {
+    const int totalDof = getTotalDofCount();
+    if (fullDisplacements.size() != totalDof) {
+        throw std::invalid_argument(
+            "Full displacement vector size mismatch in assembleFiniteStrainSystem");
+    }
+
+    globalInternalForce = Eigen::VectorXd::Zero(totalDof);
+    totalStrainEnergy = 0.0;
+
+    if (elementResponses) {
+        elementResponses->clear();
+        elementResponses->reserve(finiteStrainElements_.size());
+    }
+
+    std::vector<Eigen::Triplet<double>> triplets;
+    if (computeTangent) {
+        globalTangent.resize(totalDof, totalDof);
+        globalTangent.setZero();
+        triplets.reserve(finiteStrainElements_.size() * 64);
+    }
+
+    for (const auto& element : finiteStrainElements_) {
+        auto material = getFiniteStrainMaterial(element->getMaterialId());
+        if (!material) {
+            throw std::runtime_error(
+                "Finite-strain material " + std::to_string(element->getMaterialId()) +
+                " not found during assembly");
+        }
+
+        std::vector<std::shared_ptr<Node>> elementNodes;
+        elementNodes.reserve(element->getNodeIds().size());
+        for (int nodeId : element->getNodeIds()) {
+            auto node = getNode(nodeId);
+            if (!node) {
+                throw std::runtime_error(
+                    "Finite-strain element " + std::to_string(element->getId()) +
+                    " references missing node " + std::to_string(nodeId));
+            }
+            elementNodes.push_back(node);
+        }
+
+        std::vector<int> dofIndices;
+        dofIndices.reserve(element->getNodeIds().size() * 2);
+        for (int nodeId : element->getNodeIds()) {
+            dofIndices.push_back(getGlobalDofIndex(nodeId, 0));
+            dofIndices.push_back(getGlobalDofIndex(nodeId, 1));
+        }
+
+        Eigen::VectorXd elementDisplacements = Eigen::VectorXd::Zero(dofIndices.size());
+        for (int i = 0; i < static_cast<int>(dofIndices.size()); ++i) {
+            elementDisplacements(i) = fullDisplacements(dofIndices[static_cast<size_t>(i)]);
+        }
+
+        FiniteStrainElementResponse elementResponse =
+            element->evaluateResponse(
+                elementNodes,
+                elementDisplacements,
+                *material,
+                computeTangent);
+
+        for (int i = 0; i < static_cast<int>(dofIndices.size()); ++i) {
+            globalInternalForce(dofIndices[static_cast<size_t>(i)]) +=
+                elementResponse.internalForce(i);
+        }
+
+        if (computeTangent) {
+            for (int i = 0; i < static_cast<int>(dofIndices.size()); ++i) {
+                for (int j = 0; j < static_cast<int>(dofIndices.size()); ++j) {
+                    triplets.emplace_back(dofIndices[static_cast<size_t>(i)],
+                        dofIndices[static_cast<size_t>(j)],
+                        elementResponse.tangent(i, j));
+                }
+            }
+        }
+
+        totalStrainEnergy += elementResponse.totalStrainEnergy;
+        if (elementResponses) {
+            elementResponses->push_back(std::move(elementResponse));
+        }
+    }
+
+    if (computeTangent) {
+        globalTangent.setFromTriplets(triplets.begin(), triplets.end());
+        globalTangent.makeCompressed();
+    }
+    else {
+        globalTangent.resize(totalDof, totalDof);
+        globalTangent.setZero();
     }
 }
 
@@ -198,7 +367,7 @@ void Assembly::addFixedNode(int nodeId, bool fixX, bool fixY) {
 void Assembly::addPrescribedDisplacement(int nodeId, double dx, double dy) {
     BoundaryCondition bc;
     bc.nodeId = nodeId;
-    bc.fixX = true;  // Для предписанных перемещений фиксируем обе степени свободы
+    bc.fixX = true;  // Р”Р»СЏ РїСЂРµРґРїРёСЃР°РЅРЅС‹С… РїРµСЂРµРјРµС‰РµРЅРёР№ С„РёРєСЃРёСЂСѓРµРј РѕР±Рµ СЃС‚РµРїРµРЅРё СЃРІРѕР±РѕРґС‹
     bc.fixY = true;
     bc.hasPrescribedDisplacement = true;
     bc.prescribedDx = dx;
@@ -232,19 +401,40 @@ void Assembly::applyBoundaryConditions(Eigen::SparseMatrix<double>& globalK,
     Eigen::VectorXd& globalF) const {
     LinearSolver solver;
 
-    // Сбрасываем mapping
-    dofMapping_.fullToReduced.clear();
-    dofMapping_.reducedToFull.clear();
-    dofMapping_.prescribedDofs.clear();
-    dofMapping_.prescribedValues.clear();
+    const ConstraintData constraintData = buildConstraintData();
+    const int totalDof = globalK.rows();
+    populateDofMapping(totalDof, constraintData);
 
-    int totalDof = globalK.rows();
-    dofMapping_.fullToReduced.resize(totalDof, -1); // Инициализируем -1
+    // Apply all constraints through sparse reduction to avoid mutating the
+    // matrix structure for prescribed displacements.
+    if (!constraintData.constrainedDofs.empty()) {
+        Eigen::SparseMatrix<double> reducedK;
+        Eigen::VectorXd reducedF;
+        std::vector<int> activeDofs;
 
-    std::vector<int> fixedZeroDofs;
-    std::vector<int> constrainedDofs;
-    std::vector<int> prescribedDofs;
-    std::vector<double> prescribedValues;
+        solver.reduceSystem(globalK,
+            globalF,
+            constraintData.constrainedDofs,
+            constraintData.prescribedDofs,
+            constraintData.prescribedValues,
+            reducedK,
+            reducedF,
+            activeDofs);
+        globalK = std::move(reducedK);
+        globalF = std::move(reducedF);
+    }
+}
+
+Assembly::ConstraintData Assembly::getConstraintData() const {
+    return buildConstraintData();
+}
+
+void Assembly::initializeDofMapping(int totalDof) const {
+    populateDofMapping(totalDof, buildConstraintData());
+}
+
+Assembly::ConstraintData Assembly::buildConstraintData() const {
+    ConstraintData constraintData;
 
     auto appendUniqueDof = [](std::vector<int>& dofs, int dof) {
         if (std::find(dofs.begin(), dofs.end(), dof) == dofs.end()) {
@@ -271,71 +461,75 @@ void Assembly::applyBoundaryConditions(Eigen::SparseMatrix<double>& globalK,
             }
         };
 
-    // Собираем граничные условия
     for (const auto& bc : boundaryConditions_) {
         auto node = getNode(bc.nodeId);
-        if (!node) continue;
+        if (!node) {
+            continue;
+        }
 
         if (bc.fixX) {
-            int dofX = getGlobalDofIndex(bc.nodeId, 0);
+            const int dofX = getGlobalDofIndex(bc.nodeId, 0);
             if (bc.hasPrescribedDisplacement) {
-                appendOrValidatePrescribedDof(prescribedDofs, prescribedValues, dofX, bc.prescribedDx);
+                appendOrValidatePrescribedDof(
+                    constraintData.prescribedDofs,
+                    constraintData.prescribedValues,
+                    dofX,
+                    bc.prescribedDx);
             }
             else {
-                appendUniqueDof(fixedZeroDofs, dofX);
+                appendUniqueDof(constraintData.fixedZeroDofs, dofX);
             }
         }
 
         if (bc.fixY) {
-            int dofY = getGlobalDofIndex(bc.nodeId, 1);
+            const int dofY = getGlobalDofIndex(bc.nodeId, 1);
             if (bc.hasPrescribedDisplacement) {
-                appendOrValidatePrescribedDof(prescribedDofs, prescribedValues, dofY, bc.prescribedDy);
+                appendOrValidatePrescribedDof(
+                    constraintData.prescribedDofs,
+                    constraintData.prescribedValues,
+                    dofY,
+                    bc.prescribedDy);
             }
             else {
-                appendUniqueDof(fixedZeroDofs, dofY);
+                appendUniqueDof(constraintData.fixedZeroDofs, dofY);
             }
         }
     }
 
-    constrainedDofs = fixedZeroDofs;
-    for (int prescribedDof : prescribedDofs) {
-        appendUniqueDof(constrainedDofs, prescribedDof);
+    constraintData.constrainedDofs = constraintData.fixedZeroDofs;
+    for (int prescribedDof : constraintData.prescribedDofs) {
+        appendUniqueDof(constraintData.constrainedDofs, prescribedDof);
     }
 
-    // Строим mapping для активных DOF
-    int reducedIndex = 0;
-    for (int i = 0; i < totalDof; ++i) {
-        // Если DOF не закреплен и не имеет предписанного перемещения
-        if (std::find(constrainedDofs.begin(), constrainedDofs.end(), i) == constrainedDofs.end()) {
-            dofMapping_.fullToReduced[i] = reducedIndex;
-            dofMapping_.reducedToFull.push_back(i);
-            reducedIndex++;
+    return constraintData;
+}
+
+void Assembly::populateDofMapping(int totalDof,
+    const ConstraintData& constraintData) const {
+    dofMapping_.fullToReduced.clear();
+    dofMapping_.reducedToFull.clear();
+    dofMapping_.prescribedDofs.clear();
+    dofMapping_.prescribedValues.clear();
+
+    dofMapping_.fullToReduced.resize(totalDof, -1);
+
+    std::vector<char> isConstrained(totalDof, 0);
+    for (int dof : constraintData.constrainedDofs) {
+        if (dof >= 0 && dof < totalDof) {
+            isConstrained[dof] = 1;
         }
     }
 
-    // Сохраняем предписанные перемещения
-    dofMapping_.prescribedDofs = prescribedDofs;
-    dofMapping_.prescribedValues = prescribedValues;
-
-    // Apply all constraints through sparse reduction to avoid mutating the
-    // matrix structure for prescribed displacements.
-    // Исключаем закрепленные DOF из системы
-    if (!constrainedDofs.empty()) {
-        Eigen::SparseMatrix<double> reducedK;
-        Eigen::VectorXd reducedF;
-        std::vector<int> activeDofs;
-
-        solver.reduceSystem(globalK,
-            globalF,
-            constrainedDofs,
-            prescribedDofs,
-            prescribedValues,
-            reducedK,
-            reducedF,
-            activeDofs);
-        globalK = std::move(reducedK);
-        globalF = std::move(reducedF);
+    int reducedIndex = 0;
+    for (int dof = 0; dof < totalDof; ++dof) {
+        if (!isConstrained[dof]) {
+            dofMapping_.fullToReduced[dof] = reducedIndex++;
+            dofMapping_.reducedToFull.push_back(dof);
+        }
     }
+
+    dofMapping_.prescribedDofs = constraintData.prescribedDofs;
+    dofMapping_.prescribedValues = constraintData.prescribedValues;
 }
 
 std::vector<int> Assembly::getElementDofIndices(int elementId) const {
@@ -346,7 +540,7 @@ std::vector<int> Assembly::getElementDofIndices(int elementId) const {
 
     std::vector<int> fullDofIndices;
 
-    // Получаем полные индексы DOF
+    // РџРѕР»СѓС‡Р°РµРј РїРѕР»РЅС‹Рµ РёРЅРґРµРєСЃС‹ DOF
     for (int nodeId : element->getNodeIds()) {
         auto node = getNode(nodeId);
         if (node) {
@@ -356,7 +550,7 @@ std::vector<int> Assembly::getElementDofIndices(int elementId) const {
         }
     }
 
-    return fullDofIndices; // ВОЗВРАЩАЕМ ПОЛНЫЕ ИНДЕКСЫ!
+    return fullDofIndices; // Р’РћР—Р’Р РђР©РђР•Рњ РџРћР›РќР«Р• РРќР”Р•РљРЎР«!
 }
 
 bool Assembly::validate() const {
@@ -365,46 +559,93 @@ bool Assembly::validate() const {
         return false;
     }
 
-    if (elements_.empty()) {
+    const bool hasLinearElements = !elements_.empty();
+    const bool hasFiniteStrainElements = !finiteStrainElements_.empty();
+    if (!hasLinearElements && !hasFiniteStrainElements) {
         std::cerr << "Assembly validation failed: No elements defined" << std::endl;
         return false;
     }
 
-    if (materials_.empty()) {
+    const bool hasLinearMaterials = !materials_.empty();
+    const bool hasFiniteStrainMaterials = !finiteStrainMaterials_.empty();
+    if (!hasLinearMaterials && !hasFiniteStrainMaterials) {
         std::cerr << "Assembly validation failed: No materials defined" << std::endl;
         return false;
     }
 
-    // Проверяем корректность элементов - передаем ТОЛЬКО узлы элемента
-    for (const auto& element : elements_) {
-        // Получаем узлы конкретного элемента
-        std::vector<std::shared_ptr<Node>> elementNodes;
-        for (int nodeId : element->getNodeIds()) {
-            auto node = getNode(nodeId);
-            if (node) {
-                elementNodes.push_back(node);
+    if (hasLinearElements) {
+        if (!hasLinearMaterials) {
+            std::cerr << "Assembly validation failed: Linear elements require linear materials"
+                      << std::endl;
+            return false;
+        }
+
+        for (const auto& element : elements_) {
+            std::vector<std::shared_ptr<Node>> elementNodes;
+            for (int nodeId : element->getNodeIds()) {
+                auto node = getNode(nodeId);
+                if (node) {
+                    elementNodes.push_back(node);
+                }
+                else {
+                    std::cerr << "Assembly validation failed: Element " << element->getId()
+                              << " references non-existent node " << nodeId << std::endl;
+                    return false;
+                }
             }
-            else {
+
+            if (!element->isValid(elementNodes)) {
                 std::cerr << "Assembly validation failed: Element " << element->getId()
-                    << " references non-existent node " << nodeId << std::endl;
+                          << " is invalid (negative Jacobian or other issue)" << std::endl;
+                return false;
+            }
+
+            if (!getMaterial(element->getMaterialId())) {
+                std::cerr << "Assembly validation failed: Element " << element->getId()
+                          << " references non-existent material "
+                          << element->getMaterialId() << std::endl;
                 return false;
             }
         }
-
-        // Проверяем элемент с его собственными узлами
-        if (!element->isValid(elementNodes)) {
-            std::cerr << "Assembly validation failed: Element " << element->getId()
-                << " is invalid (negative Jacobian or other issue)" << std::endl;
-            return false;
-        }
     }
 
-    // Проверяем, что все элементы ссылаются на существующие материалы
-    for (const auto& element : elements_) {
-        if (!getMaterial(element->getMaterialId())) {
-            std::cerr << "Assembly validation failed: Element " << element->getId()
-                << " references non-existent material " << element->getMaterialId() << std::endl;
+    if (hasFiniteStrainElements) {
+        if (!hasFiniteStrainMaterials) {
+            std::cerr << "Assembly validation failed: Finite-strain elements require "
+                      << "finite-strain materials" << std::endl;
             return false;
+        }
+
+        for (const auto& element : finiteStrainElements_) {
+            std::vector<std::shared_ptr<Node>> elementNodes;
+            for (int nodeId : element->getNodeIds()) {
+                auto node = getNode(nodeId);
+                if (!node) {
+                    std::cerr << "Assembly validation failed: Finite-strain element "
+                              << element->getId() << " references non-existent node "
+                              << nodeId << std::endl;
+                    return false;
+                }
+                elementNodes.push_back(node);
+            }
+
+            for (double xi : {-1.0, 1.0}) {
+                for (double eta : {-1.0, 1.0}) {
+                    if (element->referenceJacobian(xi, eta, elementNodes).determinant() <= 0.0) {
+                        std::cerr << "Assembly validation failed: Finite-strain element "
+                                  << element->getId()
+                                  << " has a non-positive reference Jacobian" << std::endl;
+                        return false;
+                    }
+                }
+            }
+
+            if (!getFiniteStrainMaterial(element->getMaterialId())) {
+                std::cerr << "Assembly validation failed: Finite-strain element "
+                          << element->getId() << " references non-existent material "
+                          << element->getMaterialId() << std::endl;
+                return false;
+            }
         }
     }
 
@@ -432,12 +673,12 @@ void Assembly::buildNodeIndexMap() {
 }
 
 std::vector<int> Assembly::getElementFullDofIndices(int elementId) const {
-    // Используется при сборке матрицы жесткости - ДО граничных условий
+    // РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РїСЂРё СЃР±РѕСЂРєРµ РјР°С‚СЂРёС†С‹ Р¶РµСЃС‚РєРѕСЃС‚Рё - Р”Рћ РіСЂР°РЅРёС‡РЅС‹С… СѓСЃР»РѕРІРёР№
     return getElementDofIndicesInternal(elementId);
 }
 
 std::vector<int> Assembly::getElementReducedDofIndices(int elementId) const {
-    // Используется после применения граничных условий
+    // РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РїРѕСЃР»Рµ РїСЂРёРјРµРЅРµРЅРёСЏ РіСЂР°РЅРёС‡РЅС‹С… СѓСЃР»РѕРІРёР№
     std::vector<int> fullDofIndices = getElementDofIndicesInternal(elementId);
     std::vector<int> reducedDofIndices;
 
@@ -447,7 +688,7 @@ std::vector<int> Assembly::getElementReducedDofIndices(int elementId) const {
             reducedDofIndices.push_back(reducedDof);
         }
         else {
-            reducedDofIndices.push_back(-1); // Некорректный индекс
+            reducedDofIndices.push_back(-1); // РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ РёРЅРґРµРєСЃ
         }
     }
 
@@ -462,7 +703,7 @@ std::vector<int> Assembly::getElementDofIndicesInternal(int elementId) const {
 
     std::vector<int> fullDofIndices;
 
-    // Получаем полные индексы DOF (всегда от 0 до totalDof-1)
+    // РџРѕР»СѓС‡Р°РµРј РїРѕР»РЅС‹Рµ РёРЅРґРµРєСЃС‹ DOF (РІСЃРµРіРґР° РѕС‚ 0 РґРѕ totalDof-1)
     for (int nodeId : element->getNodeIds()) {
         auto node = getNode(nodeId);
         if (node) {
@@ -491,7 +732,7 @@ void Assembly::assembleConcentratedForces(Eigen::VectorXd& globalF) const {
 
 
         try {
-            // Используем ПОЛНЫЕ индексы
+            // РСЃРїРѕР»СЊР·СѓРµРј РџРћР›РќР«Р• РёРЅРґРµРєСЃС‹
             int dofX = getGlobalDofIndex(nodeId, 0);
             int dofY = getGlobalDofIndex(nodeId, 1);
 
@@ -513,7 +754,7 @@ void Assembly::addConcentratedForce(std::shared_ptr<ConcentratedForce> force) {
         throw std::invalid_argument("Cannot add null force");
     }
 
-    // Проверяем существование узла
+    // РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ СѓР·Р»Р°
     if (!getNode(force->getNodeId())) {
         throw std::invalid_argument("Node with ID " + std::to_string(force->getNodeId()) + " not found for force");
     }
@@ -533,17 +774,17 @@ void Assembly::addSurfaceLoad(int elementId, int surfaceIndex,
         throw std::invalid_argument("Cannot add null load function");
     }
 
-    // Проверяем существование элемента
+    // РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ СЌР»РµРјРµРЅС‚Р°
     if (!getElement(elementId)) {
         throw std::invalid_argument("Element with ID " + std::to_string(elementId) + " not found");
     }
 
-    // Проверяем корректность номера поверхности
+    // РџСЂРѕРІРµСЂСЏРµРј РєРѕСЂСЂРµРєС‚РЅРѕСЃС‚СЊ РЅРѕРјРµСЂР° РїРѕРІРµСЂС…РЅРѕСЃС‚Рё
     if (surfaceIndex < 0 || surfaceIndex > 3) {
         throw std::invalid_argument("Surface index must be between 0 and 3");
     }
 
-    // Используем emplace_back с конструктором
+    // РСЃРїРѕР»СЊР·СѓРµРј emplace_back СЃ РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂРѕРј
     surfaceLoads_.emplace_back(elementId, surfaceIndex, std::move(loadFunction));
 }
 
@@ -552,17 +793,17 @@ void Assembly::assembleSurfaceLoads(Eigen::VectorXd& globalF) const {
         try {
             if (!surfaceLoad.loadFunction) continue;
 
-            // Применяем нагрузку к поверхности элемента
+            // РџСЂРёРјРµРЅСЏРµРј РЅР°РіСЂСѓР·РєСѓ Рє РїРѕРІРµСЂС…РЅРѕСЃС‚Рё СЌР»РµРјРµРЅС‚Р°
             Eigen::VectorXd surfaceForces = surfaceLoad.loadFunction->applyToElementSurface(
                 surfaceLoad.elementId,
                 surfaceLoad.surfaceIndex,
                 shared_from_this()
             );
 
-            // Получаем индексы DOF элемента
+            // РџРѕР»СѓС‡Р°РµРј РёРЅРґРµРєСЃС‹ DOF СЌР»РµРјРµРЅС‚Р°
             auto dofIndices = getElementDofIndices(surfaceLoad.elementId);
 
-            // Добавляем в глобальный вектор сил
+            // Р”РѕР±Р°РІР»СЏРµРј РІ РіР»РѕР±Р°Р»СЊРЅС‹Р№ РІРµРєС‚РѕСЂ СЃРёР»
             for (size_t i = 0; i < dofIndices.size(); ++i) {
                 if (dofIndices[i] >= 0 && dofIndices[i] < globalF.size()) {
                     globalF(dofIndices[i]) += surfaceForces(i);

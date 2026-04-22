@@ -29,13 +29,15 @@ Eigen::VectorXd LinearSolver::solveSystem(
 {
     constexpr double tolerance = 1.0e-10;
     constexpr int maxIterations = 2000;
+    constexpr double acceptableRelativeResidual = 1.0e-8;
     const auto startTime = std::chrono::high_resolution_clock::now();
+    const double rhsNorm = rightHandSide.norm();
 
     auto computeResidualNorm = [&systemMatrix, &rightHandSide](const Eigen::VectorXd& solution) {
         return (systemMatrix * solution - rightHandSide).norm();
     };
 
-    auto finalizeStats = [this, &startTime, &rightHandSide](int iterations,
+    auto finalizeStats = [this, &startTime, rhsNorm](int iterations,
         int requestedMaxIterations,
         double requestedTolerance,
         double estimatedError,
@@ -49,7 +51,6 @@ Eigen::VectorXd LinearSolver::solveSystem(
             lastSolveStats_.tolerance = requestedTolerance;
             lastSolveStats_.estimatedError = estimatedError;
             lastSolveStats_.residualNorm = residualNorm;
-            const double rhsNorm = rightHandSide.norm();
             lastSolveStats_.relativeResidualNorm =
                 residualNorm / std::max(rhsNorm, 1.0e-30);
             lastSolveStats_.solveTimeSeconds =
@@ -70,15 +71,24 @@ Eigen::VectorXd LinearSolver::solveSystem(
         Eigen::VectorXd solution = iterativeSolver.solve(rightHandSide);
         if (iterativeSolver.info() == Eigen::Success) {
             const double residualNorm = computeResidualNorm(solution);
-            finalizeStats(iterativeSolver.iterations(),
-                maxIterations,
-                tolerance,
-                iterativeSolver.error(),
-                residualNorm,
-                true,
-                false,
-                "ConjugateGradient");
-            return solution;
+            const double relativeResidualNorm =
+                residualNorm / std::max(rhsNorm, 1.0e-30);
+            const bool converged =
+                std::isfinite(relativeResidualNorm) &&
+                iterativeSolver.error() <= tolerance &&
+                relativeResidualNorm <= acceptableRelativeResidual;
+
+            if (converged) {
+                finalizeStats(iterativeSolver.iterations(),
+                    maxIterations,
+                    tolerance,
+                    iterativeSolver.error(),
+                    residualNorm,
+                    true,
+                    false,
+                    "ConjugateGradient");
+                return solution;
+            }
         }
     }
 

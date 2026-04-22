@@ -291,6 +291,207 @@ Penalty study:
 - `summary_metrics.png`;
 - `summary_contact_metrics.png`.
 
+## 5. Hyperelastic Baseline Verification
+
+### Summary
+
+| Scenario | Target / Artifact | Purpose |
+| --- | --- | --- |
+| Hyperelastic no-contact sanity | `FEMHyperelasticNoContactSanity` | Проверка finite-strain Neo-Hookean ветки в режиме малых деформаций через сравнение с linear baseline |
+| Hyperelastic large deformation, no contact | `FEMHyperelasticLargeDeformationNoContact` | Проверка сходимости, `det(F)` и baseline-поведения при конечных деформациях без контакта |
+| Hyperelastic contact guard | `FEMHyperelasticContactGuard` | Фиксация текущего ограничения: `solveHyperelastic()` пока не подключен к rigid-plane contact |
+
+### 5.1 Hyperelastic No-Contact Sanity
+
+Target:
+
+- `FEMHyperelasticNoContactSanity`
+- Results:
+  - `results/hyperelastic_no_contact_sanity/solution.vtu`
+  - `results/hyperelastic_no_contact_sanity/metrics.json`
+
+Что проверяется:
+
+- отдельная ветка `FiniteStrainMaterial -> NeoHookeanMaterial -> FiniteStrainQ4Element -> solveHyperelastic()`;
+- корректность Newton solve с prescribed displacements в incremental form;
+- согласованность finite-strain baseline с линейным решением в режиме малых деформаций;
+- корректность finite-strain export pipeline: `Cauchy`, `Green-Lagrange`, `det(F)`, `strain energy`.
+
+Конфигурация:
+
+- 2D Q4 block;
+- compressible Neo-Hookean, параметры из `E = 2e5 МПа`, `nu = 0.30`, `thickness = 1 мм`;
+- верхняя грань: prescribed `uy = -0.005 мм`;
+- нижняя грань: фиксирована по `y`;
+- один нижний узел фиксируется по `x`.
+
+Метрики успеха:
+
+- `success=true`;
+- `maximum_prescribed_displacement_error < 1e-12`;
+- `relative_displacement_difference_to_linear < 5e-3`;
+- `minimum_jacobian_determinant > 0.95`;
+- `equilibrium_residual_norm <= 1e-5`;
+- `nonlinear_iterations > 0`.
+
+Что сохранять в postprocessing:
+
+Поля:
+
+- стандартные `displacement`, `reaction_force`;
+- finite-strain point fields: `deformed_position`, `stress_2d` as Cauchy, `strain_2d` as Green-Lagrange, `sigma_zz`, `jacobian_determinant`, `strain_energy_density`;
+- finite-strain cell fields: `cell_jacobian_determinant`, `cell_cauchy_stress_2d`, `cell_second_piola_stress_2d`, `cell_green_lagrange_strain_2d`.
+
+Метрики:
+
+- `formulation.*`;
+- `finite_strain.*`;
+- `iterations.*`;
+- `residuals.*`;
+- `extra.relative_displacement_difference_to_linear`;
+- `extra.minimum_jacobian_determinant`, `extra.maximum_jacobian_determinant`.
+
+Ограничения:
+
+- это baseline displacement-only Q4;
+- сценарий intentionally small-strain-like и нужен именно как sanity-check новой архитектуры, а не как демонстрация преимуществ hyperelasticity.
+
+### 5.2 Hyperelastic Large Deformation Without Contact
+
+Target:
+
+- `FEMHyperelasticLargeDeformationNoContact`
+- Results:
+  - `results/hyperelastic_large_deformation_no_contact/solution.vtu`
+  - `results/hyperelastic_large_deformation_no_contact/metrics.json`
+
+Что проверяется:
+
+- сходимость `solveHyperelastic()` на конечных деформациях;
+- экспорт `det(F)` и strain-energy полей;
+- поведение baseline Neo-Hookean при nearly incompressible материале;
+- корректная диагностика current limitation по locking-risk.
+
+Конфигурация:
+
+- 2D Q4 block;
+- compressible / nearly incompressible Neo-Hookean с `E = 25 МПа`, `nu = 0.48`, `thickness = 1 мм`;
+- верхняя грань: prescribed `uy = -0.10 мм`;
+- нижняя грань: фиксирована по `y`;
+- один нижний узел фиксируется по `x`.
+
+Метрики успеха:
+
+- `success=true`;
+- `maximum_prescribed_displacement_error < 1e-12`;
+- `minimum_jacobian_determinant > 0.20`;
+- `maximum_jacobian_determinant < 2.50`;
+- `maximum_strain_energy_density > 0`;
+- `maximum_second_piola_stress_norm > 0`;
+- `has_near_incompressible_material = true`;
+- `equilibrium_residual_norm <= 1e-5`.
+
+Что сохранять в postprocessing:
+
+- все finite-strain поля из sanity-case;
+- `jacobian_determinant.png`;
+- `strain_energy_density.png`;
+- `case_overview.png` с finite-strain metrics.
+
+Ограничения:
+
+- это еще не mixed `u/p` и не `SRI`;
+- для `nu = 0.48` сценарий показывает only baseline architecture and diagnostics;
+- отсутствие direct-solver fallback в конкретном кейсе не означает, что near-incompressible режим всегда будет комфортен для `CG/IC`.
+
+### 5.3 Hyperelastic Block On Rigid Plane
+
+Target:
+
+- `FEMHyperelasticBlockOnRigidPlane`
+- Results:
+  - `results/hyperelastic_block_on_rigid_plane/solution.vtu`
+  - `results/hyperelastic_block_on_rigid_plane/metrics.json`
+  - `results/hyperelastic_block_on_rigid_plane/contact_facets.csv`
+
+Что проверяется:
+
+- первый runnable `hyperelastic + penalty rigid-plane contact` path;
+- корректная сборка остатка `F_ext + F_contact - F_int(u)` и касательной `K_t + K_contact`;
+- работоспособность existing rigid-plane penalty solver на finite-strain Q4 facets;
+- совместимость finite-strain export pipeline с contact fields.
+
+Конфигурация:
+
+- 2D Q4 block;
+- compressible Neo-Hookean с `E = 1e3 МПа`, `nu = 0.30`, `thickness = 1 мм`;
+- верхняя грань: prescribed `uy = -0.08 мм`;
+- нижняя грань взаимодействует с rigid plane `y = 0`;
+- один верхний узел фиксируется по `x`;
+- penalty parameter `1e6`.
+
+Метрики успеха:
+
+- `success=true`;
+- `active_contact_facets > 0`;
+- `0 < max_penetration < 2e-2`;
+- `contact_force_norm > 0`;
+- `minimum_jacobian_determinant > 0.90`;
+- finite-strain solve converges without breaking contact export.
+
+Что сохранять в postprocessing:
+
+- все finite-strain поля;
+- все contact fields;
+- `contact_facets.csv`;
+- `penetration.png`, `contact_force_magnitude.png`, `active_contact_facet.png`;
+- `jacobian_determinant.png`, `strain_energy_density.png`.
+
+Ограничения:
+
+- это только penalty-contact branch;
+- `hyperelastic + augmented Lagrangian` пока не подключен;
+- contact kinematics пока small-motion-in-contact-surface sense, without a fully consistent large-sliding linearization.
+
+### 5.4 Hyperelastic + Rigid-Plane Contact Guard
+
+Target:
+
+- `FEMHyperelasticContactGuard`
+
+Что проверяется:
+
+- что current code path не пытается silently решать неподключенный
+  `hyperelastic + augmented Lagrangian rigid-plane contact`;
+- ограничение фиксируется явно и воспроизводимо.
+
+Критерий успеха:
+
+- test passes only if `solveHyperelastic()` returns `false` when
+  augmented-Lagrangian contact solver is configured.
+
+Ограничение:
+
+- это не инженерный contact-case, а guard regression на текущее архитектурное состояние.
+
+### 5.5 Tire-Oriented Hyperelastic Scenario
+
+Текущее состояние:
+
+- пока не оформлен как runnable regression/scenario.
+
+Причина:
+
+- hyperelastic penalty-contact path уже есть для простого блока, но tire-oriented
+  hyperelastic pipeline еще не подключен и не верифицирован;
+- до этого шага tire-oriented hyperelastic case дал бы ложное ощущение готовности.
+
+Что должно появиться позже:
+
+- simplified tire ring with hyperelastic material;
+- затем `hyperelastic + rigid-plane contact` for tire-like geometry;
+- после этого — уже сравнение linear elastic vs Neo-Hookean tire response.
+
 ## Practical Use
 
 Рекомендуемый минимальный Stage 6 workflow:

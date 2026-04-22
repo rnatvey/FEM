@@ -18,6 +18,12 @@
 //
 // with plane strain enforced by embedding the in-plane deformation gradient
 // into a 3D state with F33 = 1.
+//
+// Important limitation of the current baseline:
+//   when this material is used with the current displacement-only fully
+//   integrated Q4 finite-strain element, nearly incompressible regimes may
+//   suffer from volumetric locking. SRI and mixed u/p are intentionally left
+//   for later steps instead of being introduced prematurely here.
 class NeoHookeanMaterial final : public FiniteStrainMaterial {
 public:
     NeoHookeanMaterial(int id,
@@ -30,16 +36,18 @@ public:
         double poissonsRatio,
         double thickness = 0.1);
 
+    int getId() const override { return id_; }
     std::string_view name() const override { return "neo_hookean"; }
+    double getThickness() const override { return thickness_; }
 
     MaterialPointResponse evaluatePlaneStrain(
         const PlaneStrainDeformationGradient& deformationGradient) const override;
-
-    int getId() const { return id_; }
     double getShearModulus() const { return shearModulus_; }
     double getBulkModulus() const { return bulkModulus_; }
     double getLameFirstParameter() const;
-    double getThickness() const { return thickness_; }
+    double getEffectivePoissonsRatio() const;
+    double getBulkToShearRatio() const;
+    bool isNearlyIncompressible(double threshold = 0.475) const;
 
 private:
     static double computeShearModulus(double youngsModulus, double poissonsRatio);

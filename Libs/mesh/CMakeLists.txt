@@ -3,6 +3,7 @@ add_library(mesh)
 target_sources(mesh PRIVATE
     assembly/src/assembly.cpp
     element/include/planeisometric/ContactPlane.cpp
+    element/src/planeisometric/FiniteStrainQ4Element.cpp
     element/include/planeisometric/Planeisoparametric.cpp
     element/src/BaseElement.cpp
     element/src/NeoHookeanMaterial.cpp

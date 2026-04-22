@@ -4,6 +4,15 @@
     "vtu": "solution.vtu",
     "metrics": "metrics.json"
   },
+  "units": {
+    "length": "mm",
+    "stress": "MPa",
+    "pressure": "MPa",
+    "elastic_modulus": "MPa",
+    "strain": "1",
+    "force_internal": "N",
+    "force_display": "kN"
+  },
   "counts": {
     "nodes": 121,
     "elements": 100,
@@ -13,11 +22,18 @@
     "prescribed_dofs": 11
   },
   "timings": {
-    "assembly_time_seconds": 0.00045200000000000004,
-    "solve_time_seconds": 0.00048560000000000004,
-    "total_time_seconds": 0.0012895000000000001
+    "assembly_time_seconds": 0.00045940000000000005,
+    "solve_time_seconds": 0.00048700000000000002,
+    "total_time_seconds": 0.0013141000000000001
+  },
+  "formulation": {
+    "finite_strain": false,
+    "point_stress_measure": "small_strain_constitutive",
+    "point_strain_measure": "small_strain"
   },
   "iterations": {
+    "linear_solves": 1,
+    "direct_linear_solves": 0,
     "nonlinear_iterations": 0,
     "linear_iterations": 38
   },
@@ -34,11 +50,32 @@
   "matrix": {
     "nnz": 3616
   },
+  "finite_strain": {
+    "configured": false,
+    "strain_energy": 0,
+    "has_near_incompressible_material": false,
+    "max_effective_poissons_ratio": 0,
+    "max_bulk_to_shear_ratio": 0,
+    "min_cell_jacobian_determinant": 1,
+    "mean_cell_jacobian_determinant": 1,
+    "max_cell_jacobian_determinant": 1,
+    "min_cell_strain_energy_density": 0,
+    "mean_cell_strain_energy_density": 0,
+    "max_cell_strain_energy_density": 0
+  },
   "contact": {
     "configured": false,
+    "method": "none",
     "candidate_contact_facets": 0,
     "active_contact_facets": 0,
+    "active_contact_gauss_points": 0,
     "contact_force_norm": 0,
+    "contact_state_update_norm": 0,
+    "contact_state_relative_update_norm": 0,
+    "contact_state_max_update_magnitude": 0,
+    "contact_state_relative_max_update": 0,
+    "max_normal_multiplier": 0,
+    "mean_normal_multiplier": 0,
     "max_penetration": 0,
     "max_nodal_penetration": 0,
     "minimum_signed_distance": 0,

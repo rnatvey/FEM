@@ -72,6 +72,28 @@ double NeoHookeanMaterial::getLameFirstParameter() const {
     return computeLameFirstParameter(shearModulus_, bulkModulus_);
 }
 
+double NeoHookeanMaterial::getEffectivePoissonsRatio() const {
+    const double denominator = 2.0 * (3.0 * bulkModulus_ + shearModulus_);
+    if (std::abs(denominator) <= kNearZero) {
+        throw std::runtime_error(
+            "Cannot recover effective Poisson ratio from Neo-Hookean moduli");
+    }
+
+    return (3.0 * bulkModulus_ - 2.0 * shearModulus_) / denominator;
+}
+
+double NeoHookeanMaterial::getBulkToShearRatio() const {
+    if (std::abs(shearModulus_) <= kNearZero) {
+        throw std::runtime_error("Cannot compute bulk-to-shear ratio for zero shear modulus");
+    }
+
+    return bulkModulus_ / shearModulus_;
+}
+
+bool NeoHookeanMaterial::isNearlyIncompressible(double threshold) const {
+    return getEffectivePoissonsRatio() >= threshold;
+}
+
 double NeoHookeanMaterial::computeShearModulus(double youngsModulus, double poissonsRatio) {
     if (!(youngsModulus > 0.0)) {
         throw std::invalid_argument("Young's modulus must be positive");

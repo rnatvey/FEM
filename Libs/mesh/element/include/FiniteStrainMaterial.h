@@ -20,5 +20,7 @@ public:
     virtual MaterialPointResponse evaluatePlaneStrain(
         const PlaneStrainDeformationGradient& deformationGradient) const = 0;
 
+    virtual int getId() const = 0;
     virtual std::string_view name() const = 0;
+    virtual double getThickness() const = 0;
 };

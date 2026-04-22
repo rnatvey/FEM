@@ -14,6 +14,8 @@
 class FEModel {
 public:
     struct PerformanceMetrics {
+        int linearSolveCount = 0;
+        int directLinearSolveCount = 0;
         int linearIterations = 0;
         int nonlinearIterations = 0;
         int activeSetSize = 0;
@@ -24,6 +26,9 @@ public:
         double linearResidualEstimate = 0.0;
         double linearResidualNorm = 0.0;
         double equilibriumResidualNorm = 0.0;
+        double strainEnergy = 0.0;
+        double maxFiniteStrainEffectivePoissonsRatio = 0.0;
+        double maxFiniteStrainBulkToShearRatio = 0.0;
         double contactForceNorm = 0.0;
         double contactStateUpdateNorm = 0.0;
         double contactStateRelativeUpdateNorm = 0.0;
@@ -34,6 +39,7 @@ public:
         int activeContactGaussPoints = 0;
         bool linearSolveConverged = false;
         bool usedDirectLinearSolver = false;
+        bool hasNearIncompressibleFiniteStrainMaterial = false;
         std::string linearSolverBackend = "uninitialized";
         std::string contactMethod = "none";
         Eigen::Index matrixNonZeros = 0;
@@ -62,7 +68,9 @@ public:
     bool hasContactSolver() const { return contactSolver_ != nullptr; }
 
     bool solve();
+    bool solveHyperelastic();
     bool solveContact();
+    bool hasFiniteStrainModel() const { return assembly_ && assembly_->hasFiniteStrainModel(); }
 
     const Eigen::VectorXd& getDisplacements() const { return displacements_; }
     const Eigen::VectorXd& getReactionForces() const { return reactionForces_; }
@@ -74,6 +82,7 @@ public:
     std::vector<ContactFacet> getContactFacets() const;
     std::vector<ContactFacetResult> getContactFacetResults() const;
     ContactState evaluateCurrentContactState() const;
+    std::vector<FiniteStrainElementResponse> evaluateCurrentFiniteStrainElementResponses() const;
 
     Eigen::Vector3d getElementStress(int elementId, double xi, double eta) const;
     Eigen::Vector3d getElementStrain(int elementId, double xi, double eta) const;
@@ -93,12 +102,26 @@ public:
     bool validate() const;
 
 private:
+    void accumulateLinearSolveStats(const LinearSolver::SolveStats& solveStats);
     bool solveLinearSystem();
+    bool solveReducedIncrementSystem(const Eigen::SparseMatrix<double>& tangent,
+        const Eigen::VectorXd& residual,
+        const Assembly::ConstraintData& constraintData,
+        Eigen::VectorXd& displacementIncrement);
     bool solveContactIterative();
     void calculateReactionForces();
+    void calculateReactionForcesFromInternalForce(const Eigen::VectorXd& internalForce,
+        const Eigen::VectorXd& externalForce);
+    void calculateReactionForcesFromInternalForce(const Eigen::VectorXd& internalForce,
+        const Eigen::VectorXd& externalForce,
+        const Eigen::VectorXd& contactForce);
     void applyContactConditions(const Eigen::VectorXd& trialDisplacements,
         ContactIterationInfo& iterationInfo);
     void assembleExternalForces(Eigen::VectorXd& globalF) const;
+    void applyPrescribedDisplacements(const Assembly::ConstraintData& constraintData,
+        Eigen::VectorXd& fullDisplacements) const;
+    double computeFreeDofNorm(const Eigen::VectorXd& fullVector,
+        const Assembly::ConstraintData& constraintData) const;
     std::vector<std::shared_ptr<Node>> getElementNodes(int elementId) const;
 
     void calculateNodalAverages() const;

@@ -4,10 +4,143 @@
 #include <cmath>
 #include <stdexcept>
 
+#include "FiniteStrainMaterial.h"
 #include "assembly.h"
-#include "material.h"
 #include "node.h"
+#include "planeisometric/FiniteStrainQ4Element.h"
 #include "planeisometric/Planeisoparametric.h"
+
+namespace {
+
+struct ContactElementView {
+    int elementId = -1;
+    int materialId = -1;
+    double thickness = 0.0;
+    std::vector<int> nodeIds;
+    std::shared_ptr<PlaneIsoparametricElement> linearElement;
+    std::shared_ptr<FiniteStrainQ4Element> finiteStrainElement;
+};
+
+ContactElementView resolveContactElementView(
+    const std::shared_ptr<Assembly>& assembly,
+    int elementId) {
+    ContactElementView elementView;
+    elementView.elementId = elementId;
+
+    auto linearElement = assembly->getElement(elementId);
+    auto planeElement = std::dynamic_pointer_cast<PlaneIsoparametricElement>(linearElement);
+    if (planeElement) {
+        const auto material = assembly->getMaterial(planeElement->getMaterialId());
+        if (!material) {
+            throw std::invalid_argument(
+                "Linear material not found for contact element " + std::to_string(elementId));
+        }
+
+        elementView.materialId = planeElement->getMaterialId();
+        elementView.thickness = material->getThickness();
+        elementView.nodeIds = planeElement->getNodeIds();
+        elementView.linearElement = std::move(planeElement);
+        return elementView;
+    }
+
+    auto finiteStrainElement = assembly->getFiniteStrainElement(elementId);
+    if (finiteStrainElement) {
+        const auto material =
+            assembly->getFiniteStrainMaterial(finiteStrainElement->getMaterialId());
+        if (!material) {
+            throw std::invalid_argument(
+                "Finite-strain material not found for contact element " +
+                std::to_string(elementId));
+        }
+
+        elementView.materialId = finiteStrainElement->getMaterialId();
+        elementView.thickness = material->getThickness();
+        elementView.nodeIds = finiteStrainElement->getNodeIds();
+        elementView.finiteStrainElement = std::move(finiteStrainElement);
+        return elementView;
+    }
+
+    throw std::invalid_argument(
+        "Contact element not found in either linear or finite-strain assembly branch: " +
+        std::to_string(elementId));
+}
+
+std::vector<std::shared_ptr<Node>> getElementNodes(
+    const std::shared_ptr<Assembly>& assembly,
+    const std::vector<int>& nodeIds) {
+    std::vector<std::shared_ptr<Node>> elementNodes;
+    elementNodes.reserve(nodeIds.size());
+    for (int nodeId : nodeIds) {
+        auto node = assembly->getNode(nodeId);
+        if (!node) {
+            throw std::invalid_argument("Node not found: " + std::to_string(nodeId));
+        }
+        elementNodes.push_back(node);
+    }
+    return elementNodes;
+}
+
+std::vector<int> getElementFullDofIndices(
+    const std::shared_ptr<Assembly>& assembly,
+    const std::vector<int>& nodeIds) {
+    std::vector<int> dofIndices;
+    dofIndices.reserve(nodeIds.size() * 2);
+    for (int nodeId : nodeIds) {
+        dofIndices.push_back(assembly->getGlobalDofIndex(nodeId, 0));
+        dofIndices.push_back(assembly->getGlobalDofIndex(nodeId, 1));
+    }
+    return dofIndices;
+}
+
+Eigen::Vector4d evaluateScalarShapeFunctions(
+    const ContactElementView& elementView,
+    double xi,
+    double eta) {
+    if (elementView.linearElement) {
+        Eigen::MatrixXd shapeMatrix = elementView.linearElement->shapeFunctions(xi, eta);
+        Eigen::Vector4d N = Eigen::Vector4d::Zero();
+        for (int i = 0; i < 4; ++i) {
+            N(i) = shapeMatrix(0, 2 * i);
+        }
+        return N;
+    }
+
+    if (elementView.finiteStrainElement) {
+        return elementView.finiteStrainElement->shapeFunctionsLocal(xi, eta);
+    }
+
+    throw std::runtime_error("Unsupported contact element view without element backend");
+}
+
+double computeSurfaceJacobian(int surfaceIndex,
+    const ContactElementView& elementView,
+    const std::vector<std::shared_ptr<Node>>& elementNodes,
+    double xi,
+    double eta) {
+    Eigen::Matrix2d jacobian = Eigen::Matrix2d::Zero();
+    if (elementView.linearElement) {
+        jacobian = elementView.linearElement->jacobian(xi, eta, elementNodes);
+    }
+    else if (elementView.finiteStrainElement) {
+        jacobian = elementView.finiteStrainElement->referenceJacobian(xi, eta, elementNodes);
+    }
+    else {
+        throw std::runtime_error("Unsupported contact element view without element backend");
+    }
+
+    switch (surfaceIndex) {
+    case 0:
+    case 2:
+        return std::sqrt(jacobian(0, 0) * jacobian(0, 0) + jacobian(0, 1) * jacobian(0, 1));
+    case 1:
+    case 3:
+        return std::sqrt(jacobian(1, 0) * jacobian(1, 0) + jacobian(1, 1) * jacobian(1, 1));
+    default:
+        throw std::invalid_argument("Surface index must be in [0, 3]");
+    }
+}
+
+} // namespace
 
 RigidPlaneContactSolver::RigidPlaneContactSolver(std::shared_ptr<Assembly> assembly,
     const RigidPlane2D& plane,
@@ -60,30 +193,24 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
 
     for (size_t facetIndex = 0; facetIndex < facets_.size(); ++facetIndex) {
         const auto& facet = facets_[facetIndex];
-        auto element = assembly_->getElement(facet.elementId);
-        auto planeElement = std::dynamic_pointer_cast<PlaneIsoparametricElement>(element);
-        if (!planeElement) {
-            continue;
-        }
+        const ContactElementView elementView =
+            resolveContactElementView(assembly_, facet.elementId);
+        std::vector<std::shared_ptr<Node>> elementNodes =
+            getElementNodes(assembly_, elementView.nodeIds);
+        std::vector<int> dofIndices =
+            getElementFullDofIndices(assembly_, elementView.nodeIds);
 
-        auto material = assembly_->getMaterial(planeElement->getMaterialId());
-        if (!material) {
-            continue;
-        }
-
-        std::vector<std::shared_ptr<Node>> elementNodes = getElementNodes(facet.elementId);
-        std::vector<int> dofIndices = assembly_->getElementFullDofIndices(facet.elementId);
         ContactFacetResult facetResult;
         facetResult.facetId = static_cast<int>(facetIndex);
         facetResult.elementId = facet.elementId;
         facetResult.surfaceIndex = facet.surfaceIndex;
         facetResult.normal = plane_.normal;
-        facetResult.thickness = material->getThickness();
+        facetResult.thickness = elementView.thickness;
         bool facetActive = false;
 
         auto [midXi, midEta] = mapSurfaceCoordinates(facet.surfaceIndex, 0.0);
         Eigen::Vector4d midpointShapeFunctions =
-            evaluateScalarShapeFunctions(*planeElement, midXi, midEta);
+            evaluateScalarShapeFunctions(elementView, midXi, midEta);
         for (int localNode = 0; localNode < 4; ++localNode) {
             facetResult.referenceMidpoint +=
                 midpointShapeFunctions(localNode) * elementNodes[localNode]->getCoordinates();
@@ -101,7 +228,7 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
 
         for (size_t gpIndex = 0; gpIndex < gaussPoints.size(); ++gpIndex) {
             auto [xi, eta] = mapSurfaceCoordinates(facet.surfaceIndex, gaussPoints[gpIndex]);
-            Eigen::Vector4d N = evaluateScalarShapeFunctions(*planeElement, xi, eta);
+            Eigen::Vector4d N = evaluateScalarShapeFunctions(elementView, xi, eta);
 
             Eigen::Vector2d xGp = Eigen::Vector2d::Zero();
             Eigen::Vector2d uGp = Eigen::Vector2d::Zero();
@@ -116,9 +243,9 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
                 }
             }
 
-            const double thickness = std::max(material->getThickness(), 1.0e-15);
+            const double thickness = std::max(elementView.thickness, 1.0e-15);
             const double ds = computeSurfaceJacobian(
-                facet.surfaceIndex, *planeElement, elementNodes, xi, eta) *
+                facet.surfaceIndex, elementView, elementNodes, xi, eta) *
                 gaussWeights[gpIndex] *
                 thickness;
             const double lengthContribution = ds / thickness;
@@ -218,54 +345,4 @@ std::pair<double, double> RigidPlaneContactSolver::mapSurfaceCoordinates(int sur
     default:
         throw std::invalid_argument("Surface index must be in [0, 3]");
     }
-}
-
-double RigidPlaneContactSolver::computeSurfaceJacobian(int surfaceIndex,
-    const PlaneIsoparametricElement& element,
-    const std::vector<std::shared_ptr<Node>>& elementNodes,
-    double xi,
-    double eta) {
-    Eigen::Matrix2d jacobian = element.jacobian(xi, eta, elementNodes);
-
-    switch (surfaceIndex) {
-    case 0:
-    case 2:
-        return std::sqrt(jacobian(0, 0) * jacobian(0, 0) + jacobian(0, 1) * jacobian(0, 1));
-    case 1:
-    case 3:
-        return std::sqrt(jacobian(1, 0) * jacobian(1, 0) + jacobian(1, 1) * jacobian(1, 1));
-    default:
-        throw std::invalid_argument("Surface index must be in [0, 3]");
-    }
-}
-
-std::vector<std::shared_ptr<Node>> RigidPlaneContactSolver::getElementNodes(int elementId) const {
-    auto element = assembly_->getElement(elementId);
-    if (!element) {
-        throw std::invalid_argument("Element not found: " + std::to_string(elementId));
-    }
-
-    std::vector<std::shared_ptr<Node>> elementNodes;
-    elementNodes.reserve(element->getNodeIds().size());
-    for (int nodeId : element->getNodeIds()) {
-        auto node = assembly_->getNode(nodeId);
-        if (!node) {
-            throw std::invalid_argument("Node not found: " + std::to_string(nodeId));
-        }
-        elementNodes.push_back(node);
-    }
-
-    return elementNodes;
-}
-
-Eigen::Vector4d RigidPlaneContactSolver::evaluateScalarShapeFunctions(
-    const PlaneIsoparametricElement& element,
-    double xi,
-    double eta) const {
-    Eigen::MatrixXd shapeMatrix = element.shapeFunctions(xi, eta);
-    Eigen::Vector4d N = Eigen::Vector4d::Zero();
-    for (int i = 0; i < 4; ++i) {
-        N(i) = shapeMatrix(0, 2 * i);
-    }
-    return N;
 }

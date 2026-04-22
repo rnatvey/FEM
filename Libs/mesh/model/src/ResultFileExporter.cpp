@@ -12,6 +12,7 @@
 #include <unordered_map>
 
 #include "FEMModel.h"
+#include "NeoHookeanMaterial.h"
 #include "assembly.h"
 
 namespace {
@@ -136,16 +137,102 @@ double computePlaneStrainSigmaZZ(const Eigen::Vector3d& stress2d, double poisson
     return poissonsRatio * (stress2d.x() + stress2d.y());
 }
 
-double computeVonMisesStress(const Eigen::Vector3d& stress2d, double poissonsRatio) {
+double computeVonMisesStress(const Eigen::Vector3d& stress2d, double sigmaZZ) {
     const double sxx = stress2d.x();
     const double syy = stress2d.y();
     const double txy = stress2d.z();
-    const double szz = computePlaneStrainSigmaZZ(stress2d, poissonsRatio);
     return std::sqrt(std::max(
         0.0,
         sxx * sxx - sxx * syy + syy * syy
-            + szz * szz - syy * szz - sxx * szz
+            + sigmaZZ * sigmaZZ - syy * sigmaZZ - sxx * sigmaZZ
             + 3.0 * txy * txy));
+}
+
+Eigen::Matrix2d voigtStressToTensor(const Eigen::Vector3d& stressVoigt) {
+    Eigen::Matrix2d stress = Eigen::Matrix2d::Zero();
+    stress(0, 0) = stressVoigt.x();
+    stress(1, 1) = stressVoigt.y();
+    stress(0, 1) = stressVoigt.z();
+    stress(1, 0) = stressVoigt.z();
+    return stress;
+}
+
+struct FiniteStrainCellSummary {
+    int elementId = -1;
+    int materialId = -1;
+    double meanJ = 0.0;
+    double minJ = 1.0;
+    double maxJ = 1.0;
+    double meanStrainEnergyDensity = 0.0;
+    double meanSigmaZZ = 0.0;
+    Eigen::Vector3d meanGreenLagrangeStrain = Eigen::Vector3d::Zero();
+    Eigen::Vector3d meanSecondPiolaStress = Eigen::Vector3d::Zero();
+    Eigen::Vector3d meanCauchyStress = Eigen::Vector3d::Zero();
+};
+
+double finiteStrainSigmaZZ(const FiniteStrainGaussPointResult& gaussPoint,
+    const FiniteStrainMaterial& material) {
+    const auto* neoHookeanMaterial = dynamic_cast<const NeoHookeanMaterial*>(&material);
+    if (neoHookeanMaterial == nullptr) {
+        return 0.0;
+    }
+
+    const double J = gaussPoint.jacobianDeterminant;
+    if (!(J > 0.0)) {
+        return 0.0;
+    }
+
+    return neoHookeanMaterial->getLameFirstParameter() * std::log(J) / J;
+}
+
+FiniteStrainCellSummary summarizeFiniteStrainElementResponse(
+    const FiniteStrainElementResponse& response,
+    const FiniteStrainMaterial& material,
+    int elementId,
+    int materialId) {
+    FiniteStrainCellSummary summary;
+    summary.elementId = elementId;
+    summary.materialId = materialId;
+
+    if (response.gaussPointResults.empty()) {
+        return summary;
+    }
+
+    summary.minJ = response.gaussPointResults.front().jacobianDeterminant;
+    summary.maxJ = summary.minJ;
+
+    for (const auto& gaussPoint : response.gaussPointResults) {
+        const double J = gaussPoint.jacobianDeterminant;
+        const Eigen::Matrix2d F = gaussPoint.deformationGradient;
+        const Eigen::Matrix2d secondPiolaStress =
+            voigtStressToTensor(gaussPoint.secondPiolaStressVoigt);
+        Eigen::Matrix2d cauchyStress = Eigen::Matrix2d::Zero();
+        if (J > 0.0) {
+            cauchyStress = (1.0 / J) * F * secondPiolaStress * F.transpose();
+        }
+
+        summary.meanJ += J;
+        summary.minJ = std::min(summary.minJ, J);
+        summary.maxJ = std::max(summary.maxJ, J);
+        summary.meanStrainEnergyDensity += gaussPoint.strainEnergyDensity;
+        summary.meanGreenLagrangeStrain += gaussPoint.greenLagrangeStrainVoigt;
+        summary.meanSecondPiolaStress += gaussPoint.secondPiolaStressVoigt;
+        summary.meanCauchyStress += Eigen::Vector3d(
+            cauchyStress(0, 0),
+            cauchyStress(1, 1),
+            cauchyStress(0, 1));
+        summary.meanSigmaZZ += finiteStrainSigmaZZ(gaussPoint, material);
+    }
+
+    const double gaussPointCount =
+        static_cast<double>(response.gaussPointResults.size());
+    summary.meanJ /= gaussPointCount;
+    summary.meanStrainEnergyDensity /= gaussPointCount;
+    summary.meanGreenLagrangeStrain /= gaussPointCount;
+    summary.meanSecondPiolaStress /= gaussPointCount;
+    summary.meanCauchyStress /= gaussPointCount;
+    summary.meanSigmaZZ /= gaussPointCount;
+    return summary;
 }
 
 int vtkCellTypeForNodeCount(int nodeCount) {
@@ -245,16 +332,109 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
         options.outputDirectory / "contact_facets.csv";
 
     const auto& nodes = assembly->getNodes();
-    const auto& elements = assembly->getElements();
+    const auto& linearElements = assembly->getElements();
+    const auto& finiteStrainElements = assembly->getFiniteStrainElements();
+    const bool exportFiniteStrain =
+        model.hasFiniteStrainModel() && !finiteStrainElements.empty();
+    const auto finiteStrainResponses =
+        exportFiniteStrain ? model.evaluateCurrentFiniteStrainElementResponses()
+                           : std::vector<FiniteStrainElementResponse>{};
     const auto nodalDisplacements = model.getNodalDisplacements();
-    const auto nodalStresses = model.getNodalStresses();
-    const auto nodalStrains = model.getNodalStrains();
     const auto nodalReactionForces = model.getNodalReactionForces();
     const auto nodalContactForces = model.getNodalContactForces();
     const auto nodalSignedDistances = model.getNodalContactSignedDistances();
     const auto nodalPenetrations = model.getNodalContactPenetrations();
     const auto performanceMetrics = model.getPerformanceMetrics();
     const double representativePoissonsRatio = resolveRepresentativePoissonsRatio(*assembly);
+
+    std::vector<Eigen::Vector3d> nodalStresses;
+    std::vector<Eigen::Vector3d> nodalStrains;
+    std::vector<double> nodalSigmaZZ(nodes.size(), 0.0);
+    std::vector<double> nodalJacobianDeterminant(nodes.size(), 1.0);
+    std::vector<double> nodalStrainEnergyDensity(nodes.size(), 0.0);
+    std::vector<FiniteStrainCellSummary> finiteStrainCellSummaries;
+
+    if (exportFiniteStrain) {
+        nodalStresses.assign(nodes.size(), Eigen::Vector3d::Zero());
+        nodalStrains.assign(nodes.size(), Eigen::Vector3d::Zero());
+        nodalJacobianDeterminant.assign(nodes.size(), 0.0);
+        nodalStrainEnergyDensity.assign(nodes.size(), 0.0);
+        std::vector<int> nodalContributionCount(nodes.size(), 0);
+
+        finiteStrainCellSummaries.reserve(finiteStrainElements.size());
+        for (size_t elementIndex = 0;
+            elementIndex < finiteStrainElements.size() &&
+            elementIndex < finiteStrainResponses.size();
+            ++elementIndex) {
+            const auto& element = finiteStrainElements[elementIndex];
+            const auto material = assembly->getFiniteStrainMaterial(element->getMaterialId());
+            if (!material) {
+                continue;
+            }
+
+            finiteStrainCellSummaries.push_back(
+                summarizeFiniteStrainElementResponse(
+                    finiteStrainResponses[elementIndex],
+                    *material,
+                    element->getId(),
+                    element->getMaterialId()));
+
+            const auto& summary = finiteStrainCellSummaries.back();
+            for (int nodeId : element->getNodeIds()) {
+                auto nodeIt = std::find_if(nodes.begin(),
+                    nodes.end(),
+                    [nodeId](const std::shared_ptr<Node>& node) {
+                        return node && node->getId() == nodeId;
+                    });
+                if (nodeIt == nodes.end()) {
+                    continue;
+                }
+                const size_t nodeIndex =
+                    static_cast<size_t>(std::distance(nodes.begin(), nodeIt));
+                nodalStresses[nodeIndex] += summary.meanCauchyStress;
+                nodalStrains[nodeIndex] += summary.meanGreenLagrangeStrain;
+                nodalSigmaZZ[nodeIndex] += summary.meanSigmaZZ;
+                nodalJacobianDeterminant[nodeIndex] += summary.meanJ;
+                nodalStrainEnergyDensity[nodeIndex] += summary.meanStrainEnergyDensity;
+                nodalContributionCount[nodeIndex] += 1;
+            }
+        }
+
+        if (finiteStrainCellSummaries.size() < finiteStrainElements.size()) {
+            const size_t previousSize = finiteStrainCellSummaries.size();
+            finiteStrainCellSummaries.resize(finiteStrainElements.size());
+            for (size_t elementIndex = previousSize;
+                elementIndex < finiteStrainElements.size();
+                ++elementIndex) {
+                finiteStrainCellSummaries[elementIndex].elementId =
+                    finiteStrainElements[elementIndex]->getId();
+                finiteStrainCellSummaries[elementIndex].materialId =
+                    finiteStrainElements[elementIndex]->getMaterialId();
+            }
+        }
+
+        for (size_t nodeIndex = 0; nodeIndex < nodes.size(); ++nodeIndex) {
+            if (nodalContributionCount[nodeIndex] <= 0) {
+                nodalJacobianDeterminant[nodeIndex] = 1.0;
+                continue;
+            }
+            const double count = static_cast<double>(nodalContributionCount[nodeIndex]);
+            nodalStresses[nodeIndex] /= count;
+            nodalStrains[nodeIndex] /= count;
+            nodalSigmaZZ[nodeIndex] /= count;
+            nodalJacobianDeterminant[nodeIndex] /= count;
+            nodalStrainEnergyDensity[nodeIndex] /= count;
+        }
+    }
+    else {
+        nodalStresses = model.getNodalStresses();
+        nodalStrains = model.getNodalStrains();
+        for (size_t nodeIndex = 0; nodeIndex < nodalStresses.size() &&
+            nodeIndex < nodalSigmaZZ.size(); ++nodeIndex) {
+            nodalSigmaZZ[nodeIndex] =
+                computePlaneStrainSigmaZZ(nodalStresses[nodeIndex], representativePoissonsRatio);
+        }
+    }
 
     std::unordered_map<int, int> nodeIdToPointIndex;
     nodeIdToPointIndex.reserve(nodes.size());
@@ -265,41 +445,75 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
     std::vector<int> connectivity;
     std::vector<int> offsets;
     std::vector<int> cellTypes;
-    connectivity.reserve(elements.size() * 4);
-    offsets.reserve(elements.size());
-    cellTypes.reserve(elements.size());
+    const size_t cellCount = exportFiniteStrain
+        ? finiteStrainElements.size()
+        : linearElements.size();
+    connectivity.reserve(cellCount * 4);
+    offsets.reserve(cellCount);
+    cellTypes.reserve(cellCount);
 
     std::unordered_map<int, int> elementIdToCellIndex;
-    elementIdToCellIndex.reserve(elements.size());
+    elementIdToCellIndex.reserve(cellCount);
 
     int offset = 0;
-    for (size_t elementIndex = 0; elementIndex < elements.size(); ++elementIndex) {
-        const auto& element = elements[elementIndex];
-        elementIdToCellIndex[element->getId()] = static_cast<int>(elementIndex);
+    if (exportFiniteStrain) {
+        for (size_t elementIndex = 0; elementIndex < finiteStrainElements.size(); ++elementIndex) {
+            const auto& element = finiteStrainElements[elementIndex];
+            elementIdToCellIndex[element->getId()] = static_cast<int>(elementIndex);
 
-        for (int nodeId : element->getNodeIds()) {
-            auto nodeIt = nodeIdToPointIndex.find(nodeId);
-            if (nodeIt == nodeIdToPointIndex.end()) {
-                throw std::runtime_error("Element references a node that is not present in the assembly");
+            for (int nodeId : element->getNodeIds()) {
+                auto nodeIt = nodeIdToPointIndex.find(nodeId);
+                if (nodeIt == nodeIdToPointIndex.end()) {
+                    throw std::runtime_error(
+                        "Finite-strain element references a node that is not present in the assembly");
+                }
+                connectivity.push_back(nodeIt->second);
+                ++offset;
             }
-            connectivity.push_back(nodeIt->second);
-            ++offset;
-        }
 
-        offsets.push_back(offset);
-        cellTypes.push_back(vtkCellTypeForNodeCount(element->getNodeCount()));
+            offsets.push_back(offset);
+            cellTypes.push_back(vtkCellTypeForNodeCount(
+                static_cast<int>(element->getNodeIds().size())));
+        }
+    }
+    else {
+        for (size_t elementIndex = 0; elementIndex < linearElements.size(); ++elementIndex) {
+            const auto& element = linearElements[elementIndex];
+            elementIdToCellIndex[element->getId()] = static_cast<int>(elementIndex);
+
+            for (int nodeId : element->getNodeIds()) {
+                auto nodeIt = nodeIdToPointIndex.find(nodeId);
+                if (nodeIt == nodeIdToPointIndex.end()) {
+                    throw std::runtime_error(
+                        "Element references a node that is not present in the assembly");
+                }
+                connectivity.push_back(nodeIt->second);
+                ++offset;
+            }
+
+            offsets.push_back(offset);
+            cellTypes.push_back(vtkCellTypeForNodeCount(element->getNodeCount()));
+        }
     }
 
-    std::vector<int> elementIds(elements.size(), 0);
-    std::vector<int> materialIds(elements.size(), 0);
-    std::vector<int> candidateContactFacet(elements.size(), 0);
-    std::vector<int> candidateContactSurfaceIndex(elements.size(), -1);
-    std::vector<int> activeContactFacet(elements.size(), 0);
-    std::vector<int> activeContactSurfaceIndex(elements.size(), -1);
+    std::vector<int> elementIds(cellCount, 0);
+    std::vector<int> materialIds(cellCount, 0);
+    std::vector<int> candidateContactFacet(cellCount, 0);
+    std::vector<int> candidateContactSurfaceIndex(cellCount, -1);
+    std::vector<int> activeContactFacet(cellCount, 0);
+    std::vector<int> activeContactSurfaceIndex(cellCount, -1);
 
-    for (size_t elementIndex = 0; elementIndex < elements.size(); ++elementIndex) {
-        elementIds[elementIndex] = elements[elementIndex]->getId();
-        materialIds[elementIndex] = elements[elementIndex]->getMaterialId();
+    if (exportFiniteStrain) {
+        for (size_t elementIndex = 0; elementIndex < finiteStrainElements.size(); ++elementIndex) {
+            elementIds[elementIndex] = finiteStrainElements[elementIndex]->getId();
+            materialIds[elementIndex] = finiteStrainElements[elementIndex]->getMaterialId();
+        }
+    }
+    else {
+        for (size_t elementIndex = 0; elementIndex < linearElements.size(); ++elementIndex) {
+            elementIds[elementIndex] = linearElements[elementIndex]->getId();
+            materialIds[elementIndex] = linearElements[elementIndex]->getMaterialId();
+        }
     }
 
     ContactState contactState;
@@ -342,7 +556,7 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
     vtuStream << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
     vtuStream << "  <UnstructuredGrid>\n";
     vtuStream << "    <Piece NumberOfPoints=\"" << nodes.size()
-              << "\" NumberOfCells=\"" << elements.size() << "\">\n";
+              << "\" NumberOfCells=\"" << cellCount << "\">\n";
     vtuStream << "      <PointData Vectors=\"displacement\">\n";
 
     writeVector3DataArray(vtuStream, "displacement", static_cast<int>(nodes.size()),
@@ -352,6 +566,16 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
                 ? nodalDisplacements[index]
                 : Eigen::Vector2d::Zero();
             return Eigen::Vector3d(displacement.x(), displacement.y(), 0.0);
+        });
+    writeVector3DataArray(vtuStream, "deformed_position", static_cast<int>(nodes.size()),
+        [&](int index) {
+            const Eigen::Vector2d coordinates = nodes[static_cast<size_t>(index)]->getCoordinates();
+            const Eigen::Vector2d displacement =
+                index < static_cast<int>(nodalDisplacements.size())
+                ? nodalDisplacements[index]
+                : Eigen::Vector2d::Zero();
+            const Eigen::Vector2d deformedPosition = coordinates + displacement;
+            return Eigen::Vector3d(deformedPosition.x(), deformedPosition.y(), 0.0);
         });
     writeScalarDataArray(vtuStream, "displacement_magnitude", static_cast<int>(nodes.size()),
         [&](int index) {
@@ -388,16 +612,44 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
         });
     writeScalarDataArray(vtuStream, "sigma_zz", static_cast<int>(nodes.size()),
         [&](int index) {
-            return formatNumber(index < static_cast<int>(nodalStresses.size())
-                ? computePlaneStrainSigmaZZ(nodalStresses[index], representativePoissonsRatio)
+            return formatNumber(index < static_cast<int>(nodalSigmaZZ.size())
+                ? nodalSigmaZZ[index]
                 : 0.0);
         });
     writeScalarDataArray(vtuStream, "von_mises_stress", static_cast<int>(nodes.size()),
         [&](int index) {
             return formatNumber(index < static_cast<int>(nodalStresses.size())
-                ? computeVonMisesStress(nodalStresses[index], representativePoissonsRatio)
+                ? computeVonMisesStress(
+                    nodalStresses[index],
+                    index < static_cast<int>(nodalSigmaZZ.size()) ? nodalSigmaZZ[index] : 0.0)
                 : 0.0);
         });
+    if (exportFiniteStrain) {
+        writeVector3DataArray(vtuStream, "cauchy_stress_2d", static_cast<int>(nodes.size()),
+            [&](int index) {
+                return index < static_cast<int>(nodalStresses.size())
+                    ? nodalStresses[index]
+                    : Eigen::Vector3d::Zero();
+            });
+        writeVector3DataArray(vtuStream, "green_lagrange_strain_2d", static_cast<int>(nodes.size()),
+            [&](int index) {
+                return index < static_cast<int>(nodalStrains.size())
+                    ? nodalStrains[index]
+                    : Eigen::Vector3d::Zero();
+            });
+        writeScalarDataArray(vtuStream, "jacobian_determinant", static_cast<int>(nodes.size()),
+            [&](int index) {
+                return formatNumber(index < static_cast<int>(nodalJacobianDeterminant.size())
+                    ? nodalJacobianDeterminant[index]
+                    : 1.0);
+            });
+        writeScalarDataArray(vtuStream, "strain_energy_density", static_cast<int>(nodes.size()),
+            [&](int index) {
+                return formatNumber(index < static_cast<int>(nodalStrainEnergyDensity.size())
+                    ? nodalStrainEnergyDensity[index]
+                    : 0.0);
+            });
+    }
 
     writeVector3DataArray(vtuStream, "strain_2d", static_cast<int>(nodes.size()),
         [&](int index) {
@@ -472,19 +724,43 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
 
     vtuStream << "      </PointData>\n";
     vtuStream << "      <CellData>\n";
-    writeIntDataArray(vtuStream, "element_id", static_cast<int>(elements.size()),
+    writeIntDataArray(vtuStream, "element_id", static_cast<int>(cellCount),
         [&](int index) { return formatInteger(elementIds[index]); });
-    writeIntDataArray(vtuStream, "material_id", static_cast<int>(elements.size()),
+    writeIntDataArray(vtuStream, "material_id", static_cast<int>(cellCount),
         [&](int index) { return formatInteger(materialIds[index]); });
 
+    if (exportFiniteStrain) {
+        writeScalarDataArray(vtuStream, "cell_jacobian_determinant", static_cast<int>(cellCount),
+            [&](int index) { return formatNumber(finiteStrainCellSummaries[static_cast<size_t>(index)].meanJ); });
+        writeScalarDataArray(vtuStream, "cell_jacobian_determinant_min", static_cast<int>(cellCount),
+            [&](int index) { return formatNumber(finiteStrainCellSummaries[static_cast<size_t>(index)].minJ); });
+        writeScalarDataArray(vtuStream, "cell_jacobian_determinant_max", static_cast<int>(cellCount),
+            [&](int index) { return formatNumber(finiteStrainCellSummaries[static_cast<size_t>(index)].maxJ); });
+        writeScalarDataArray(vtuStream, "cell_strain_energy_density", static_cast<int>(cellCount),
+            [&](int index) { return formatNumber(finiteStrainCellSummaries[static_cast<size_t>(index)].meanStrainEnergyDensity); });
+        writeVector3DataArray(vtuStream, "cell_cauchy_stress_2d", static_cast<int>(cellCount),
+            [&](int index) { return finiteStrainCellSummaries[static_cast<size_t>(index)].meanCauchyStress; });
+        writeScalarDataArray(vtuStream, "cell_sigma_zz", static_cast<int>(cellCount),
+            [&](int index) { return formatNumber(finiteStrainCellSummaries[static_cast<size_t>(index)].meanSigmaZZ); });
+        writeScalarDataArray(vtuStream, "cell_von_mises_stress", static_cast<int>(cellCount),
+            [&](int index) {
+                const auto& summary = finiteStrainCellSummaries[static_cast<size_t>(index)];
+                return formatNumber(computeVonMisesStress(summary.meanCauchyStress, summary.meanSigmaZZ));
+            });
+        writeVector3DataArray(vtuStream, "cell_second_piola_stress_2d", static_cast<int>(cellCount),
+            [&](int index) { return finiteStrainCellSummaries[static_cast<size_t>(index)].meanSecondPiolaStress; });
+        writeVector3DataArray(vtuStream, "cell_green_lagrange_strain_2d", static_cast<int>(cellCount),
+            [&](int index) { return finiteStrainCellSummaries[static_cast<size_t>(index)].meanGreenLagrangeStrain; });
+    }
+
     if (model.hasContactSolver()) {
-        writeIntDataArray(vtuStream, "candidate_contact_facet", static_cast<int>(elements.size()),
+        writeIntDataArray(vtuStream, "candidate_contact_facet", static_cast<int>(cellCount),
             [&](int index) { return formatInteger(candidateContactFacet[index]); });
-        writeIntDataArray(vtuStream, "candidate_contact_surface_index", static_cast<int>(elements.size()),
+        writeIntDataArray(vtuStream, "candidate_contact_surface_index", static_cast<int>(cellCount),
             [&](int index) { return formatInteger(candidateContactSurfaceIndex[index]); });
-        writeIntDataArray(vtuStream, "active_contact_facet", static_cast<int>(elements.size()),
+        writeIntDataArray(vtuStream, "active_contact_facet", static_cast<int>(cellCount),
             [&](int index) { return formatInteger(activeContactFacet[index]); });
-        writeIntDataArray(vtuStream, "active_contact_surface_index", static_cast<int>(elements.size()),
+        writeIntDataArray(vtuStream, "active_contact_surface_index", static_cast<int>(cellCount),
             [&](int index) { return formatInteger(activeContactSurfaceIndex[index]); });
     }
 
@@ -594,13 +870,51 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
 
     const auto& dofMapping = assembly->getDofMapping();
     const long long nodeCount = static_cast<long long>(nodes.size());
-    const long long elementCount = static_cast<long long>(elements.size());
+    const long long elementCount = static_cast<long long>(cellCount);
     const long long totalDof = static_cast<long long>(assembly->getTotalDofCount());
     const long long freeDof = static_cast<long long>(dofMapping.reducedToFull.size());
     const long long prescribedDof = static_cast<long long>(dofMapping.prescribedDofs.size());
     const long long constrainedDof = totalDof - freeDof;
     const long long candidateFacetCount = static_cast<long long>(contactFacetResults.size());
     const long long activeFacetCountLongLong = static_cast<long long>(activeFacetCount);
+
+    double minCellJacobianDeterminant = 1.0;
+    double maxCellJacobianDeterminant = 1.0;
+    double meanCellJacobianDeterminant = 1.0;
+    double minCellStrainEnergyDensity = 0.0;
+    double maxCellStrainEnergyDensity = 0.0;
+    double meanCellStrainEnergyDensity = 0.0;
+    if (!finiteStrainCellSummaries.empty()) {
+        minCellJacobianDeterminant =
+            finiteStrainCellSummaries.front().minJ;
+        maxCellJacobianDeterminant =
+            finiteStrainCellSummaries.front().maxJ;
+        meanCellJacobianDeterminant = 0.0;
+        minCellStrainEnergyDensity =
+            finiteStrainCellSummaries.front().meanStrainEnergyDensity;
+        maxCellStrainEnergyDensity =
+            finiteStrainCellSummaries.front().meanStrainEnergyDensity;
+        meanCellStrainEnergyDensity = 0.0;
+
+        for (const auto& summary : finiteStrainCellSummaries) {
+            minCellJacobianDeterminant =
+                std::min(minCellJacobianDeterminant, summary.minJ);
+            maxCellJacobianDeterminant =
+                std::max(maxCellJacobianDeterminant, summary.maxJ);
+            meanCellJacobianDeterminant += summary.meanJ;
+
+            minCellStrainEnergyDensity =
+                std::min(minCellStrainEnergyDensity, summary.meanStrainEnergyDensity);
+            maxCellStrainEnergyDensity =
+                std::max(maxCellStrainEnergyDensity, summary.meanStrainEnergyDensity);
+            meanCellStrainEnergyDensity += summary.meanStrainEnergyDensity;
+        }
+
+        meanCellJacobianDeterminant /=
+            static_cast<double>(finiteStrainCellSummaries.size());
+        meanCellStrainEnergyDensity /=
+            static_cast<double>(finiteStrainCellSummaries.size());
+    }
 
     if (model.hasContactSolver()) {
         std::ofstream contactFacetStream(contactFacetCsvPath);
@@ -682,7 +996,19 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
     metricsStream << "    \"solve_time_seconds\": " << formatNumber(performanceMetrics.solveTimeSeconds) << ",\n";
     metricsStream << "    \"total_time_seconds\": " << formatNumber(performanceMetrics.totalTimeSeconds) << "\n";
     metricsStream << "  },\n";
+    metricsStream << "  \"formulation\": {\n";
+    metricsStream << "    \"finite_strain\": " << (exportFiniteStrain ? "true" : "false") << ",\n";
+    metricsStream << "    \"point_stress_measure\": \""
+                  << (exportFiniteStrain ? "cauchy" : "small_strain_constitutive")
+                  << "\",\n";
+    metricsStream << "    \"point_strain_measure\": \""
+                  << (exportFiniteStrain ? "green_lagrange" : "small_strain")
+                  << "\"\n";
+    metricsStream << "  },\n";
     metricsStream << "  \"iterations\": {\n";
+    metricsStream << "    \"linear_solves\": " << performanceMetrics.linearSolveCount << ",\n";
+    metricsStream << "    \"direct_linear_solves\": "
+                  << performanceMetrics.directLinearSolveCount << ",\n";
     metricsStream << "    \"nonlinear_iterations\": " << performanceMetrics.nonlinearIterations << ",\n";
     metricsStream << "    \"linear_iterations\": " << performanceMetrics.linearIterations << "\n";
     metricsStream << "  },\n";
@@ -698,6 +1024,28 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
     metricsStream << "  },\n";
     metricsStream << "  \"matrix\": {\n";
     metricsStream << "    \"nnz\": " << performanceMetrics.matrixNonZeros << "\n";
+    metricsStream << "  },\n";
+    metricsStream << "  \"finite_strain\": {\n";
+    metricsStream << "    \"configured\": " << (exportFiniteStrain ? "true" : "false") << ",\n";
+    metricsStream << "    \"strain_energy\": " << formatNumber(performanceMetrics.strainEnergy) << ",\n";
+    metricsStream << "    \"has_near_incompressible_material\": "
+                  << (performanceMetrics.hasNearIncompressibleFiniteStrainMaterial ? "true" : "false") << ",\n";
+    metricsStream << "    \"max_effective_poissons_ratio\": "
+                  << formatNumber(performanceMetrics.maxFiniteStrainEffectivePoissonsRatio) << ",\n";
+    metricsStream << "    \"max_bulk_to_shear_ratio\": "
+                  << formatNumber(performanceMetrics.maxFiniteStrainBulkToShearRatio) << ",\n";
+    metricsStream << "    \"min_cell_jacobian_determinant\": "
+                  << formatNumber(minCellJacobianDeterminant) << ",\n";
+    metricsStream << "    \"mean_cell_jacobian_determinant\": "
+                  << formatNumber(meanCellJacobianDeterminant) << ",\n";
+    metricsStream << "    \"max_cell_jacobian_determinant\": "
+                  << formatNumber(maxCellJacobianDeterminant) << ",\n";
+    metricsStream << "    \"min_cell_strain_energy_density\": "
+                  << formatNumber(minCellStrainEnergyDensity) << ",\n";
+    metricsStream << "    \"mean_cell_strain_energy_density\": "
+                  << formatNumber(meanCellStrainEnergyDensity) << ",\n";
+    metricsStream << "    \"max_cell_strain_energy_density\": "
+                  << formatNumber(maxCellStrainEnergyDensity) << "\n";
     metricsStream << "  },\n";
     metricsStream << "  \"contact\": {\n";
     metricsStream << "    \"configured\": " << (model.hasContactSolver() ? "true" : "false") << ",\n";
