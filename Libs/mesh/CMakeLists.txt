@@ -5,6 +5,7 @@ target_sources(mesh PRIVATE
     element/include/planeisometric/ContactPlane.cpp
     element/include/planeisometric/Planeisoparametric.cpp
     element/src/BaseElement.cpp
+    element/src/NeoHookeanMaterial.cpp
     element/src/material.cpp
     meshGenerator/src/meshgenerator.cpp
     model/src/ConcentratedForce.cpp
