@@ -66,11 +66,11 @@ bool quickModeEnabled() {
     return false;
 }
 
-std::vector<double> buildAugmentationValues(bool quickMode) {
+std::vector<double> buildAugmentationScalingFactors(bool quickMode) {
     if (quickMode) {
-        return {5.0e2};
+        return {10.0};
     }
-    return {1.0e2, 5.0e2, 2.0e3};
+    return {0.5, 2.0, 10.0};
 }
 
 std::vector<MeshVariant> buildMeshVariants(bool quickMode) {
@@ -87,10 +87,10 @@ std::vector<MeshVariant> buildMeshVariants(bool quickMode) {
     };
 }
 
-std::string makeCaseToken(const std::string& meshLabel, double augmentationParameter) {
+std::string makeCaseToken(const std::string& meshLabel, double augmentationScalingFactor) {
     std::ostringstream stream;
     stream << "augmented_lagrangian_" << meshLabel
-           << "_parameter_" << std::llround(augmentationParameter);
+           << "_scaling_factor_" << std::llround(augmentationScalingFactor);
     return stream.str();
 }
 
@@ -109,7 +109,7 @@ std::string buildStudyRow(const StudyResult& result) {
     std::ostringstream stream;
     stream << std::fixed << std::setprecision(8)
            << "augmented_lagrangian" << ','
-           << "augmentation_parameter" << ','
+           << "augmentation_scaling_factor" << ','
            << result.augmentationParameter << ','
            << result.meshLabel << ','
            << std::boolalpha << result.success << ','
@@ -162,10 +162,10 @@ double computeMinimumSignedDistance(const FEModel& model,
 
 StudyResult runStudyCase(const std::filesystem::path& outputRoot,
     const MeshVariant& meshVariant,
-    double augmentationParameter) {
+    double augmentationScalingFactor) {
     StudyResult result;
     result.meshLabel = meshVariant.label;
-    result.augmentationParameter = augmentationParameter;
+    result.augmentationParameter = augmentationScalingFactor;
 
     auto assembly = std::make_shared<Assembly>();
     auto material = std::make_shared<Material>(1, kYoungsModulus, kPoissonsRatio, kThickness);
@@ -214,10 +214,14 @@ StudyResult runStudyCase(const std::filesystem::path& outputRoot,
     model.setAssembly(assembly);
     model.setMaxIterations(80);
     model.setSolverTolerance(1.0e-9);
+    AugmentedLagrangianSettings settings;
+    settings.augmentationParameter = 1.0;
+    settings.useAutomaticAugmentationScaling = true;
+    settings.automaticScalingFactor = augmentationScalingFactor;
     model.configureRigidPlaneAugmentedLagrangianContact(
         setup.rigidPlane,
         setup.mesh.candidateContactFacets,
-        AugmentedLagrangianSettings{augmentationParameter, 1.0e-8});
+        settings);
 
     result.success = model.solveContact();
     result.metrics = model.getPerformanceMetrics();
@@ -233,19 +237,20 @@ StudyResult runStudyCase(const std::filesystem::path& outputRoot,
 
     ResultFileExportOptions exportOptions;
     exportOptions.outputDirectory =
-        outputRoot / makeCaseToken(meshVariant.label, augmentationParameter);
+        outputRoot / makeCaseToken(meshVariant.label, augmentationScalingFactor);
     exportOptions.baseName = "solution";
     exportOptions.extraStringMetrics = {
-        {"case_name", makeCaseToken(meshVariant.label, augmentationParameter)},
+        {"case_name", makeCaseToken(meshVariant.label, augmentationScalingFactor)},
         {"mesh_label", meshVariant.label},
         {"geometry_family", "tire_ring"},
         {"study_family", "main_scale_augmented_lagrangian"},
         {"contact_method", "augmented_lagrangian"},
-        {"contact_parameter_name", "augmentation_parameter"}
+        {"contact_parameter_name", "augmentation_scaling_factor"}
     };
     exportOptions.extraNumericMetrics = {
-        {"contact_parameter_value", augmentationParameter},
-        {"augmentation_parameter", augmentationParameter},
+        {"contact_parameter_value", augmentationScalingFactor},
+        {"augmentation_scaling_factor", augmentationScalingFactor},
+        {"automatic_augmentation_scaling_enabled", 1.0},
         {"youngs_modulus", kYoungsModulus},
         {"poissons_ratio", kPoissonsRatio},
         {"thickness", kThickness},
@@ -290,7 +295,7 @@ StudyResult runStudyCase(const std::filesystem::path& outputRoot,
 int main() {
     try {
         const bool quickMode = quickModeEnabled();
-        const auto augmentationValues = buildAugmentationValues(quickMode);
+        const auto augmentationValues = buildAugmentationScalingFactors(quickMode);
         const auto meshVariants = buildMeshVariants(quickMode);
 
         const std::filesystem::path outputRoot =

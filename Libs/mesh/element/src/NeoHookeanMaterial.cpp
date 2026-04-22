@@ -72,6 +72,16 @@ double NeoHookeanMaterial::getLameFirstParameter() const {
     return computeLameFirstParameter(shearModulus_, bulkModulus_);
 }
 
+double NeoHookeanMaterial::getEquivalentYoungsModulus() const {
+    const double denominator = 3.0 * bulkModulus_ + shearModulus_;
+    if (std::abs(denominator) <= kNearZero) {
+        throw std::runtime_error(
+            "Cannot recover effective Young's modulus from Neo-Hookean moduli");
+    }
+
+    return 9.0 * bulkModulus_ * shearModulus_ / denominator;
+}
+
 double NeoHookeanMaterial::getEffectivePoissonsRatio() const {
     const double denominator = 2.0 * (3.0 * bulkModulus_ + shearModulus_);
     if (std::abs(denominator) <= kNearZero) {

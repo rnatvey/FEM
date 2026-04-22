@@ -109,7 +109,7 @@ bool matchesOptionalNumericFilter(std::string_view filterValue, double actualVal
     }
 }
 
-std::vector<double> buildContactParameterValues(bool quickMode, bool longMode) {
+std::vector<double> buildPenaltyParameterValues(bool quickMode, bool longMode) {
     if (quickMode) {
         return {5.0e2};
     }
@@ -117,6 +117,16 @@ std::vector<double> buildContactParameterValues(bool quickMode, bool longMode) {
         return {1.0e1, 2.5e1, 5.0e1, 1.0e2, 2.5e2, 5.0e2, 1.0e3, 2.0e3, 5.0e3, 1.0e4};
     }
     return {1.0e2, 5.0e2, 2.0e3};
+}
+
+std::vector<double> buildAugmentedLagrangianScalingFactors(bool quickMode, bool longMode) {
+    if (quickMode) {
+        return {10.0};
+    }
+    if (longMode) {
+        return {0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0};
+    }
+    return {0.5, 2.0, 10.0};
 }
 
 std::vector<MeshVariant> buildMeshVariants(bool quickMode, bool longMode) {
@@ -164,7 +174,7 @@ std::string contactParameterName(const ContactMethodVariant method) {
     case ContactMethodVariant::Penalty:
         return "penalty_parameter";
     case ContactMethodVariant::AugmentedLagrangian:
-        return "augmentation_parameter";
+        return "augmentation_scaling_factor";
     }
     return "contact_parameter";
 }
@@ -319,10 +329,14 @@ StudyResult runStudyCase(const std::filesystem::path& outputRoot,
     }
     else {
         model.setMaxIterations(80);
+        AugmentedLagrangianSettings settings;
+        settings.augmentationParameter = 1.0;
+        settings.useAutomaticAugmentationScaling = true;
+        settings.automaticScalingFactor = contactParameterValue;
         model.configureRigidPlaneAugmentedLagrangianContact(
             setup.rigidPlane,
             setup.mesh.candidateContactFacets,
-            AugmentedLagrangianSettings{contactParameterValue, 1.0e-8});
+            settings);
     }
 
     result.success = model.solveContact();
@@ -352,6 +366,8 @@ StudyResult runStudyCase(const std::filesystem::path& outputRoot,
     exportOptions.extraNumericMetrics = {
         {"contact_parameter_value", contactParameterValue},
         {result.contactParameterName, contactParameterValue},
+        {"automatic_augmentation_scaling_enabled",
+            method == ContactMethodVariant::AugmentedLagrangian ? 1.0 : 0.0},
         {"youngs_modulus", kYoungsModulus},
         {"poissons_ratio", kPoissonsRatio},
         {"thickness", kThickness},
@@ -414,7 +430,6 @@ int main() {
             ? environmentString("FEM_MAIN_SCALE_OUTPUT_SUBDIRECTORY")
             : environmentString("FEM_MAIN_SCALE_COMPARISON_OUTPUT_SUBDIRECTORY");
         const auto methods = buildContactMethods();
-        const auto contactParameterValues = buildContactParameterValues(quickMode, longMode);
         const auto meshVariants = buildMeshVariants(quickMode, longMode);
 
         const std::filesystem::path outputRoot =
@@ -439,6 +454,10 @@ int main() {
             if (!matchesOptionalFilter(methodFilter, contactMethodName(method))) {
                 continue;
             }
+            const auto contactParameterValues =
+                method == ContactMethodVariant::Penalty
+                ? buildPenaltyParameterValues(quickMode, longMode)
+                : buildAugmentedLagrangianScalingFactors(quickMode, longMode);
             for (const auto& meshVariant : meshVariants) {
                 if (!matchesOptionalFilter(meshFilter, meshVariant.label)) {
                     continue;

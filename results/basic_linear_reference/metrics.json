@@ -22,9 +22,9 @@
     "prescribed_dofs": 11
   },
   "timings": {
-    "assembly_time_seconds": 0.00045940000000000005,
-    "solve_time_seconds": 0.00048700000000000002,
-    "total_time_seconds": 0.0013141000000000001
+    "assembly_time_seconds": 0.00049070000000000006,
+    "solve_time_seconds": 0.00047120000000000002,
+    "total_time_seconds": 0.0013177
   },
   "formulation": {
     "finite_strain": false,

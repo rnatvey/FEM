@@ -4,9 +4,11 @@
 #include <cmath>
 #include <stdexcept>
 
+#include "FiniteStrainMaterial.h"
+#include "NeoHookeanMaterial.h"
 #include "assembly.h"
-#include "material.h"
 #include "node.h"
+#include "planeisometric/FiniteStrainQ4Element.h"
 #include "planeisometric/Planeisoparametric.h"
 
 namespace {
@@ -15,6 +17,185 @@ constexpr double kGaussPoint = 0.577350269189626;
 const std::vector<double> kGaussPoints = {-kGaussPoint, kGaussPoint};
 const std::vector<double> kGaussWeights = {1.0, 1.0};
 constexpr int kGaussPointCountPerFacet = 2;
+
+std::pair<double, double> mapSurfaceCoordinatesLocal(int surfaceIndex, double surfaceParameter) {
+    switch (surfaceIndex) {
+    case 0:
+        return {surfaceParameter, -1.0};
+    case 1:
+        return {1.0, surfaceParameter};
+    case 2:
+        return {surfaceParameter, 1.0};
+    case 3:
+        return {-1.0, surfaceParameter};
+    default:
+        throw std::invalid_argument("Surface index must be in [0, 3]");
+    }
+}
+
+struct ContactElementView {
+    int elementId = -1;
+    int materialId = -1;
+    double thickness = 0.0;
+    double characteristicYoungsModulus = 0.0;
+    std::vector<int> nodeIds;
+    std::shared_ptr<PlaneIsoparametricElement> linearElement;
+    std::shared_ptr<FiniteStrainQ4Element> finiteStrainElement;
+};
+
+ContactElementView resolveContactElementView(
+    const std::shared_ptr<Assembly>& assembly,
+    int elementId) {
+    ContactElementView elementView;
+    elementView.elementId = elementId;
+
+    auto linearElement = assembly->getElement(elementId);
+    auto planeElement = std::dynamic_pointer_cast<PlaneIsoparametricElement>(linearElement);
+    if (planeElement) {
+        const auto material = assembly->getMaterial(planeElement->getMaterialId());
+        if (!material) {
+            throw std::invalid_argument(
+                "Linear material not found for contact element " + std::to_string(elementId));
+        }
+
+        elementView.materialId = planeElement->getMaterialId();
+        elementView.thickness = material->getThickness();
+        elementView.characteristicYoungsModulus = material->getYoungsModulus();
+        elementView.nodeIds = planeElement->getNodeIds();
+        elementView.linearElement = std::move(planeElement);
+        return elementView;
+    }
+
+    auto finiteStrainElement = assembly->getFiniteStrainElement(elementId);
+    if (finiteStrainElement) {
+        const auto material =
+            assembly->getFiniteStrainMaterial(finiteStrainElement->getMaterialId());
+        if (!material) {
+            throw std::invalid_argument(
+                "Finite-strain material not found for contact element " +
+                std::to_string(elementId));
+        }
+        const auto neoHookeanMaterial =
+            std::dynamic_pointer_cast<NeoHookeanMaterial>(material);
+        if (!neoHookeanMaterial) {
+            throw std::invalid_argument(
+                "Finite-strain augmented Lagrangian contact currently expects "
+                "Neo-Hookean material for characteristic stiffness scaling on element " +
+                std::to_string(elementId));
+        }
+
+        elementView.materialId = finiteStrainElement->getMaterialId();
+        elementView.thickness = material->getThickness();
+        elementView.characteristicYoungsModulus =
+            neoHookeanMaterial->getEquivalentYoungsModulus();
+        elementView.nodeIds = finiteStrainElement->getNodeIds();
+        elementView.finiteStrainElement = std::move(finiteStrainElement);
+        return elementView;
+    }
+
+    throw std::invalid_argument(
+        "Contact element not found in either linear or finite-strain assembly branch: " +
+        std::to_string(elementId));
+}
+
+std::vector<std::shared_ptr<Node>> getElementNodes(
+    const std::shared_ptr<Assembly>& assembly,
+    const std::vector<int>& nodeIds) {
+    std::vector<std::shared_ptr<Node>> elementNodes;
+    elementNodes.reserve(nodeIds.size());
+    for (int nodeId : nodeIds) {
+        auto node = assembly->getNode(nodeId);
+        if (!node) {
+            throw std::invalid_argument("Node not found: " + std::to_string(nodeId));
+        }
+        elementNodes.push_back(node);
+    }
+    return elementNodes;
+}
+
+std::vector<int> getElementFullDofIndices(
+    const std::shared_ptr<Assembly>& assembly,
+    const std::vector<int>& nodeIds) {
+    std::vector<int> dofIndices;
+    dofIndices.reserve(nodeIds.size() * 2);
+    for (int nodeId : nodeIds) {
+        dofIndices.push_back(assembly->getGlobalDofIndex(nodeId, 0));
+        dofIndices.push_back(assembly->getGlobalDofIndex(nodeId, 1));
+    }
+    return dofIndices;
+}
+
+Eigen::Vector4d evaluateScalarShapeFunctions(
+    const ContactElementView& elementView,
+    double xi,
+    double eta) {
+    if (elementView.linearElement) {
+        Eigen::MatrixXd shapeMatrix = elementView.linearElement->shapeFunctions(xi, eta);
+        Eigen::Vector4d N = Eigen::Vector4d::Zero();
+        for (int i = 0; i < 4; ++i) {
+            N(i) = shapeMatrix(0, 2 * i);
+        }
+        return N;
+    }
+
+    if (elementView.finiteStrainElement) {
+        return elementView.finiteStrainElement->shapeFunctionsLocal(xi, eta);
+    }
+
+    throw std::runtime_error("Unsupported contact element view without element backend");
+}
+
+double computeSurfaceJacobian(int surfaceIndex,
+    const ContactElementView& elementView,
+    const std::vector<std::shared_ptr<Node>>& elementNodes,
+    double xi,
+    double eta) {
+    Eigen::Matrix2d jacobian = Eigen::Matrix2d::Zero();
+    if (elementView.linearElement) {
+        jacobian = elementView.linearElement->jacobian(xi, eta, elementNodes);
+    }
+    else if (elementView.finiteStrainElement) {
+        jacobian = elementView.finiteStrainElement->referenceJacobian(xi, eta, elementNodes);
+    }
+    else {
+        throw std::runtime_error("Unsupported contact element view without element backend");
+    }
+
+    switch (surfaceIndex) {
+    case 0:
+    case 2:
+        return std::sqrt(jacobian(0, 0) * jacobian(0, 0) + jacobian(0, 1) * jacobian(0, 1));
+    case 1:
+    case 3:
+        return std::sqrt(jacobian(1, 0) * jacobian(1, 0) + jacobian(1, 1) * jacobian(1, 1));
+    default:
+        throw std::invalid_argument("Surface index must be in [0, 3]");
+    }
+}
+
+double computeReferenceFacetLength(int surfaceIndex,
+    const ContactElementView& elementView,
+    const std::vector<std::shared_ptr<Node>>& elementNodes) {
+    double facetLength = 0.0;
+    for (size_t gpIndex = 0; gpIndex < kGaussPoints.size(); ++gpIndex) {
+        const auto [xi, eta] = mapSurfaceCoordinatesLocal(surfaceIndex, kGaussPoints[gpIndex]);
+        facetLength += computeSurfaceJacobian(
+            surfaceIndex, elementView, elementNodes, xi, eta) * kGaussWeights[gpIndex];
+    }
+    return facetLength;
+}
+
+double effectiveAugmentationParameter(const AugmentedLagrangianSettings& settings,
+    const ContactElementView& elementView,
+    double characteristicFacetLength) {
+    if (!settings.useAutomaticAugmentationScaling) {
+        return settings.augmentationParameter;
+    }
+
+    const double safeFacetLength = std::max(characteristicFacetLength, 1.0e-12);
+    const double safeYoungsModulus = std::max(elementView.characteristicYoungsModulus, 1.0e-12);
+    return settings.automaticScalingFactor * safeYoungsModulus / safeFacetLength;
+}
 
 } // namespace
 
@@ -40,6 +221,17 @@ RigidPlaneAugmentedLagrangianContactSolver::RigidPlaneAugmentedLagrangianContact
     }
     if (settings_.penetrationTolerance < 0.0) {
         throw std::invalid_argument("Penetration tolerance must be non-negative");
+    }
+    if (settings_.relativePenetrationToleranceFactor < 0.0) {
+        throw std::invalid_argument(
+            "Relative penetration tolerance factor must be non-negative");
+    }
+    if (!(settings_.multiplierRelaxation > 0.0) || settings_.multiplierRelaxation > 1.0) {
+        throw std::invalid_argument("Multiplier relaxation must lie in (0, 1]");
+    }
+    if (settings_.useAutomaticAugmentationScaling &&
+        !(settings_.automaticScalingFactor > 0.0)) {
+        throw std::invalid_argument("Automatic augmentation scaling factor must be positive");
     }
 
     plane_.normal.normalize();
@@ -72,6 +264,17 @@ void RigidPlaneAugmentedLagrangianContactSolver::setSettings(
     if (settings.penetrationTolerance < 0.0) {
         throw std::invalid_argument("Penetration tolerance must be non-negative");
     }
+    if (settings.relativePenetrationToleranceFactor < 0.0) {
+        throw std::invalid_argument(
+            "Relative penetration tolerance factor must be non-negative");
+    }
+    if (!(settings.multiplierRelaxation > 0.0) || settings.multiplierRelaxation > 1.0) {
+        throw std::invalid_argument("Multiplier relaxation must lie in (0, 1]");
+    }
+    if (settings.useAutomaticAugmentationScaling &&
+        !(settings.automaticScalingFactor > 0.0)) {
+        throw std::invalid_argument("Automatic augmentation scaling factor must be positive");
+    }
 
     settings_ = settings;
 }
@@ -99,31 +302,28 @@ void RigidPlaneAugmentedLagrangianContactSolver::assembleContact(
 
     for (size_t facetIndex = 0; facetIndex < facets_.size(); ++facetIndex) {
         const auto& facet = facets_[facetIndex];
-        auto element = assembly_->getElement(facet.elementId);
-        auto planeElement = std::dynamic_pointer_cast<PlaneIsoparametricElement>(element);
-        if (!planeElement) {
-            continue;
-        }
-
-        auto material = assembly_->getMaterial(planeElement->getMaterialId());
-        if (!material) {
-            continue;
-        }
-
-        std::vector<std::shared_ptr<Node>> elementNodes = getElementNodes(facet.elementId);
-        std::vector<int> dofIndices = assembly_->getElementFullDofIndices(facet.elementId);
+        const ContactElementView elementView =
+            resolveContactElementView(assembly_, facet.elementId);
+        std::vector<std::shared_ptr<Node>> elementNodes =
+            getElementNodes(assembly_, elementView.nodeIds);
+        std::vector<int> dofIndices =
+            getElementFullDofIndices(assembly_, elementView.nodeIds);
+        const double characteristicFacetLength =
+            computeReferenceFacetLength(facet.surfaceIndex, elementView, elementNodes);
+        const double augmentationParameter = effectiveAugmentationParameter(
+            settings_, elementView, characteristicFacetLength);
 
         ContactFacetResult facetResult;
         facetResult.facetId = static_cast<int>(facetIndex);
         facetResult.elementId = facet.elementId;
         facetResult.surfaceIndex = facet.surfaceIndex;
         facetResult.normal = plane_.normal;
-        facetResult.thickness = material->getThickness();
+        facetResult.thickness = elementView.thickness;
         bool facetActive = false;
 
         auto [midXi, midEta] = mapSurfaceCoordinates(facet.surfaceIndex, 0.0);
         Eigen::Vector4d midpointShapeFunctions =
-            evaluateScalarShapeFunctions(*planeElement, midXi, midEta);
+            evaluateScalarShapeFunctions(elementView, midXi, midEta);
         for (int localNode = 0; localNode < 4; ++localNode) {
             facetResult.referenceMidpoint +=
                 midpointShapeFunctions(localNode) * elementNodes[localNode]->getCoordinates();
@@ -146,7 +346,7 @@ void RigidPlaneAugmentedLagrangianContactSolver::assembleContact(
 
             auto [xi, eta] =
                 mapSurfaceCoordinates(facet.surfaceIndex, kGaussPoints[gpIndex]);
-            Eigen::Vector4d N = evaluateScalarShapeFunctions(*planeElement, xi, eta);
+            Eigen::Vector4d N = evaluateScalarShapeFunctions(elementView, xi, eta);
 
             Eigen::Vector2d xGp = Eigen::Vector2d::Zero();
             Eigen::Vector2d uGp = Eigen::Vector2d::Zero();
@@ -161,9 +361,9 @@ void RigidPlaneAugmentedLagrangianContactSolver::assembleContact(
                 }
             }
 
-            const double thickness = std::max(material->getThickness(), 1.0e-15);
+            const double thickness = std::max(elementView.thickness, 1.0e-15);
             const double ds = computeSurfaceJacobian(
-                facet.surfaceIndex, *planeElement, elementNodes, xi, eta) *
+                facet.surfaceIndex, elementView, elementNodes, xi, eta) *
                 kGaussWeights[gpIndex] *
                 thickness;
             const double lengthContribution = ds / thickness;
@@ -171,7 +371,7 @@ void RigidPlaneAugmentedLagrangianContactSolver::assembleContact(
             const double penetration = std::max(0.0, -gap);
             const double augmentedPressure = std::max(
                 0.0,
-                storedState.lambdaN - settings_.augmentationParameter * gap);
+                storedState.lambdaN - augmentationParameter * gap);
 
             ContactGaussPointState gaussPointState = storedState;
             gaussPointState.gapN = gap;
@@ -206,7 +406,7 @@ void RigidPlaneAugmentedLagrangianContactSolver::assembleContact(
                 contactF(dofIndices[2 * i + 1]) += N(i) * traction.y() * ds;
 
                 for (int j = 0; j < 4; ++j) {
-                    Eigen::Matrix2d kij = settings_.augmentationParameter * N(i) * N(j) *
+                    Eigen::Matrix2d kij = augmentationParameter * N(i) * N(j) *
                         (plane_.normal * plane_.normal.transpose()) * ds;
                     triplets.emplace_back(dofIndices[2 * i], dofIndices[2 * j], kij(0, 0));
                     triplets.emplace_back(dofIndices[2 * i], dofIndices[2 * j + 1], kij(0, 1));
@@ -249,17 +449,23 @@ ContactSolverUpdateInfo RigidPlaneAugmentedLagrangianContactSolver::updateState(
     double deltaLambdaSquaredNorm = 0.0;
     double lambdaSquaredNorm = 0.0;
     double lambdaSum = 0.0;
+    double characteristicFacetLengthSum = 0.0;
+    int characteristicFacetCount = 0;
 
     for (size_t facetIndex = 0; facetIndex < facets_.size(); ++facetIndex) {
         const auto& facet = facets_[facetIndex];
-        auto element = assembly_->getElement(facet.elementId);
-        auto planeElement = std::dynamic_pointer_cast<PlaneIsoparametricElement>(element);
-        if (!planeElement) {
-            continue;
-        }
-
-        std::vector<std::shared_ptr<Node>> elementNodes = getElementNodes(facet.elementId);
-        std::vector<int> dofIndices = assembly_->getElementFullDofIndices(facet.elementId);
+        const ContactElementView elementView =
+            resolveContactElementView(assembly_, facet.elementId);
+        std::vector<std::shared_ptr<Node>> elementNodes =
+            getElementNodes(assembly_, elementView.nodeIds);
+        std::vector<int> dofIndices =
+            getElementFullDofIndices(assembly_, elementView.nodeIds);
+        const double characteristicFacetLength =
+            computeReferenceFacetLength(facet.surfaceIndex, elementView, elementNodes);
+        characteristicFacetLengthSum += characteristicFacetLength;
+        characteristicFacetCount += 1;
+        const double augmentationParameter = effectiveAugmentationParameter(
+            settings_, elementView, characteristicFacetLength);
 
         for (int gpIndex = 0; gpIndex < kGaussPointCountPerFacet; ++gpIndex) {
             const int stateIndex =
@@ -268,7 +474,7 @@ ContactSolverUpdateInfo RigidPlaneAugmentedLagrangianContactSolver::updateState(
 
             auto [xi, eta] =
                 mapSurfaceCoordinates(facet.surfaceIndex, kGaussPoints[gpIndex]);
-            Eigen::Vector4d N = evaluateScalarShapeFunctions(*planeElement, xi, eta);
+            Eigen::Vector4d N = evaluateScalarShapeFunctions(elementView, xi, eta);
 
             Eigen::Vector2d xGp = Eigen::Vector2d::Zero();
             Eigen::Vector2d uGp = Eigen::Vector2d::Zero();
@@ -286,9 +492,12 @@ ContactSolverUpdateInfo RigidPlaneAugmentedLagrangianContactSolver::updateState(
             const double gap = plane_.signedDistance(xGp + uGp);
             const double penetration = std::max(0.0, -gap);
             const double previousLambda = gaussPointState.lambdaN;
-            const double updatedLambda = std::max(
+            const double trialLambda = std::max(
                 0.0,
-                previousLambda - settings_.augmentationParameter * gap);
+                previousLambda - augmentationParameter * gap);
+            const double updatedLambda =
+                previousLambda +
+                settings_.multiplierRelaxation * (trialLambda - previousLambda);
 
             gaussPointState.gapN = gap;
             gaussPointState.penetrationN = penetration;
@@ -322,8 +531,15 @@ ContactSolverUpdateInfo RigidPlaneAugmentedLagrangianContactSolver::updateState(
         updateInfo.activeGaussPointCount > 0
         ? lambdaSum / static_cast<double>(updateInfo.activeGaussPointCount)
         : 0.0;
+    const double meanCharacteristicFacetLength =
+        characteristicFacetCount > 0
+        ? characteristicFacetLengthSum / static_cast<double>(characteristicFacetCount)
+        : 0.0;
+    const double effectivePenetrationTolerance = std::max(
+        settings_.penetrationTolerance,
+        settings_.relativePenetrationToleranceFactor * meanCharacteristicFacetLength);
     updateInfo.converged =
-        updateInfo.maxPenetration <= settings_.penetrationTolerance &&
+        updateInfo.maxPenetration <= effectivePenetrationTolerance &&
         (updateInfo.relativeStateUpdateNorm <= settings_.multiplierTolerance ||
             updateInfo.relativeMaxStateUpdate <= settings_.multiplierTolerance ||
             updateInfo.stateUpdateNorm <= settings_.absoluteMultiplierTolerance);
@@ -351,26 +567,6 @@ std::pair<double, double> RigidPlaneAugmentedLagrangianContactSolver::mapSurface
     }
 }
 
-double RigidPlaneAugmentedLagrangianContactSolver::computeSurfaceJacobian(
-    int surfaceIndex,
-    const PlaneIsoparametricElement& element,
-    const std::vector<std::shared_ptr<Node>>& elementNodes,
-    double xi,
-    double eta) {
-    Eigen::Matrix2d jacobian = element.jacobian(xi, eta, elementNodes);
-
-    switch (surfaceIndex) {
-    case 0:
-    case 2:
-        return std::sqrt(jacobian(0, 0) * jacobian(0, 0) + jacobian(0, 1) * jacobian(0, 1));
-    case 1:
-    case 3:
-        return std::sqrt(jacobian(1, 0) * jacobian(1, 0) + jacobian(1, 1) * jacobian(1, 1));
-    default:
-        throw std::invalid_argument("Surface index must be in [0, 3]");
-    }
-}
-
 void RigidPlaneAugmentedLagrangianContactSolver::initializeGaussPointStates() {
     gaussPointStates_.clear();
     gaussPointStates_.reserve(facets_.size() * kGaussPointCountPerFacet);
@@ -390,36 +586,4 @@ void RigidPlaneAugmentedLagrangianContactSolver::initializeGaussPointStates() {
             gaussPointStates_.push_back(gaussPointState);
         }
     }
-}
-
-std::vector<std::shared_ptr<Node>> RigidPlaneAugmentedLagrangianContactSolver::getElementNodes(
-    int elementId) const {
-    auto element = assembly_->getElement(elementId);
-    if (!element) {
-        throw std::invalid_argument("Element not found: " + std::to_string(elementId));
-    }
-
-    std::vector<std::shared_ptr<Node>> elementNodes;
-    elementNodes.reserve(element->getNodeIds().size());
-    for (int nodeId : element->getNodeIds()) {
-        auto node = assembly_->getNode(nodeId);
-        if (!node) {
-            throw std::invalid_argument("Node not found: " + std::to_string(nodeId));
-        }
-        elementNodes.push_back(node);
-    }
-
-    return elementNodes;
-}
-
-Eigen::Vector4d RigidPlaneAugmentedLagrangianContactSolver::evaluateScalarShapeFunctions(
-    const PlaneIsoparametricElement& element,
-    double xi,
-    double eta) const {
-    Eigen::MatrixXd shapeMatrix = element.shapeFunctions(xi, eta);
-    Eigen::Vector4d N = Eigen::Vector4d::Zero();
-    for (int i = 0; i < 4; ++i) {
-        N(i) = shapeMatrix(0, 2 * i);
-    }
-    return N;
 }

@@ -158,6 +158,7 @@ def humanize_contact_parameter_name(parameter_name: str, method_name: str) -> st
     mapping = {
         "penalty_parameter": f"Параметр штрафа, {STRESS_UNIT_LABEL}/{LENGTH_UNIT_LABEL}",
         "augmentation_parameter": f"Параметр расширенного Лагранжа, {STRESS_UNIT_LABEL}/{LENGTH_UNIT_LABEL}",
+        "augmentation_scaling_factor": "Коэффициент масштабирования AL, -",
         "contact_parameter": f"Параметр контактного метода, {STRESS_UNIT_LABEL}/{LENGTH_UNIT_LABEL}",
     }
     if parameter_name in mapping:
@@ -184,7 +185,7 @@ def case_contact_parameter_info(metrics: dict[str, Any]) -> tuple[str, float]:
     parameter_name = str(
         metric_path(metrics, "extra", "contact_parameter_name")
         or (
-            "augmentation_parameter"
+            "augmentation_scaling_factor"
             if method_name == "augmented_lagrangian"
             else "penalty_parameter"
         )
@@ -193,12 +194,15 @@ def case_contact_parameter_info(metrics: dict[str, Any]) -> tuple[str, float]:
         metric_path(metrics, "extra", "contact_parameter_value", default=math.nan)
     )
     if not math.isfinite(parameter_value):
-        fallback_key = (
-            "augmentation_parameter"
+        fallback_keys = (
+            ["augmentation_scaling_factor", "augmentation_parameter"]
             if method_name == "augmented_lagrangian"
-            else "penalty_parameter"
+            else ["penalty_parameter"]
         )
-        parameter_value = float(metric_path(metrics, "extra", fallback_key, default=math.nan))
+        for fallback_key in fallback_keys:
+            parameter_value = float(metric_path(metrics, "extra", fallback_key, default=math.nan))
+            if math.isfinite(parameter_value):
+                break
     return parameter_name, parameter_value
 
 

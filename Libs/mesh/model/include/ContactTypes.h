@@ -39,6 +39,10 @@ struct AugmentedLagrangianSettings {
     double multiplierTolerance = 1.0e-8;
     double absoluteMultiplierTolerance = 2.0e-6;
     double penetrationTolerance = 1.0e-8;
+    double relativePenetrationToleranceFactor = 1.0e-5;
+    double multiplierRelaxation = 0.75;
+    bool useAutomaticAugmentationScaling = false;
+    double automaticScalingFactor = 1.0;
 };
 
 struct ContactGaussPointState {

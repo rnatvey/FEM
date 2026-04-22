@@ -45,6 +45,7 @@ public:
     double getShearModulus() const { return shearModulus_; }
     double getBulkModulus() const { return bulkModulus_; }
     double getLameFirstParameter() const;
+    double getEquivalentYoungsModulus() const;
     double getEffectivePoissonsRatio() const;
     double getBulkToShearRatio() const;
     bool isNearlyIncompressible(double threshold = 0.475) const;
