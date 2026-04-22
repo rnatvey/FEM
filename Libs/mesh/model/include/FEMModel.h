@@ -20,6 +20,10 @@ public:
         int nonlinearIterations = 0;
         int activeSetSize = 0;
         double assemblyTimeSeconds = 0.0;
+        double structuralAssemblyTimeSeconds = 0.0;
+        double contactAssemblyTimeSeconds = 0.0;
+        double boundaryConditionTimeSeconds = 0.0;
+        double reductionTimeSeconds = 0.0;
         double solveTimeSeconds = 0.0;
         double totalTimeSeconds = 0.0;
         double maxPenetration = 0.0;
@@ -42,6 +46,8 @@ public:
         bool hasNearIncompressibleFiniteStrainMaterial = false;
         std::string linearSolverBackend = "uninitialized";
         std::string contactMethod = "none";
+        Eigen::Index structuralMatrixNonZeros = 0;
+        Eigen::Index contactMatrixNonZeros = 0;
         Eigen::Index matrixNonZeros = 0;
     };
 

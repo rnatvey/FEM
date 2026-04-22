@@ -1,6 +1,7 @@
 ﻿#include "assembly.h"
 #include "solver.h"
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <stdexcept>
 #include <iostream>
@@ -190,7 +191,6 @@ std::shared_ptr<FiniteStrainQ4Element> Assembly::getFiniteStrainElement(int id) 
 void Assembly::assembleGlobalStiffnessMatrix(Eigen::SparseMatrix<double>& globalK) const {
     int totalDof = getTotalDofCount();
     globalK.resize(totalDof, totalDof);
-    globalK.setZero();
 
     std::vector<Eigen::Triplet<double>> triplets;
     triplets.reserve(elements_.size() * 64);
@@ -201,22 +201,34 @@ void Assembly::assembleGlobalStiffnessMatrix(Eigen::SparseMatrix<double>& global
             continue;
         }
 
+        const auto& nodeIds = element->getNodeIds();
         std::vector<std::shared_ptr<Node>> elementNodes;
-        elementNodes.reserve(element->getNodeIds().size());
-        for (int nodeId : element->getNodeIds()) {
-            auto node = getNode(nodeId);
-            if (node) elementNodes.push_back(node);
+        elementNodes.reserve(nodeIds.size());
+        std::vector<int> dofIndices;
+        dofIndices.reserve(nodeIds.size() * 2);
+        for (int nodeId : nodeIds) {
+            const auto nodeIndexIt = nodeIdToIndex_.find(nodeId);
+            if (nodeIndexIt == nodeIdToIndex_.end()) {
+                elementNodes.clear();
+                break;
+            }
+
+            const int nodeIndex = nodeIndexIt->second;
+            elementNodes.push_back(nodes_[static_cast<size_t>(nodeIndex)]);
+            dofIndices.push_back(nodeIndex * 2);
+            dofIndices.push_back(nodeIndex * 2 + 1);
+        }
+
+        if (elementNodes.size() != nodeIds.size()) {
+            continue;
         }
 
         // Р’С‹С‡РёСЃР»СЏРµРј РјР°С‚СЂРёС†Сѓ Р¶РµСЃС‚РєРѕСЃС‚Рё СЌР»РµРјРµРЅС‚Р°
         Eigen::MatrixXd ke = element->computeStiffnessMatrix(elementNodes, material);
 
-        
-        std::vector<int> dofIndices = getElementFullDofIndices(element->getId());
-
         // Р”РѕР±Р°РІР»СЏРµРј РІ РіР»РѕР±Р°Р»СЊРЅСѓСЋ РјР°С‚СЂРёС†Сѓ
-        for (int i = 0; i < dofIndices.size(); ++i) {
-            for (int j = 0; j < dofIndices.size(); ++j) {
+        for (int i = 0; i < static_cast<int>(dofIndices.size()); ++i) {
+            for (int j = 0; j < static_cast<int>(dofIndices.size()); ++j) {
                 if (dofIndices[i] >= 0 && dofIndices[j] >= 0) {
                     triplets.emplace_back(dofIndices[i], dofIndices[j], ke(i, j));
                 }
@@ -237,18 +249,31 @@ void Assembly::assembleGlobalForceVector(Eigen::VectorXd& globalF, const Eigen::
         auto material = getMaterial(element->getMaterialId());
         if (!material) continue;
 
+        const auto& nodeIds = element->getNodeIds();
         std::vector<std::shared_ptr<Node>> elementNodes;
-        for (int nodeId : element->getNodeIds()) {
-            auto node = getNode(nodeId);
-            if (node) elementNodes.push_back(node);
+        elementNodes.reserve(nodeIds.size());
+        std::vector<int> dofIndices;
+        dofIndices.reserve(nodeIds.size() * 2);
+        for (int nodeId : nodeIds) {
+            const auto nodeIndexIt = nodeIdToIndex_.find(nodeId);
+            if (nodeIndexIt == nodeIdToIndex_.end()) {
+                elementNodes.clear();
+                break;
+            }
+
+            const int nodeIndex = nodeIndexIt->second;
+            elementNodes.push_back(nodes_[static_cast<size_t>(nodeIndex)]);
+            dofIndices.push_back(nodeIndex * 2);
+            dofIndices.push_back(nodeIndex * 2 + 1);
+        }
+
+        if (elementNodes.size() != nodeIds.size()) {
+            continue;
         }
 
         Eigen::VectorXd fe = element->computeEquivalentNodalForces(bodyForces, elementNodes, material);
 
-        // РСЃРїРѕР»СЊР·СѓРµРј РџРћР›РќР«Р• РёРЅРґРµРєСЃС‹
-        auto dofIndices = getElementFullDofIndices(element->getId());
-
-        for (int i = 0; i < dofIndices.size(); ++i) {
+        for (int i = 0; i < static_cast<int>(dofIndices.size()); ++i) {
             if (dofIndices[i] >= 0) {
                 globalF(dofIndices[i]) += fe(i);
             }
@@ -279,7 +304,6 @@ void Assembly::assembleFiniteStrainSystem(const Eigen::VectorXd& fullDisplacemen
     std::vector<Eigen::Triplet<double>> triplets;
     if (computeTangent) {
         globalTangent.resize(totalDof, totalDof);
-        globalTangent.setZero();
         triplets.reserve(finiteStrainElements_.size() * 64);
     }
 
@@ -291,23 +315,23 @@ void Assembly::assembleFiniteStrainSystem(const Eigen::VectorXd& fullDisplacemen
                 " not found during assembly");
         }
 
+        const auto& nodeIds = element->getNodeIds();
         std::vector<std::shared_ptr<Node>> elementNodes;
-        elementNodes.reserve(element->getNodeIds().size());
-        for (int nodeId : element->getNodeIds()) {
-            auto node = getNode(nodeId);
-            if (!node) {
+        elementNodes.reserve(nodeIds.size());
+        std::vector<int> dofIndices;
+        dofIndices.reserve(nodeIds.size() * 2);
+        for (int nodeId : nodeIds) {
+            const auto nodeIndexIt = nodeIdToIndex_.find(nodeId);
+            if (nodeIndexIt == nodeIdToIndex_.end()) {
                 throw std::runtime_error(
                     "Finite-strain element " + std::to_string(element->getId()) +
                     " references missing node " + std::to_string(nodeId));
             }
-            elementNodes.push_back(node);
-        }
 
-        std::vector<int> dofIndices;
-        dofIndices.reserve(element->getNodeIds().size() * 2);
-        for (int nodeId : element->getNodeIds()) {
-            dofIndices.push_back(getGlobalDofIndex(nodeId, 0));
-            dofIndices.push_back(getGlobalDofIndex(nodeId, 1));
+            const int nodeIndex = nodeIndexIt->second;
+            elementNodes.push_back(nodes_[static_cast<size_t>(nodeIndex)]);
+            dofIndices.push_back(nodeIndex * 2);
+            dofIndices.push_back(nodeIndex * 2 + 1);
         }
 
         Eigen::VectorXd elementDisplacements = Eigen::VectorXd::Zero(dofIndices.size());
@@ -398,12 +422,21 @@ void Assembly::addPrescribedDisplacementY(int nodeId,  double dy) {
 }
 
 void Assembly::applyBoundaryConditions(Eigen::SparseMatrix<double>& globalK,
-    Eigen::VectorXd& globalF) const {
+    Eigen::VectorXd& globalF,
+    BoundaryConditionApplicationStats* stats) const {
+    const auto totalStartTime = std::chrono::high_resolution_clock::now();
     LinearSolver solver;
 
     const ConstraintData constraintData = buildConstraintData();
     const int totalDof = globalK.rows();
     populateDofMapping(totalDof, constraintData);
+
+    if (stats) {
+        stats->inputMatrixNonZeros = globalK.nonZeros();
+        stats->constrainedDofCount = static_cast<int>(constraintData.constrainedDofs.size());
+        stats->activeDofCount =
+            std::max(0, totalDof - static_cast<int>(constraintData.constrainedDofs.size()));
+    }
 
     // Apply all constraints through sparse reduction to avoid mutating the
     // matrix structure for prescribed displacements.
@@ -412,6 +445,7 @@ void Assembly::applyBoundaryConditions(Eigen::SparseMatrix<double>& globalK,
         Eigen::VectorXd reducedF;
         std::vector<int> activeDofs;
 
+        const auto reduceStartTime = std::chrono::high_resolution_clock::now();
         solver.reduceSystem(globalK,
             globalF,
             constraintData.constrainedDofs,
@@ -420,8 +454,22 @@ void Assembly::applyBoundaryConditions(Eigen::SparseMatrix<double>& globalK,
             reducedK,
             reducedF,
             activeDofs);
+        const auto reduceEndTime = std::chrono::high_resolution_clock::now();
         globalK = std::move(reducedK);
         globalF = std::move(reducedF);
+
+        if (stats) {
+            stats->reduceSystemTimeSeconds =
+                std::chrono::duration<double>(reduceEndTime - reduceStartTime).count();
+            stats->activeDofCount = static_cast<int>(activeDofs.size());
+        }
+    }
+
+    if (stats) {
+        const auto totalEndTime = std::chrono::high_resolution_clock::now();
+        stats->outputMatrixNonZeros = globalK.nonZeros();
+        stats->totalTimeSeconds =
+            std::chrono::duration<double>(totalEndTime - totalStartTime).count();
     }
 }
 

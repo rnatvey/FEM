@@ -22,14 +22,21 @@
     "prescribed_dofs": 11
   },
   "timings": {
-    "assembly_time_seconds": 0.00049070000000000006,
-    "solve_time_seconds": 0.00047120000000000002,
-    "total_time_seconds": 0.0013177
+    "structural_assembly_time_seconds": 0.00040320000000000004,
+    "contact_assembly_time_seconds": 0,
+    "boundary_condition_time_seconds": 4.7700000000000001e-05,
+    "reduction_time_seconds": 3.7100000000000001e-05,
+    "assembly_time_seconds": 0.00045150000000000002,
+    "linear_solve_time_seconds": 0.00047840000000000003,
+    "solve_time_seconds": 0.00047840000000000003,
+    "total_time_seconds": 0.0013166
   },
   "formulation": {
     "finite_strain": false,
     "point_stress_measure": "small_strain_constitutive",
-    "point_strain_measure": "small_strain"
+    "point_strain_measure": "small_strain",
+    "point_field_semantics": "nodal_recovered_and_averaged",
+    "cell_field_semantics": "element_centered"
   },
   "iterations": {
     "linear_solves": 1,
@@ -48,6 +55,9 @@
     "equilibrium_residual_norm": 7.5673133946450764e-07
   },
   "matrix": {
+    "structural_nnz": 3844,
+    "contact_nnz": 0,
+    "total_nnz": 3616,
     "nnz": 3616
   },
   "finite_strain": {

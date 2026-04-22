@@ -1,6 +1,7 @@
 #include "RigidPlaneContactSolver.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <stdexcept>
 
@@ -20,6 +21,21 @@ struct ContactElementView {
     std::shared_ptr<PlaneIsoparametricElement> linearElement;
     std::shared_ptr<FiniteStrainQ4Element> finiteStrainElement;
 };
+
+constexpr double kGaussPoint = 0.577350269189626;
+constexpr std::array<double, 2> kGaussWeights = {1.0, 1.0};
+constexpr std::array<std::pair<double, double>, 4> kSurfaceMidpointCoordinates = {{
+    {0.0, -1.0},
+    {1.0, 0.0},
+    {0.0, 1.0},
+    {-1.0, 0.0}
+}};
+constexpr std::array<std::array<std::pair<double, double>, 2>, 4> kSurfaceGaussCoordinates = {{
+    {{{-kGaussPoint, -1.0}, {kGaussPoint, -1.0}}},
+    {{{1.0, -kGaussPoint}, {1.0, kGaussPoint}}},
+    {{{-kGaussPoint, 1.0}, {kGaussPoint, 1.0}}},
+    {{{-1.0, -kGaussPoint}, {-1.0, kGaussPoint}}}
+}};
 
 ContactElementView resolveContactElementView(
     const std::shared_ptr<Assembly>& assembly,
@@ -65,51 +81,39 @@ ContactElementView resolveContactElementView(
         std::to_string(elementId));
 }
 
-std::vector<std::shared_ptr<Node>> getElementNodes(
-    const std::shared_ptr<Assembly>& assembly,
-    const std::vector<int>& nodeIds) {
+struct ContactElementAssemblyData {
     std::vector<std::shared_ptr<Node>> elementNodes;
-    elementNodes.reserve(nodeIds.size());
-    for (int nodeId : nodeIds) {
+    std::vector<int> dofIndices;
+};
+
+ContactElementAssemblyData buildContactElementAssemblyData(
+    const std::shared_ptr<Assembly>& assembly,
+    const ContactElementView& elementView) {
+    ContactElementAssemblyData data;
+    data.elementNodes.reserve(elementView.nodeIds.size());
+    data.dofIndices.reserve(elementView.nodeIds.size() * 2);
+
+    for (int nodeId : elementView.nodeIds) {
         auto node = assembly->getNode(nodeId);
         if (!node) {
             throw std::invalid_argument("Node not found: " + std::to_string(nodeId));
         }
-        elementNodes.push_back(node);
+
+        data.elementNodes.push_back(node);
+        data.dofIndices.push_back(assembly->getGlobalDofIndex(nodeId, 0));
+        data.dofIndices.push_back(assembly->getGlobalDofIndex(nodeId, 1));
     }
-    return elementNodes;
+
+    return data;
 }
 
-std::vector<int> getElementFullDofIndices(
-    const std::shared_ptr<Assembly>& assembly,
-    const std::vector<int>& nodeIds) {
-    std::vector<int> dofIndices;
-    dofIndices.reserve(nodeIds.size() * 2);
-    for (int nodeId : nodeIds) {
-        dofIndices.push_back(assembly->getGlobalDofIndex(nodeId, 0));
-        dofIndices.push_back(assembly->getGlobalDofIndex(nodeId, 1));
-    }
-    return dofIndices;
-}
-
-Eigen::Vector4d evaluateScalarShapeFunctions(
-    const ContactElementView& elementView,
-    double xi,
-    double eta) {
-    if (elementView.linearElement) {
-        Eigen::MatrixXd shapeMatrix = elementView.linearElement->shapeFunctions(xi, eta);
-        Eigen::Vector4d N = Eigen::Vector4d::Zero();
-        for (int i = 0; i < 4; ++i) {
-            N(i) = shapeMatrix(0, 2 * i);
-        }
-        return N;
-    }
-
-    if (elementView.finiteStrainElement) {
-        return elementView.finiteStrainElement->shapeFunctionsLocal(xi, eta);
-    }
-
-    throw std::runtime_error("Unsupported contact element view without element backend");
+Eigen::Vector4d evaluateScalarShapeFunctions(double xi, double eta) {
+    Eigen::Vector4d N;
+    N(0) = 0.25 * (1.0 + xi) * (1.0 + eta);
+    N(1) = 0.25 * (1.0 - xi) * (1.0 + eta);
+    N(2) = 0.25 * (1.0 - xi) * (1.0 - eta);
+    N(3) = 0.25 * (1.0 + xi) * (1.0 - eta);
+    return N;
 }
 
 double computeSurfaceJacobian(int surfaceIndex,
@@ -181,10 +185,6 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
     std::vector<Eigen::Triplet<double>> triplets;
     triplets.reserve(facets_.size() * 128);
 
-    static constexpr double gaussPoint = 0.577350269189626;
-    static const std::vector<double> gaussPoints = {-gaussPoint, gaussPoint};
-    static const std::vector<double> gaussWeights = {1.0, 1.0};
-
     state = {};
     state.method = getMethod();
     state.activeFacetIds.reserve(facets_.size());
@@ -195,10 +195,10 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
         const auto& facet = facets_[facetIndex];
         const ContactElementView elementView =
             resolveContactElementView(assembly_, facet.elementId);
-        std::vector<std::shared_ptr<Node>> elementNodes =
-            getElementNodes(assembly_, elementView.nodeIds);
-        std::vector<int> dofIndices =
-            getElementFullDofIndices(assembly_, elementView.nodeIds);
+        const ContactElementAssemblyData assemblyData =
+            buildContactElementAssemblyData(assembly_, elementView);
+        const auto& elementNodes = assemblyData.elementNodes;
+        const auto& dofIndices = assemblyData.dofIndices;
 
         ContactFacetResult facetResult;
         facetResult.facetId = static_cast<int>(facetIndex);
@@ -208,9 +208,9 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
         facetResult.thickness = elementView.thickness;
         bool facetActive = false;
 
-        auto [midXi, midEta] = mapSurfaceCoordinates(facet.surfaceIndex, 0.0);
-        Eigen::Vector4d midpointShapeFunctions =
-            evaluateScalarShapeFunctions(elementView, midXi, midEta);
+        const auto [midXi, midEta] = kSurfaceMidpointCoordinates[facet.surfaceIndex];
+        const Eigen::Vector4d midpointShapeFunctions =
+            evaluateScalarShapeFunctions(midXi, midEta);
         for (int localNode = 0; localNode < 4; ++localNode) {
             facetResult.referenceMidpoint +=
                 midpointShapeFunctions(localNode) * elementNodes[localNode]->getCoordinates();
@@ -226,9 +226,10 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
         }
         facetResult.deformedMidpoint += facetResult.referenceMidpoint;
 
-        for (size_t gpIndex = 0; gpIndex < gaussPoints.size(); ++gpIndex) {
-            auto [xi, eta] = mapSurfaceCoordinates(facet.surfaceIndex, gaussPoints[gpIndex]);
-            Eigen::Vector4d N = evaluateScalarShapeFunctions(elementView, xi, eta);
+        const auto& surfaceGaussCoordinates = kSurfaceGaussCoordinates[facet.surfaceIndex];
+        for (int gpIndex = 0; gpIndex < static_cast<int>(surfaceGaussCoordinates.size()); ++gpIndex) {
+            const auto [xi, eta] = surfaceGaussCoordinates[gpIndex];
+            const Eigen::Vector4d N = evaluateScalarShapeFunctions(xi, eta);
 
             Eigen::Vector2d xGp = Eigen::Vector2d::Zero();
             Eigen::Vector2d uGp = Eigen::Vector2d::Zero();
@@ -246,7 +247,7 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
             const double thickness = std::max(elementView.thickness, 1.0e-15);
             const double ds = computeSurfaceJacobian(
                 facet.surfaceIndex, elementView, elementNodes, xi, eta) *
-                gaussWeights[gpIndex] *
+                kGaussWeights[static_cast<size_t>(gpIndex)] *
                 thickness;
             const double lengthContribution = ds / thickness;
             const double gap = plane_.signedDistance(xGp + uGp);
@@ -254,8 +255,11 @@ void RigidPlaneContactSolver::assembleContact(const Eigen::VectorXd& fullDisplac
 
             ContactGaussPointState gaussPointState;
             gaussPointState.facetId = static_cast<int>(facetIndex);
-            gaussPointState.gaussPointIndex = static_cast<int>(gpIndex);
-            gaussPointState.surfaceParameter = gaussPoints[gpIndex];
+            gaussPointState.gaussPointIndex = gpIndex;
+            gaussPointState.surfaceParameter =
+                (facet.surfaceIndex == 0 || facet.surfaceIndex == 2)
+                ? surfaceGaussCoordinates[gpIndex].first
+                : surfaceGaussCoordinates[gpIndex].second;
             gaussPointState.xi = xi;
             gaussPointState.eta = eta;
             gaussPointState.gapN = gap;
@@ -329,20 +333,4 @@ ContactSolverUpdateInfo RigidPlaneContactSolver::updateState(
 }
 
 void RigidPlaneContactSolver::resetState() {
-}
-
-std::pair<double, double> RigidPlaneContactSolver::mapSurfaceCoordinates(int surfaceIndex,
-    double surfaceParameter) {
-    switch (surfaceIndex) {
-    case 0:
-        return {surfaceParameter, -1.0};
-    case 1:
-        return {1.0, surfaceParameter};
-    case 2:
-        return {surfaceParameter, 1.0};
-    case 3:
-        return {-1.0, surfaceParameter};
-    default:
-        throw std::invalid_argument("Surface index must be in [0, 3]");
-    }
 }

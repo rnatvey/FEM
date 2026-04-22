@@ -1,11 +1,13 @@
 #include "FEMModel.h"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <unordered_map>
 
 #include "ContactTypes.h"
 #include "NeoHookeanMaterial.h"
@@ -66,13 +68,24 @@ bool FEModel::solve() {
 
     try {
         const auto assemblyStartTime = std::chrono::high_resolution_clock::now();
+        const auto structuralAssemblyStartTime = std::chrono::high_resolution_clock::now();
         assembly_->assembleGlobalStiffnessMatrix(globalK_);
+        const auto structuralAssemblyEndTime = std::chrono::high_resolution_clock::now();
+        performanceMetrics_.structuralAssemblyTimeSeconds =
+            std::chrono::duration<double>(
+                structuralAssemblyEndTime - structuralAssemblyStartTime).count();
+        performanceMetrics_.structuralMatrixNonZeros = globalK_.nonZeros();
         assembleExternalForces(globalF_);
-        assembly_->applyBoundaryConditions(globalK_, globalF_);
+        Assembly::BoundaryConditionApplicationStats boundaryConditionStats;
+        assembly_->applyBoundaryConditions(globalK_, globalF_, &boundaryConditionStats);
         const auto assemblyEndTime = std::chrono::high_resolution_clock::now();
 
         performanceMetrics_.assemblyTimeSeconds =
             std::chrono::duration<double>(assemblyEndTime - assemblyStartTime).count();
+        performanceMetrics_.boundaryConditionTimeSeconds =
+            boundaryConditionStats.totalTimeSeconds;
+        performanceMetrics_.reductionTimeSeconds =
+            boundaryConditionStats.reduceSystemTimeSeconds;
         performanceMetrics_.matrixNonZeros = globalK_.nonZeros();
 
         if (!solveLinearSystem()) {
@@ -187,11 +200,17 @@ bool FEModel::solveHyperelastic() {
             const auto assemblyStartTime = std::chrono::high_resolution_clock::now();
             double totalStrainEnergy = 0.0;
             Eigen::SparseMatrix<double> structuralTangent;
+            const auto structuralAssemblyStartTime = std::chrono::high_resolution_clock::now();
             assembly_->assembleFiniteStrainSystem(
                 displacements_,
                 structuralTangent,
                 internalForce,
                 totalStrainEnergy);
+            const auto structuralAssemblyEndTime = std::chrono::high_resolution_clock::now();
+            performanceMetrics_.structuralAssemblyTimeSeconds +=
+                std::chrono::duration<double>(
+                    structuralAssemblyEndTime - structuralAssemblyStartTime).count();
+            performanceMetrics_.structuralMatrixNonZeros = structuralTangent.nonZeros();
 
             ContactIterationInfo contactInfo;
             bool activeSetStable = true;
@@ -229,6 +248,7 @@ bool FEModel::solveHyperelastic() {
                 performanceMetrics_.activeContactGaussPoints = 0;
                 performanceMetrics_.maxPenetration = 0.0;
                 performanceMetrics_.contactForceNorm = 0.0;
+                performanceMetrics_.contactMatrixNonZeros = 0;
             }
             const auto assemblyEndTime = std::chrono::high_resolution_clock::now();
 
@@ -284,11 +304,17 @@ bool FEModel::solveHyperelastic() {
                 const auto assemblyStartTime = std::chrono::high_resolution_clock::now();
                 double totalStrainEnergy = 0.0;
                 Eigen::SparseMatrix<double> structuralTangent;
+                const auto structuralAssemblyStartTime = std::chrono::high_resolution_clock::now();
                 assembly_->assembleFiniteStrainSystem(
                     displacements_,
                     structuralTangent,
                     internalForce,
                     totalStrainEnergy);
+                const auto structuralAssemblyEndTime = std::chrono::high_resolution_clock::now();
+                performanceMetrics_.structuralAssemblyTimeSeconds +=
+                    std::chrono::duration<double>(
+                        structuralAssemblyEndTime - structuralAssemblyStartTime).count();
+                performanceMetrics_.structuralMatrixNonZeros = structuralTangent.nonZeros();
 
                 ContactIterationInfo contactInfo;
                 applyContactConditions(displacements_, contactInfo);
@@ -601,12 +627,18 @@ bool FEModel::solveReducedIncrementSystem(const Eigen::SparseMatrix<double>& tan
         Eigen::SparseMatrix<double> reducedTangent;
         Eigen::VectorXd reducedResidual;
         std::vector<int> activeDofs;
+        const auto reduceStartTime = std::chrono::high_resolution_clock::now();
         solver_->reduceSystem(tangent,
             residual,
             constraintData.constrainedDofs,
             reducedTangent,
             reducedResidual,
             activeDofs);
+        const auto reduceEndTime = std::chrono::high_resolution_clock::now();
+        const double reductionTimeSeconds =
+            std::chrono::duration<double>(reduceEndTime - reduceStartTime).count();
+        performanceMetrics_.reductionTimeSeconds += reductionTimeSeconds;
+        performanceMetrics_.boundaryConditionTimeSeconds += reductionTimeSeconds;
 
         const Eigen::VectorXd reducedIncrement =
             solver_->solveSystem(reducedTangent, reducedResidual);
@@ -634,13 +666,24 @@ bool FEModel::solveContactIterative() {
 
     const auto totalStartTime = std::chrono::high_resolution_clock::now();
     const auto assemblyStartTime = std::chrono::high_resolution_clock::now();
+    const auto structuralAssemblyStartTime = std::chrono::high_resolution_clock::now();
     assembly_->assembleGlobalStiffnessMatrix(globalK_);
+    const auto structuralAssemblyEndTime = std::chrono::high_resolution_clock::now();
+    performanceMetrics_.structuralAssemblyTimeSeconds =
+        std::chrono::duration<double>(
+            structuralAssemblyEndTime - structuralAssemblyStartTime).count();
+    performanceMetrics_.structuralMatrixNonZeros = globalK_.nonZeros();
     assembleExternalForces(globalF_);
-    assembly_->applyBoundaryConditions(globalK_, globalF_);
+    Assembly::BoundaryConditionApplicationStats boundaryConditionStats;
+    assembly_->applyBoundaryConditions(globalK_, globalF_, &boundaryConditionStats);
     const auto assemblyEndTime = std::chrono::high_resolution_clock::now();
 
     performanceMetrics_.assemblyTimeSeconds =
         std::chrono::duration<double>(assemblyEndTime - assemblyStartTime).count();
+    performanceMetrics_.boundaryConditionTimeSeconds =
+        boundaryConditionStats.totalTimeSeconds;
+    performanceMetrics_.reductionTimeSeconds =
+        boundaryConditionStats.reduceSystemTimeSeconds;
     performanceMetrics_.matrixNonZeros = globalK_.nonZeros();
 
     const Eigen::SparseMatrix<double> structuralReducedK = globalK_;
@@ -667,7 +710,14 @@ bool FEModel::solveContactIterative() {
             Eigen::SparseMatrix<double> reducedContactK = contactInfo.stiffness;
             Eigen::VectorXd reducedContactF =
                 contactInfo.force + contactInfo.stiffness * previousDisplacements;
-            assembly_->applyBoundaryConditions(reducedContactK, reducedContactF);
+            Assembly::BoundaryConditionApplicationStats contactBoundaryConditionStats;
+            assembly_->applyBoundaryConditions(
+                reducedContactK, reducedContactF, &contactBoundaryConditionStats);
+            performanceMetrics_.boundaryConditionTimeSeconds +=
+                contactBoundaryConditionStats.totalTimeSeconds;
+            performanceMetrics_.reductionTimeSeconds +=
+                contactBoundaryConditionStats.reduceSystemTimeSeconds;
+            performanceMetrics_.contactMatrixNonZeros = reducedContactK.nonZeros();
 
             globalK_ = structuralReducedK;
             globalK_ += reducedContactK;
@@ -747,7 +797,14 @@ bool FEModel::solveContactIterative() {
                 Eigen::SparseMatrix<double> reducedContactK = contactInfo.stiffness;
                 Eigen::VectorXd reducedContactF =
                     contactInfo.force + contactInfo.stiffness * equilibriumPreviousDisplacements;
-                assembly_->applyBoundaryConditions(reducedContactK, reducedContactF);
+                Assembly::BoundaryConditionApplicationStats contactBoundaryConditionStats;
+                assembly_->applyBoundaryConditions(
+                    reducedContactK, reducedContactF, &contactBoundaryConditionStats);
+                performanceMetrics_.boundaryConditionTimeSeconds +=
+                    contactBoundaryConditionStats.totalTimeSeconds;
+                performanceMetrics_.reductionTimeSeconds +=
+                    contactBoundaryConditionStats.reduceSystemTimeSeconds;
+                performanceMetrics_.contactMatrixNonZeros = reducedContactK.nonZeros();
 
                 globalK_ = structuralReducedK;
                 globalK_ += reducedContactK;
@@ -921,13 +978,20 @@ void FEModel::applyContactConditions(const Eigen::VectorXd& trialDisplacements,
         iterationInfo.stiffness.setZero();
         iterationInfo.force = Eigen::VectorXd::Zero(assembly_->getTotalDofCount());
         iterationInfo.state = {};
+        performanceMetrics_.contactMatrixNonZeros = 0;
         return;
     }
 
+    const auto contactAssemblyStartTime = std::chrono::high_resolution_clock::now();
     contactSolver_->assembleContact(trialDisplacements,
         iterationInfo.stiffness,
         iterationInfo.force,
         iterationInfo.state);
+    const auto contactAssemblyEndTime = std::chrono::high_resolution_clock::now();
+    performanceMetrics_.contactAssemblyTimeSeconds +=
+        std::chrono::duration<double>(
+            contactAssemblyEndTime - contactAssemblyStartTime).count();
+    performanceMetrics_.contactMatrixNonZeros = iterationInfo.stiffness.nonZeros();
 }
 
 void FEModel::assembleExternalForces(Eigen::VectorXd& globalF) const {
@@ -1196,6 +1260,11 @@ void FEModel::calculateNodalAverages() const {
 
     std::vector<int> stressCount(nodeCount, 0);
     std::vector<int> strainCount(nodeCount, 0);
+    std::unordered_map<int, int> nodeIdToGlobalIndex;
+    nodeIdToGlobalIndex.reserve(static_cast<size_t>(nodeCount));
+    for (int i = 0; i < nodeCount; ++i) {
+        nodeIdToGlobalIndex[nodes[static_cast<size_t>(i)]->getId()] = i;
+    }
 
     for (int i = 0; i < nodeCount; ++i) {
         int nodeId = nodes[i]->getId();
@@ -1218,6 +1287,7 @@ void FEModel::calculateNodalAverages() const {
         }
 
         std::vector<std::shared_ptr<Node>> elementNodes;
+        elementNodes.reserve(element->getNodeIds().size());
         for (int nodeId : element->getNodeIds()) {
             auto node = assembly_->getNode(nodeId);
             if (!node) {
@@ -1239,36 +1309,40 @@ void FEModel::calculateNodalAverages() const {
             }
         }
 
-        const double pos = 0.0;
-        const std::vector<std::pair<double, double>> integrationPoints = {
-            {-pos, -pos}, {pos, -pos}, {pos, pos}, {-pos, pos}
-        };
+        // For the linear Q4 path these values are true nodal evaluations in the
+        // element parent space, not duplicated center-point samples.
+        constexpr std::array<std::pair<double, double>, 4> nodalEvaluationPoints = {{
+            {1.0, 1.0},
+            {-1.0, 1.0},
+            {-1.0, -1.0},
+            {1.0, -1.0}
+        }};
 
         const auto& nodeIds = element->getNodeIds();
-        for (size_t pt = 0; pt < integrationPoints.size() && pt < nodeIds.size(); ++pt) {
+        for (size_t pt = 0; pt < nodalEvaluationPoints.size() && pt < nodeIds.size(); ++pt) {
             Eigen::Vector3d stress = element->computeStress(
-                integrationPoints[pt].first,
-                integrationPoints[pt].second,
+                nodalEvaluationPoints[pt].first,
+                nodalEvaluationPoints[pt].second,
                 elementDisplacements,
                 elementNodes,
                 material);
             Eigen::Vector3d strain = element->computeStrain(
-                integrationPoints[pt].first,
-                integrationPoints[pt].second,
+                nodalEvaluationPoints[pt].first,
+                nodalEvaluationPoints[pt].second,
                 elementDisplacements,
                 elementNodes,
                 material);
 
-            int targetNodeId = nodeIds[pt];
-            for (int globalIdx = 0; globalIdx < nodeCount; ++globalIdx) {
-                if (nodes[globalIdx]->getId() == targetNodeId) {
-                    nodalStresses_[globalIdx] += stress;
-                    nodalStrains_[globalIdx] += strain;
-                    stressCount[globalIdx]++;
-                    strainCount[globalIdx]++;
-                    break;
-                }
+            const int targetNodeId = nodeIds[pt];
+            const auto targetNodeIt = nodeIdToGlobalIndex.find(targetNodeId);
+            if (targetNodeIt == nodeIdToGlobalIndex.end()) {
+                continue;
             }
+            const int globalIdx = targetNodeIt->second;
+            nodalStresses_[globalIdx] += stress;
+            nodalStrains_[globalIdx] += strain;
+            stressCount[globalIdx]++;
+            strainCount[globalIdx]++;
         }
     }
 

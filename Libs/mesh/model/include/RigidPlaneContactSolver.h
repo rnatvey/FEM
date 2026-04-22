@@ -41,8 +41,6 @@ public:
     void resetState() override;
 
 private:
-    static std::pair<double, double> mapSurfaceCoordinates(int surfaceIndex, double surfaceParameter);
-
     std::shared_ptr<Assembly> assembly_;
     RigidPlane2D plane_;
     double penaltyParameter_ = 1.0e6;

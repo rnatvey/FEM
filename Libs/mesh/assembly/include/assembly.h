@@ -26,6 +26,15 @@ public:
         std::vector<double> prescribedValues;
     };
 
+    struct BoundaryConditionApplicationStats {
+        double totalTimeSeconds = 0.0;
+        double reduceSystemTimeSeconds = 0.0;
+        Eigen::Index inputMatrixNonZeros = 0;
+        Eigen::Index outputMatrixNonZeros = 0;
+        int constrainedDofCount = 0;
+        int activeDofCount = 0;
+    };
+
     Assembly();
     ~Assembly() = default;
 
@@ -89,7 +98,8 @@ public:
     void addPrescribedDisplacementX(int nodeId, double dx);
     void addPrescribedDisplacementY(int nodeId, double dy);
     void applyBoundaryConditions(Eigen::SparseMatrix<double>& globalK,
-        Eigen::VectorXd& globalF) const;
+        Eigen::VectorXd& globalF,
+        BoundaryConditionApplicationStats* stats = nullptr) const;
 
     // === Система уравнений ===
     int getTotalDofCount() const { return nodes_.size() * 2; }

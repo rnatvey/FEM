@@ -4,6 +4,21 @@
 #include <chrono>
 #include <stdexcept>
 
+namespace {
+
+std::vector<char> buildConstraintMask(int totalDof, const std::vector<int>& constrainedDofs) {
+    std::vector<char> isConstrained(totalDof, 0);
+    for (int dof : constrainedDofs) {
+        if (dof < 0 || dof >= totalDof) {
+            throw std::runtime_error("Invalid constrained DOF index: " + std::to_string(dof));
+        }
+        isConstrained[dof] = 1;
+    }
+    return isConstrained;
+}
+
+} // namespace
+
 Eigen::MatrixXd LinearSolver::computeGaussIntegral(
     const std::function<Eigen::MatrixXd(double, double)>& matFunc,
     int numGaussPoints)
@@ -183,15 +198,47 @@ std::vector<LinearSolver::GaussPoint> LinearSolver::generateGaussPoints(int orde
 void LinearSolver::applyBoundaryConditions(Eigen::SparseMatrix<double>& systemMatrix,
     Eigen::VectorXd& rightHandSide,
     const std::vector<int>& fixedDofs) const {
-    for (int dof : fixedDofs) {
-        for (int k = 0; k < systemMatrix.outerSize(); ++k) {
-            systemMatrix.coeffRef(dof, k) = 0.0;
-            systemMatrix.coeffRef(k, dof) = 0.0;
-        }
-
-        systemMatrix.coeffRef(dof, dof) = 0.0;
-        rightHandSide[dof] = 0.0;
+    const int totalDof = systemMatrix.rows();
+    if (totalDof == 0) {
+        throw std::runtime_error("Empty matrix in applyBoundaryConditions");
     }
+
+    if (totalDof != systemMatrix.cols() || totalDof != rightHandSide.size()) {
+        throw std::runtime_error(
+            "Matrix and vector size mismatch in applyBoundaryConditions");
+    }
+
+    if (fixedDofs.empty()) {
+        return;
+    }
+
+    const std::vector<char> isFixed = buildConstraintMask(totalDof, fixedDofs);
+    Eigen::VectorXd constrainedRightHandSide = rightHandSide;
+    std::vector<Eigen::Triplet<double>> triplets;
+    triplets.reserve(systemMatrix.nonZeros() + static_cast<Eigen::Index>(fixedDofs.size()));
+
+    for (int k = 0; k < systemMatrix.outerSize(); ++k) {
+        for (Eigen::SparseMatrix<double>::InnerIterator it(systemMatrix, k); it; ++it) {
+            const int row = it.row();
+            const int col = it.col();
+            if (isFixed[row] || isFixed[col]) {
+                continue;
+            }
+            triplets.emplace_back(row, col, it.value());
+        }
+    }
+
+    for (int dof : fixedDofs) {
+        triplets.emplace_back(dof, dof, 1.0);
+        constrainedRightHandSide[dof] = 0.0;
+    }
+
+    Eigen::SparseMatrix<double> constrainedMatrix(totalDof, totalDof);
+    constrainedMatrix.setFromTriplets(triplets.begin(), triplets.end());
+    constrainedMatrix.makeCompressed();
+
+    systemMatrix = std::move(constrainedMatrix);
+    rightHandSide = std::move(constrainedRightHandSide);
 }
 
 void LinearSolver::reduceSystem(const Eigen::SparseMatrix<double>& fullK,
@@ -327,38 +374,46 @@ void LinearSolver::applyPrescribedDisplacements(Eigen::SparseMatrix<double>& K,
         throw std::runtime_error("Matrix and vector size mismatch in applyPrescribedDisplacements");
     }
 
-    reactions.resize(totalDof);
-    reactions.setZero();
+    reactions = Eigen::VectorXd::Zero(totalDof);
 
-    std::vector<char> isPrescribed(totalDof, 0);
-    for (int prescribedDof : prescribedDofs) {
-        if (prescribedDof < 0 || prescribedDof >= totalDof) {
-            throw std::runtime_error("Invalid prescribed DOF index: " + std::to_string(prescribedDof));
-        }
-        isPrescribed[prescribedDof] = 1;
+    const std::vector<char> isPrescribed = buildConstraintMask(totalDof, prescribedDofs);
+    std::vector<double> prescribedValueByDof(totalDof, 0.0);
+    for (size_t i = 0; i < prescribedDofs.size(); ++i) {
+        prescribedValueByDof[prescribedDofs[i]] = prescribedValues[i];
     }
 
-    for (size_t i = 0; i < prescribedDofs.size(); ++i) {
-        int prescribedDof = prescribedDofs[i];
-        double prescribedValue = prescribedValues[i];
+    Eigen::VectorXd constrainedRightHandSide = F;
+    std::vector<Eigen::Triplet<double>> triplets;
+    triplets.reserve(K.nonZeros() + static_cast<Eigen::Index>(prescribedDofs.size()));
 
-        for (int j = 0; j < totalDof; ++j) {
-            if (!isPrescribed[j]) {
-                F(j) -= K.coeff(j, prescribedDof) * prescribedValue;
+    for (int k = 0; k < K.outerSize(); ++k) {
+        for (Eigen::SparseMatrix<double>::InnerIterator it(K, k); it; ++it) {
+            const int row = it.row();
+            const int col = it.col();
+
+            if (!isPrescribed[row] && isPrescribed[col]) {
+                constrainedRightHandSide[row] -= it.value() * prescribedValueByDof[col];
+                continue;
             }
+
+            if (isPrescribed[row] || isPrescribed[col]) {
+                continue;
+            }
+
+            triplets.emplace_back(row, col, it.value());
         }
     }
 
     for (size_t i = 0; i < prescribedDofs.size(); ++i) {
-        int prescribedDof = prescribedDofs[i];
-        double prescribedValue = prescribedValues[i];
-
-        for (int j = 0; j < totalDof; ++j) {
-            K.coeffRef(prescribedDof, j) = 0.0;
-            K.coeffRef(j, prescribedDof) = 0.0;
-        }
-
-        K.coeffRef(prescribedDof, prescribedDof) = 1.0;
-        F(prescribedDof) = prescribedValue;
+        const int dof = prescribedDofs[i];
+        triplets.emplace_back(dof, dof, 1.0);
+        constrainedRightHandSide[dof] = prescribedValues[i];
     }
+
+    Eigen::SparseMatrix<double> constrainedMatrix(totalDof, totalDof);
+    constrainedMatrix.setFromTriplets(triplets.begin(), triplets.end());
+    constrainedMatrix.makeCompressed();
+
+    K = std::move(constrainedMatrix);
+    F = std::move(constrainedRightHandSide);
 }

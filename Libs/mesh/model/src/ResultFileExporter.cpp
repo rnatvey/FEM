@@ -170,6 +170,14 @@ struct FiniteStrainCellSummary {
     Eigen::Vector3d meanCauchyStress = Eigen::Vector3d::Zero();
 };
 
+struct SmallStrainCellSummary {
+    int elementId = -1;
+    int materialId = -1;
+    Eigen::Vector3d centerStress = Eigen::Vector3d::Zero();
+    Eigen::Vector3d centerStrain = Eigen::Vector3d::Zero();
+    double sigmaZZ = 0.0;
+};
+
 double finiteStrainSigmaZZ(const FiniteStrainGaussPointResult& gaussPoint,
     const FiniteStrainMaterial& material) {
     const auto* neoHookeanMaterial = dynamic_cast<const NeoHookeanMaterial*>(&material);
@@ -232,6 +240,20 @@ FiniteStrainCellSummary summarizeFiniteStrainElementResponse(
     summary.meanSecondPiolaStress /= gaussPointCount;
     summary.meanCauchyStress /= gaussPointCount;
     summary.meanSigmaZZ /= gaussPointCount;
+    return summary;
+}
+
+SmallStrainCellSummary summarizeSmallStrainElementResponse(
+    const FEModel& model,
+    const BaseElement& element,
+    double representativePoissonsRatio) {
+    SmallStrainCellSummary summary;
+    summary.elementId = element.getId();
+    summary.materialId = element.getMaterialId();
+    summary.centerStress = model.getElementStress(element.getId(), 0.0, 0.0);
+    summary.centerStrain = model.getElementStrain(element.getId(), 0.0, 0.0);
+    summary.sigmaZZ =
+        computePlaneStrainSigmaZZ(summary.centerStress, representativePoissonsRatio);
     return summary;
 }
 
@@ -353,6 +375,7 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
     std::vector<double> nodalJacobianDeterminant(nodes.size(), 1.0);
     std::vector<double> nodalStrainEnergyDensity(nodes.size(), 0.0);
     std::vector<FiniteStrainCellSummary> finiteStrainCellSummaries;
+    std::vector<SmallStrainCellSummary> smallStrainCellSummaries;
 
     if (exportFiniteStrain) {
         nodalStresses.assign(nodes.size(), Eigen::Vector3d::Zero());
@@ -433,6 +456,15 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
             nodeIndex < nodalSigmaZZ.size(); ++nodeIndex) {
             nodalSigmaZZ[nodeIndex] =
                 computePlaneStrainSigmaZZ(nodalStresses[nodeIndex], representativePoissonsRatio);
+        }
+
+        smallStrainCellSummaries.reserve(linearElements.size());
+        for (const auto& element : linearElements) {
+            smallStrainCellSummaries.push_back(
+                summarizeSmallStrainElementResponse(
+                    model,
+                    *element,
+                    representativePoissonsRatio));
         }
     }
 
@@ -752,6 +784,56 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
         writeVector3DataArray(vtuStream, "cell_green_lagrange_strain_2d", static_cast<int>(cellCount),
             [&](int index) { return finiteStrainCellSummaries[static_cast<size_t>(index)].meanGreenLagrangeStrain; });
     }
+    else {
+        writeVector3DataArray(vtuStream, "cell_stress_2d", static_cast<int>(cellCount),
+            [&](int index) {
+                return smallStrainCellSummaries[static_cast<size_t>(index)].centerStress;
+            });
+        writeScalarDataArray(vtuStream, "cell_sigma_xx", static_cast<int>(cellCount),
+            [&](int index) {
+                return formatNumber(
+                    smallStrainCellSummaries[static_cast<size_t>(index)].centerStress.x());
+            });
+        writeScalarDataArray(vtuStream, "cell_sigma_yy", static_cast<int>(cellCount),
+            [&](int index) {
+                return formatNumber(
+                    smallStrainCellSummaries[static_cast<size_t>(index)].centerStress.y());
+            });
+        writeScalarDataArray(vtuStream, "cell_tau_xy", static_cast<int>(cellCount),
+            [&](int index) {
+                return formatNumber(
+                    smallStrainCellSummaries[static_cast<size_t>(index)].centerStress.z());
+            });
+        writeScalarDataArray(vtuStream, "cell_sigma_zz", static_cast<int>(cellCount),
+            [&](int index) {
+                return formatNumber(
+                    smallStrainCellSummaries[static_cast<size_t>(index)].sigmaZZ);
+            });
+        writeScalarDataArray(vtuStream, "cell_von_mises_stress", static_cast<int>(cellCount),
+            [&](int index) {
+                const auto& summary = smallStrainCellSummaries[static_cast<size_t>(index)];
+                return formatNumber(computeVonMisesStress(summary.centerStress, summary.sigmaZZ));
+            });
+        writeVector3DataArray(vtuStream, "cell_strain_2d", static_cast<int>(cellCount),
+            [&](int index) {
+                return smallStrainCellSummaries[static_cast<size_t>(index)].centerStrain;
+            });
+        writeScalarDataArray(vtuStream, "cell_strain_xx", static_cast<int>(cellCount),
+            [&](int index) {
+                return formatNumber(
+                    smallStrainCellSummaries[static_cast<size_t>(index)].centerStrain.x());
+            });
+        writeScalarDataArray(vtuStream, "cell_strain_yy", static_cast<int>(cellCount),
+            [&](int index) {
+                return formatNumber(
+                    smallStrainCellSummaries[static_cast<size_t>(index)].centerStrain.y());
+            });
+        writeScalarDataArray(vtuStream, "cell_gamma_xy", static_cast<int>(cellCount),
+            [&](int index) {
+                return formatNumber(
+                    smallStrainCellSummaries[static_cast<size_t>(index)].centerStrain.z());
+            });
+    }
 
     if (model.hasContactSolver()) {
         writeIntDataArray(vtuStream, "candidate_contact_facet", static_cast<int>(cellCount),
@@ -992,7 +1074,17 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
     metricsStream << "    \"prescribed_dofs\": " << prescribedDof << "\n";
     metricsStream << "  },\n";
     metricsStream << "  \"timings\": {\n";
+    metricsStream << "    \"structural_assembly_time_seconds\": "
+                  << formatNumber(performanceMetrics.structuralAssemblyTimeSeconds) << ",\n";
+    metricsStream << "    \"contact_assembly_time_seconds\": "
+                  << formatNumber(performanceMetrics.contactAssemblyTimeSeconds) << ",\n";
+    metricsStream << "    \"boundary_condition_time_seconds\": "
+                  << formatNumber(performanceMetrics.boundaryConditionTimeSeconds) << ",\n";
+    metricsStream << "    \"reduction_time_seconds\": "
+                  << formatNumber(performanceMetrics.reductionTimeSeconds) << ",\n";
     metricsStream << "    \"assembly_time_seconds\": " << formatNumber(performanceMetrics.assemblyTimeSeconds) << ",\n";
+    metricsStream << "    \"linear_solve_time_seconds\": "
+                  << formatNumber(performanceMetrics.solveTimeSeconds) << ",\n";
     metricsStream << "    \"solve_time_seconds\": " << formatNumber(performanceMetrics.solveTimeSeconds) << ",\n";
     metricsStream << "    \"total_time_seconds\": " << formatNumber(performanceMetrics.totalTimeSeconds) << "\n";
     metricsStream << "  },\n";
@@ -1003,6 +1095,16 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
                   << "\",\n";
     metricsStream << "    \"point_strain_measure\": \""
                   << (exportFiniteStrain ? "green_lagrange" : "small_strain")
+                  << "\",\n";
+    metricsStream << "    \"point_field_semantics\": \""
+                  << (exportFiniteStrain
+                      ? "nodal_averaged_from_element_summaries"
+                      : "nodal_recovered_and_averaged")
+                  << "\",\n";
+    metricsStream << "    \"cell_field_semantics\": \""
+                  << (exportFiniteStrain
+                      ? "element_mean_over_integration_points"
+                      : "element_centered")
                   << "\"\n";
     metricsStream << "  },\n";
     metricsStream << "  \"iterations\": {\n";
@@ -1023,6 +1125,9 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
     metricsStream << "    \"equilibrium_residual_norm\": " << formatNumber(performanceMetrics.equilibriumResidualNorm) << "\n";
     metricsStream << "  },\n";
     metricsStream << "  \"matrix\": {\n";
+    metricsStream << "    \"structural_nnz\": " << performanceMetrics.structuralMatrixNonZeros << ",\n";
+    metricsStream << "    \"contact_nnz\": " << performanceMetrics.contactMatrixNonZeros << ",\n";
+    metricsStream << "    \"total_nnz\": " << performanceMetrics.matrixNonZeros << ",\n";
     metricsStream << "    \"nnz\": " << performanceMetrics.matrixNonZeros << "\n";
     metricsStream << "  },\n";
     metricsStream << "  \"finite_strain\": {\n";
