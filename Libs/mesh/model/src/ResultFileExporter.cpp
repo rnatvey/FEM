@@ -376,6 +376,11 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
     std::vector<double> nodalStrainEnergyDensity(nodes.size(), 0.0);
     std::vector<FiniteStrainCellSummary> finiteStrainCellSummaries;
     std::vector<SmallStrainCellSummary> smallStrainCellSummaries;
+    std::unordered_map<int, int> nodeIdToPointIndex;
+    nodeIdToPointIndex.reserve(nodes.size());
+    for (size_t nodeIndex = 0; nodeIndex < nodes.size(); ++nodeIndex) {
+        nodeIdToPointIndex[nodes[nodeIndex]->getId()] = static_cast<int>(nodeIndex);
+    }
 
     if (exportFiniteStrain) {
         nodalStresses.assign(nodes.size(), Eigen::Vector3d::Zero());
@@ -404,16 +409,11 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
 
             const auto& summary = finiteStrainCellSummaries.back();
             for (int nodeId : element->getNodeIds()) {
-                auto nodeIt = std::find_if(nodes.begin(),
-                    nodes.end(),
-                    [nodeId](const std::shared_ptr<Node>& node) {
-                        return node && node->getId() == nodeId;
-                    });
-                if (nodeIt == nodes.end()) {
+                auto nodeIt = nodeIdToPointIndex.find(nodeId);
+                if (nodeIt == nodeIdToPointIndex.end()) {
                     continue;
                 }
-                const size_t nodeIndex =
-                    static_cast<size_t>(std::distance(nodes.begin(), nodeIt));
+                const size_t nodeIndex = static_cast<size_t>(nodeIt->second);
                 nodalStresses[nodeIndex] += summary.meanCauchyStress;
                 nodalStrains[nodeIndex] += summary.meanGreenLagrangeStrain;
                 nodalSigmaZZ[nodeIndex] += summary.meanSigmaZZ;
@@ -466,12 +466,6 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
                     *element,
                     representativePoissonsRatio));
         }
-    }
-
-    std::unordered_map<int, int> nodeIdToPointIndex;
-    nodeIdToPointIndex.reserve(nodes.size());
-    for (size_t nodeIndex = 0; nodeIndex < nodes.size(); ++nodeIndex) {
-        nodeIdToPointIndex[nodes[nodeIndex]->getId()] = static_cast<int>(nodeIndex);
     }
 
     std::vector<int> connectivity;
@@ -1108,6 +1102,9 @@ ResultFileExportArtifacts ResultFileExporter::exportSolution(
                   << "\"\n";
     metricsStream << "  },\n";
     metricsStream << "  \"iterations\": {\n";
+    metricsStream << "    \"load_steps\": " << performanceMetrics.loadSteps << ",\n";
+    metricsStream << "    \"converged_load_steps\": "
+                  << performanceMetrics.convergedLoadSteps << ",\n";
     metricsStream << "    \"linear_solves\": " << performanceMetrics.linearSolveCount << ",\n";
     metricsStream << "    \"direct_linear_solves\": "
                   << performanceMetrics.directLinearSolveCount << ",\n";

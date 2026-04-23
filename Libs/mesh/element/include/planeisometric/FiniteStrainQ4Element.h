@@ -41,11 +41,6 @@ public:
         const std::vector<std::shared_ptr<Node>>& nodes) const;
 
 private:
-    FiniteStrainElementResponse evaluateResponseWithoutTangent(
-        const std::vector<std::shared_ptr<Node>>& nodes,
-        const Eigen::VectorXd& elementDisplacements,
-        const FiniteStrainMaterial& material) const;
-
     Eigen::Matrix<double, 4, 2> shapeFunctionGradientsReference(
         double xi,
         double eta,
@@ -54,8 +49,6 @@ private:
 
     Eigen::Matrix<double, 2, 4> nodalCoordinates(
         const std::vector<std::shared_ptr<Node>>& nodes) const;
-
-    double finiteDifferenceStep(double dofValue, double characteristicLength) const;
 
     int id_ = -1;
     std::vector<int> nodeIds_;

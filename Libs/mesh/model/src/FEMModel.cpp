@@ -70,12 +70,14 @@ bool FEModel::solve() {
         const auto assemblyStartTime = std::chrono::high_resolution_clock::now();
         const auto structuralAssemblyStartTime = std::chrono::high_resolution_clock::now();
         assembly_->assembleGlobalStiffnessMatrix(globalK_);
+        const Eigen::SparseMatrix<double> structuralFullK = globalK_;
         const auto structuralAssemblyEndTime = std::chrono::high_resolution_clock::now();
         performanceMetrics_.structuralAssemblyTimeSeconds =
             std::chrono::duration<double>(
                 structuralAssemblyEndTime - structuralAssemblyStartTime).count();
         performanceMetrics_.structuralMatrixNonZeros = globalK_.nonZeros();
         assembleExternalForces(globalF_);
+        const Eigen::VectorXd structuralFullF = globalF_;
         Assembly::BoundaryConditionApplicationStats boundaryConditionStats;
         assembly_->applyBoundaryConditions(globalK_, globalF_, &boundaryConditionStats);
         const auto assemblyEndTime = std::chrono::high_resolution_clock::now();
@@ -93,7 +95,7 @@ bool FEModel::solve() {
             return false;
         }
 
-        calculateReactionForces();
+        calculateReactionForcesFromInternalForce(structuralFullK * displacements_, structuralFullF);
 
         const auto totalEndTime = std::chrono::high_resolution_clock::now();
         performanceMetrics_.totalTimeSeconds =
@@ -128,6 +130,7 @@ bool FEModel::solveHyperelastic() {
 
     nodalDataCalculated_ = false;
     performanceMetrics_ = {};
+    performanceMetrics_.loadSteps = std::max(1, hyperelasticLoadSteps_);
     if (useContact) {
         performanceMetrics_.contactMethod = std::string(contactSolver_->getMethodName());
         contactSolver_->resetState();
@@ -141,7 +144,6 @@ bool FEModel::solveHyperelastic() {
     displacements_ = Eigen::VectorXd::Zero(totalDof);
     reactionForces_ = Eigen::VectorXd::Zero(totalDof);
     contactForces_ = Eigen::VectorXd::Zero(totalDof);
-    applyPrescribedDisplacements(constraintData, displacements_);
 
     for (const auto& [materialId, material] : assembly_->getFiniteStrainMaterials()) {
         (void)materialId;
@@ -179,128 +181,136 @@ bool FEModel::solveHyperelastic() {
             << std::endl;
     }
 
-    Eigen::VectorXd externalForce;
-    assembleExternalForces(externalForce);
+    Eigen::VectorXd baseExternalForce;
+    assembleExternalForces(baseExternalForce);
 
     const double residualTolerance = std::max(tolerance_, 1.0e-8);
     const double incrementTolerance = std::max(std::sqrt(tolerance_), 1.0e-6);
-    const double referenceForceNorm =
-        std::max(computeFreeDofNorm(externalForce, constraintData), 1.0);
 
     Eigen::VectorXd internalForce = Eigen::VectorXd::Zero(totalDof);
     Eigen::VectorXd currentContactForce = Eigen::VectorXd::Zero(totalDof);
-    bool converged = false;
+    Eigen::VectorXd finalExternalForce = baseExternalForce;
+    bool converged = true;
+    int cumulativeNonlinearIterations = 0;
     const auto totalStartTime = std::chrono::high_resolution_clock::now();
 
-    if (!useAugmentedLagrangianContact) {
-        double lastRelativeIncrement = std::numeric_limits<double>::infinity();
-        std::vector<int> previousActiveFacetIds;
-
-        for (iterationCount_ = 1; iterationCount_ <= maxIterations_; ++iterationCount_) {
-            const auto assemblyStartTime = std::chrono::high_resolution_clock::now();
-            double totalStrainEnergy = 0.0;
-            Eigen::SparseMatrix<double> structuralTangent;
-            const auto structuralAssemblyStartTime = std::chrono::high_resolution_clock::now();
-            assembly_->assembleFiniteStrainSystem(
-                displacements_,
-                structuralTangent,
-                internalForce,
-                totalStrainEnergy);
-            const auto structuralAssemblyEndTime = std::chrono::high_resolution_clock::now();
-            performanceMetrics_.structuralAssemblyTimeSeconds +=
-                std::chrono::duration<double>(
-                    structuralAssemblyEndTime - structuralAssemblyStartTime).count();
-            performanceMetrics_.structuralMatrixNonZeros = structuralTangent.nonZeros();
-
-            ContactIterationInfo contactInfo;
-            bool activeSetStable = true;
-            if (usePenaltyContact) {
-                applyContactConditions(displacements_, contactInfo);
-                currentContactForce = contactInfo.force;
-                globalK_ = structuralTangent;
-                globalK_ += contactInfo.stiffness;
-                globalK_.makeCompressed();
-                globalF_ = externalForce + currentContactForce - internalForce;
-
-                activeSetStable =
-                    iterationCount_ <= 1 ||
-                    contactInfo.state.activeFacetIds == previousActiveFacetIds;
-                previousActiveFacetIds = contactInfo.state.activeFacetIds;
-
-                performanceMetrics_.activeSetSize =
-                    static_cast<int>(contactInfo.state.activeFacetIds.size());
-                performanceMetrics_.activeContactGaussPoints =
-                    contactInfo.state.activeGaussPointCount;
-                performanceMetrics_.maxPenetration = contactInfo.state.maxPenetration;
-                performanceMetrics_.contactForceNorm = contactInfo.state.contactForceNorm;
-                performanceMetrics_.contactStateUpdateNorm = 0.0;
-                performanceMetrics_.contactStateRelativeUpdateNorm = 0.0;
-                performanceMetrics_.contactStateMaxUpdateMagnitude = 0.0;
-                performanceMetrics_.contactStateRelativeMaxUpdate = 0.0;
-                performanceMetrics_.maxNormalContactMultiplier = 0.0;
-                performanceMetrics_.meanNormalContactMultiplier = 0.0;
+    const auto buildScaledConstraintData =
+        [&constraintData](double loadFactor) -> Assembly::ConstraintData {
+            Assembly::ConstraintData scaledConstraintData = constraintData;
+            for (double& value : scaledConstraintData.prescribedValues) {
+                value *= loadFactor;
             }
-            else {
-                currentContactForce.setZero();
-                globalK_ = structuralTangent;
-                globalF_ = externalForce - internalForce;
-                performanceMetrics_.activeSetSize = 0;
-                performanceMetrics_.activeContactGaussPoints = 0;
-                performanceMetrics_.maxPenetration = 0.0;
-                performanceMetrics_.contactForceNorm = 0.0;
-                performanceMetrics_.contactMatrixNonZeros = 0;
+            return scaledConstraintData;
+        };
+    const auto applyBacktrackedFiniteStrainIncrement =
+        [this](const Assembly::ConstraintData& activeConstraintData,
+            const Eigen::VectorXd& displacementIncrement,
+            const Eigen::VectorXd& stepExternalForce,
+            double currentResidualNorm) -> bool {
+            constexpr int kMaxBacktrackingIterations = 10;
+            constexpr double kBacktrackingFactor = 0.5;
+
+            double scale = 1.0;
+            for (int lineSearchIteration = 0;
+                lineSearchIteration <= kMaxBacktrackingIterations;
+                ++lineSearchIteration) {
+                Eigen::VectorXd trialDisplacements =
+                    displacements_ + scale * displacementIncrement;
+                applyPrescribedDisplacements(activeConstraintData, trialDisplacements);
+
+                try {
+                    const auto trialAssemblyStartTime =
+                        std::chrono::high_resolution_clock::now();
+                    Eigen::SparseMatrix<double> trialTangent;
+                    Eigen::VectorXd trialInternalForce;
+                    double trialStrainEnergy = 0.0;
+                    assembly_->assembleFiniteStrainSystem(
+                        trialDisplacements,
+                        trialTangent,
+                        trialInternalForce,
+                        trialStrainEnergy,
+                        nullptr,
+                        false);
+                    const auto trialAssemblyEndTime =
+                        std::chrono::high_resolution_clock::now();
+                    const double trialAssemblyTimeSeconds =
+                        std::chrono::duration<double>(
+                            trialAssemblyEndTime - trialAssemblyStartTime).count();
+                    performanceMetrics_.structuralAssemblyTimeSeconds +=
+                        trialAssemblyTimeSeconds;
+                    performanceMetrics_.assemblyTimeSeconds += trialAssemblyTimeSeconds;
+
+                    Eigen::VectorXd trialResidual = stepExternalForce - trialInternalForce;
+                    if (contactSolver_) {
+                        const auto trialContactAssemblyStartTime =
+                            std::chrono::high_resolution_clock::now();
+                        Eigen::SparseMatrix<double> trialContactStiffness;
+                        Eigen::VectorXd trialContactForce;
+                        ContactState trialContactState;
+                        contactSolver_->assembleContact(
+                            trialDisplacements,
+                            trialContactStiffness,
+                            trialContactForce,
+                            trialContactState);
+                        const auto trialContactAssemblyEndTime =
+                            std::chrono::high_resolution_clock::now();
+                        const double trialContactAssemblyTimeSeconds =
+                            std::chrono::duration<double>(
+                                trialContactAssemblyEndTime -
+                                trialContactAssemblyStartTime).count();
+                        performanceMetrics_.contactAssemblyTimeSeconds +=
+                            trialContactAssemblyTimeSeconds;
+                        performanceMetrics_.assemblyTimeSeconds +=
+                            trialContactAssemblyTimeSeconds;
+                        trialResidual += trialContactForce;
+                    }
+
+                    const double trialResidualNorm =
+                        computeFreeDofNorm(trialResidual, activeConstraintData);
+                    if (!(std::isfinite(trialResidualNorm) &&
+                            trialResidualNorm < currentResidualNorm)) {
+                        scale *= kBacktrackingFactor;
+                        continue;
+                    }
+
+                    displacements_ = std::move(trialDisplacements);
+                    return true;
+                }
+                catch (const std::exception& exception) {
+                    const std::string_view message(exception.what());
+                    const bool invalidDeformationGradient =
+                        message.find("positive determinant") != std::string_view::npos ||
+                        message.find("positive Jacobian") != std::string_view::npos;
+                    if (!invalidDeformationGradient) {
+                        throw;
+                    }
+                }
+
+                scale *= kBacktrackingFactor;
             }
-            const auto assemblyEndTime = std::chrono::high_resolution_clock::now();
 
-            performanceMetrics_.assemblyTimeSeconds +=
-                std::chrono::duration<double>(assemblyEndTime - assemblyStartTime).count();
-            performanceMetrics_.matrixNonZeros = globalK_.nonZeros();
-            performanceMetrics_.nonlinearIterations = iterationCount_;
-            performanceMetrics_.strainEnergy = totalStrainEnergy;
+            return false;
+        };
 
-            const double freeResidualNorm = computeFreeDofNorm(globalF_, constraintData);
-            const double relativeResidualNorm = freeResidualNorm / referenceForceNorm;
-            performanceMetrics_.equilibriumResidualNorm = freeResidualNorm;
+    for (int loadStep = 1; loadStep <= performanceMetrics_.loadSteps; ++loadStep) {
+        const double loadFactor =
+            static_cast<double>(loadStep) / static_cast<double>(performanceMetrics_.loadSteps);
+        const Assembly::ConstraintData stepConstraintData =
+            buildScaledConstraintData(loadFactor);
+        const Eigen::VectorXd stepExternalForce = baseExternalForce * loadFactor;
+        finalExternalForce = stepExternalForce;
+        const double referenceForceNorm =
+            std::max(computeFreeDofNorm(stepExternalForce, stepConstraintData), 1.0);
 
-            if (relativeResidualNorm < residualTolerance &&
-                lastRelativeIncrement < incrementTolerance &&
-                (!usePenaltyContact || activeSetStable)) {
-                converged = true;
-                break;
-            }
+        applyPrescribedDisplacements(stepConstraintData, displacements_);
 
-            Eigen::VectorXd displacementIncrement;
-            if (!solveReducedIncrementSystem(
-                    globalK_, globalF_, constraintData, displacementIncrement)) {
-                const auto failureTime = std::chrono::high_resolution_clock::now();
-                performanceMetrics_.totalTimeSeconds =
-                    std::chrono::duration<double>(failureTime - totalStartTime).count();
-                return false;
-            }
-
-            const double freeDisplacementNorm =
-                std::max(computeFreeDofNorm(displacements_, constraintData), 1.0);
-            const double freeIncrementNorm =
-                computeFreeDofNorm(displacementIncrement, constraintData);
-            lastRelativeIncrement = freeIncrementNorm / freeDisplacementNorm;
-
-            displacements_ += displacementIncrement;
-            applyPrescribedDisplacements(constraintData, displacements_);
-        }
-    }
-    else {
-        const int maxEquilibriumIterations =
-            std::max(6, std::min(24, maxIterations_));
-
-        for (iterationCount_ = 1; iterationCount_ <= maxIterations_; ++iterationCount_) {
-            bool equilibriumConverged = false;
-            double equilibriumLastRelativeIncrement = std::numeric_limits<double>::infinity();
+        bool stepConverged = false;
+        if (!useAugmentedLagrangianContact) {
+            double lastRelativeIncrement = std::numeric_limits<double>::infinity();
             std::vector<int> previousActiveFacetIds;
-            ContactIterationInfo convergedStateInfo;
 
-            for (int equilibriumIteration = 1;
-                equilibriumIteration <= maxEquilibriumIterations;
-                ++equilibriumIteration) {
+            for (int stepIteration = 1; stepIteration <= maxIterations_; ++stepIteration) {
+                iterationCount_ = ++cumulativeNonlinearIterations;
                 const auto assemblyStartTime = std::chrono::high_resolution_clock::now();
                 double totalStrainEnergy = 0.0;
                 Eigen::SparseMatrix<double> structuralTangent;
@@ -317,12 +327,43 @@ bool FEModel::solveHyperelastic() {
                 performanceMetrics_.structuralMatrixNonZeros = structuralTangent.nonZeros();
 
                 ContactIterationInfo contactInfo;
-                applyContactConditions(displacements_, contactInfo);
-                currentContactForce = contactInfo.force;
-                globalK_ = structuralTangent;
-                globalK_ += contactInfo.stiffness;
-                globalK_.makeCompressed();
-                globalF_ = externalForce + currentContactForce - internalForce;
+                bool activeSetStable = true;
+                if (usePenaltyContact) {
+                    applyContactConditions(displacements_, contactInfo);
+                    currentContactForce = contactInfo.force;
+                    globalK_ = structuralTangent;
+                    globalK_ += contactInfo.stiffness;
+                    globalK_.makeCompressed();
+                    globalF_ = stepExternalForce + currentContactForce - internalForce;
+
+                    activeSetStable =
+                        stepIteration <= 1 ||
+                        contactInfo.state.activeFacetIds == previousActiveFacetIds;
+                    previousActiveFacetIds = contactInfo.state.activeFacetIds;
+
+                    performanceMetrics_.activeSetSize =
+                        static_cast<int>(contactInfo.state.activeFacetIds.size());
+                    performanceMetrics_.activeContactGaussPoints =
+                        contactInfo.state.activeGaussPointCount;
+                    performanceMetrics_.maxPenetration = contactInfo.state.maxPenetration;
+                    performanceMetrics_.contactForceNorm = contactInfo.state.contactForceNorm;
+                    performanceMetrics_.contactStateUpdateNorm = 0.0;
+                    performanceMetrics_.contactStateRelativeUpdateNorm = 0.0;
+                    performanceMetrics_.contactStateMaxUpdateMagnitude = 0.0;
+                    performanceMetrics_.contactStateRelativeMaxUpdate = 0.0;
+                    performanceMetrics_.maxNormalContactMultiplier = 0.0;
+                    performanceMetrics_.meanNormalContactMultiplier = 0.0;
+                }
+                else {
+                    currentContactForce.setZero();
+                    globalK_ = structuralTangent;
+                    globalF_ = stepExternalForce - internalForce;
+                    performanceMetrics_.activeSetSize = 0;
+                    performanceMetrics_.activeContactGaussPoints = 0;
+                    performanceMetrics_.maxPenetration = 0.0;
+                    performanceMetrics_.contactForceNorm = 0.0;
+                    performanceMetrics_.contactMatrixNonZeros = 0;
+                }
                 const auto assemblyEndTime = std::chrono::high_resolution_clock::now();
 
                 performanceMetrics_.assemblyTimeSeconds +=
@@ -330,32 +371,22 @@ bool FEModel::solveHyperelastic() {
                 performanceMetrics_.matrixNonZeros = globalK_.nonZeros();
                 performanceMetrics_.nonlinearIterations = iterationCount_;
                 performanceMetrics_.strainEnergy = totalStrainEnergy;
-                performanceMetrics_.activeSetSize =
-                    static_cast<int>(contactInfo.state.activeFacetIds.size());
-                performanceMetrics_.activeContactGaussPoints =
-                    contactInfo.state.activeGaussPointCount;
-                performanceMetrics_.maxPenetration = contactInfo.state.maxPenetration;
-                performanceMetrics_.contactForceNorm = contactInfo.state.contactForceNorm;
 
-                const bool activeSetStable =
-                    equilibriumIteration <= 1 ||
-                    contactInfo.state.activeFacetIds == previousActiveFacetIds;
-                previousActiveFacetIds = contactInfo.state.activeFacetIds;
-
-                const double freeResidualNorm = computeFreeDofNorm(globalF_, constraintData);
+                const double freeResidualNorm =
+                    computeFreeDofNorm(globalF_, stepConstraintData);
                 const double relativeResidualNorm = freeResidualNorm / referenceForceNorm;
                 performanceMetrics_.equilibriumResidualNorm = freeResidualNorm;
 
                 if (relativeResidualNorm < residualTolerance &&
-                    equilibriumLastRelativeIncrement < incrementTolerance &&
-                    activeSetStable) {
-                    equilibriumConverged = true;
+                    lastRelativeIncrement < incrementTolerance &&
+                    (!usePenaltyContact || activeSetStable)) {
+                    stepConverged = true;
                     break;
                 }
 
                 Eigen::VectorXd displacementIncrement;
                 if (!solveReducedIncrementSystem(
-                        globalK_, globalF_, constraintData, displacementIncrement)) {
+                        globalK_, globalF_, stepConstraintData, displacementIncrement)) {
                     const auto failureTime = std::chrono::high_resolution_clock::now();
                     performanceMetrics_.totalTimeSeconds =
                         std::chrono::duration<double>(failureTime - totalStartTime).count();
@@ -363,66 +394,195 @@ bool FEModel::solveHyperelastic() {
                 }
 
                 const double freeDisplacementNorm =
-                    std::max(computeFreeDofNorm(displacements_, constraintData), 1.0);
+                    std::max(computeFreeDofNorm(displacements_, stepConstraintData), 1.0);
                 const double freeIncrementNorm =
-                    computeFreeDofNorm(displacementIncrement, constraintData);
-                equilibriumLastRelativeIncrement = freeIncrementNorm / freeDisplacementNorm;
+                    computeFreeDofNorm(displacementIncrement, stepConstraintData);
+                lastRelativeIncrement = freeIncrementNorm / freeDisplacementNorm;
 
-                displacements_ += displacementIncrement;
-                applyPrescribedDisplacements(constraintData, displacements_);
-            }
-
-            if (!equilibriumConverged) {
-                std::cerr
-                    << "FEModel: Hyperelastic augmented Lagrangian equilibrium solve did not "
-                    << "converge during outer iteration " << iterationCount_ << std::endl;
-                if (performanceMetrics_.directLinearSolveCount > 0) {
-                    std::cerr << "FEModel: Direct sparse fallback was used in "
-                              << performanceMetrics_.directLinearSolveCount
-                              << " of " << performanceMetrics_.linearSolveCount
-                              << " Newton linear solves before failure." << std::endl;
+                if (!applyBacktrackedFiniteStrainIncrement(
+                        stepConstraintData,
+                        displacementIncrement,
+                        stepExternalForce,
+                        freeResidualNorm)) {
+                    std::cerr << "FEModel: Hyperelastic step update failed line search "
+                              << "(invalid deformation gradient or non-decreasing residual) "
+                              << "during load step " << loadStep
+                              << ", Newton iteration " << stepIteration << std::endl;
+                    const auto failureTime = std::chrono::high_resolution_clock::now();
+                    performanceMetrics_.totalTimeSeconds =
+                        std::chrono::duration<double>(failureTime - totalStartTime).count();
+                    return false;
                 }
-                const auto failureTime = std::chrono::high_resolution_clock::now();
-                performanceMetrics_.totalTimeSeconds =
-                    std::chrono::duration<double>(failureTime - totalStartTime).count();
-                return false;
-            }
-
-            convergedStateInfo.updateInfo = contactSolver_->updateState(displacements_);
-            applyContactConditions(displacements_, convergedStateInfo);
-
-            performanceMetrics_.nonlinearIterations = iterationCount_;
-            performanceMetrics_.activeSetSize =
-                static_cast<int>(convergedStateInfo.state.activeFacetIds.size());
-            performanceMetrics_.activeContactGaussPoints =
-                convergedStateInfo.updateInfo.activeGaussPointCount;
-            performanceMetrics_.maxPenetration = convergedStateInfo.state.maxPenetration;
-            performanceMetrics_.contactForceNorm = convergedStateInfo.state.contactForceNorm;
-            performanceMetrics_.contactStateUpdateNorm =
-                convergedStateInfo.updateInfo.stateUpdateNorm;
-            performanceMetrics_.contactStateRelativeUpdateNorm =
-                convergedStateInfo.updateInfo.relativeStateUpdateNorm;
-            performanceMetrics_.contactStateMaxUpdateMagnitude =
-                convergedStateInfo.updateInfo.maxStateUpdateMagnitude;
-            performanceMetrics_.contactStateRelativeMaxUpdate =
-                convergedStateInfo.updateInfo.relativeMaxStateUpdate;
-            performanceMetrics_.maxNormalContactMultiplier =
-                convergedStateInfo.updateInfo.maxNormalMultiplier;
-            performanceMetrics_.meanNormalContactMultiplier =
-                convergedStateInfo.updateInfo.meanNormalMultiplier;
-
-            if (convergedStateInfo.updateInfo.converged) {
-                converged = true;
-                break;
             }
         }
+        else {
+            const int maxEquilibriumIterations =
+                std::max(6, std::min(24, maxIterations_));
+
+            for (int outerIteration = 1; outerIteration <= maxIterations_; ++outerIteration) {
+                iterationCount_ = ++cumulativeNonlinearIterations;
+                bool equilibriumConverged = false;
+                double equilibriumLastRelativeIncrement =
+                    std::numeric_limits<double>::infinity();
+                std::vector<int> previousActiveFacetIds;
+                ContactIterationInfo convergedStateInfo;
+
+                for (int equilibriumIteration = 1;
+                    equilibriumIteration <= maxEquilibriumIterations;
+                    ++equilibriumIteration) {
+                    const auto assemblyStartTime = std::chrono::high_resolution_clock::now();
+                    double totalStrainEnergy = 0.0;
+                    Eigen::SparseMatrix<double> structuralTangent;
+                    const auto structuralAssemblyStartTime =
+                        std::chrono::high_resolution_clock::now();
+                    assembly_->assembleFiniteStrainSystem(
+                        displacements_,
+                        structuralTangent,
+                        internalForce,
+                        totalStrainEnergy);
+                    const auto structuralAssemblyEndTime =
+                        std::chrono::high_resolution_clock::now();
+                    performanceMetrics_.structuralAssemblyTimeSeconds +=
+                        std::chrono::duration<double>(
+                            structuralAssemblyEndTime - structuralAssemblyStartTime).count();
+                    performanceMetrics_.structuralMatrixNonZeros = structuralTangent.nonZeros();
+
+                    ContactIterationInfo contactInfo;
+                    applyContactConditions(displacements_, contactInfo);
+                    currentContactForce = contactInfo.force;
+                    globalK_ = structuralTangent;
+                    globalK_ += contactInfo.stiffness;
+                    globalK_.makeCompressed();
+                    globalF_ = stepExternalForce + currentContactForce - internalForce;
+                    const auto assemblyEndTime = std::chrono::high_resolution_clock::now();
+
+                    performanceMetrics_.assemblyTimeSeconds +=
+                        std::chrono::duration<double>(assemblyEndTime - assemblyStartTime)
+                            .count();
+                    performanceMetrics_.matrixNonZeros = globalK_.nonZeros();
+                    performanceMetrics_.nonlinearIterations = iterationCount_;
+                    performanceMetrics_.strainEnergy = totalStrainEnergy;
+                    performanceMetrics_.activeSetSize =
+                        static_cast<int>(contactInfo.state.activeFacetIds.size());
+                    performanceMetrics_.activeContactGaussPoints =
+                        contactInfo.state.activeGaussPointCount;
+                    performanceMetrics_.maxPenetration = contactInfo.state.maxPenetration;
+                    performanceMetrics_.contactForceNorm = contactInfo.state.contactForceNorm;
+
+                    const bool activeSetStable =
+                        equilibriumIteration <= 1 ||
+                        contactInfo.state.activeFacetIds == previousActiveFacetIds;
+                    previousActiveFacetIds = contactInfo.state.activeFacetIds;
+
+                    const double freeResidualNorm =
+                        computeFreeDofNorm(globalF_, stepConstraintData);
+                    const double relativeResidualNorm = freeResidualNorm / referenceForceNorm;
+                    performanceMetrics_.equilibriumResidualNorm = freeResidualNorm;
+
+                    if (relativeResidualNorm < residualTolerance &&
+                        equilibriumLastRelativeIncrement < incrementTolerance &&
+                        activeSetStable) {
+                        equilibriumConverged = true;
+                        break;
+                    }
+
+                    Eigen::VectorXd displacementIncrement;
+                    if (!solveReducedIncrementSystem(
+                            globalK_, globalF_, stepConstraintData, displacementIncrement)) {
+                        const auto failureTime = std::chrono::high_resolution_clock::now();
+                        performanceMetrics_.totalTimeSeconds =
+                            std::chrono::duration<double>(failureTime - totalStartTime).count();
+                        return false;
+                    }
+
+                    const double freeDisplacementNorm =
+                        std::max(computeFreeDofNorm(displacements_, stepConstraintData), 1.0);
+                    const double freeIncrementNorm =
+                        computeFreeDofNorm(displacementIncrement, stepConstraintData);
+                    equilibriumLastRelativeIncrement =
+                        freeIncrementNorm / freeDisplacementNorm;
+
+                    if (!applyBacktrackedFiniteStrainIncrement(
+                            stepConstraintData,
+                            displacementIncrement,
+                            stepExternalForce,
+                            freeResidualNorm)) {
+                        std::cerr
+                            << "FEModel: Hyperelastic augmented Lagrangian update failed "
+                            << "line search (invalid deformation gradient or non-decreasing "
+                            << "residual) during load step " << loadStep
+                            << ", outer iteration " << outerIteration
+                            << ", equilibrium iteration " << equilibriumIteration
+                            << std::endl;
+                        const auto failureTime = std::chrono::high_resolution_clock::now();
+                        performanceMetrics_.totalTimeSeconds =
+                            std::chrono::duration<double>(failureTime - totalStartTime).count();
+                        return false;
+                    }
+                }
+
+                if (!equilibriumConverged) {
+                    std::cerr
+                        << "FEModel: Hyperelastic augmented Lagrangian equilibrium solve did "
+                        << "not converge during load step " << loadStep
+                        << ", outer iteration " << outerIteration << std::endl;
+                    if (performanceMetrics_.directLinearSolveCount > 0) {
+                        std::cerr << "FEModel: Direct sparse fallback was used in "
+                                  << performanceMetrics_.directLinearSolveCount
+                                  << " of " << performanceMetrics_.linearSolveCount
+                                  << " Newton linear solves before failure." << std::endl;
+                    }
+                    const auto failureTime = std::chrono::high_resolution_clock::now();
+                    performanceMetrics_.totalTimeSeconds =
+                        std::chrono::duration<double>(failureTime - totalStartTime).count();
+                    return false;
+                }
+
+                convergedStateInfo.updateInfo = contactSolver_->updateState(displacements_);
+                applyContactConditions(displacements_, convergedStateInfo);
+
+                performanceMetrics_.nonlinearIterations = iterationCount_;
+                performanceMetrics_.activeSetSize =
+                    static_cast<int>(convergedStateInfo.state.activeFacetIds.size());
+                performanceMetrics_.activeContactGaussPoints =
+                    convergedStateInfo.updateInfo.activeGaussPointCount;
+                performanceMetrics_.maxPenetration = convergedStateInfo.state.maxPenetration;
+                performanceMetrics_.contactForceNorm =
+                    convergedStateInfo.state.contactForceNorm;
+                performanceMetrics_.contactStateUpdateNorm =
+                    convergedStateInfo.updateInfo.stateUpdateNorm;
+                performanceMetrics_.contactStateRelativeUpdateNorm =
+                    convergedStateInfo.updateInfo.relativeStateUpdateNorm;
+                performanceMetrics_.contactStateMaxUpdateMagnitude =
+                    convergedStateInfo.updateInfo.maxStateUpdateMagnitude;
+                performanceMetrics_.contactStateRelativeMaxUpdate =
+                    convergedStateInfo.updateInfo.relativeMaxStateUpdate;
+                performanceMetrics_.maxNormalContactMultiplier =
+                    convergedStateInfo.updateInfo.maxNormalMultiplier;
+                performanceMetrics_.meanNormalContactMultiplier =
+                    convergedStateInfo.updateInfo.meanNormalMultiplier;
+
+                if (convergedStateInfo.updateInfo.converged) {
+                    stepConverged = true;
+                    break;
+                }
+            }
+        }
+
+        if (!stepConverged) {
+            converged = false;
+            break;
+        }
+
+        performanceMetrics_.convergedLoadSteps = loadStep;
     }
 
     if (!converged) {
         std::cerr << "FEModel: Hyperelastic "
                   << (useAugmentedLagrangianContact ? "augmented Lagrangian" : "Newton")
-                  << " solve did not converge after " << maxIterations_
-                  << (useAugmentedLagrangianContact ? " outer iterations" : " Newton iterations")
+                  << " solve did not converge after "
+                  << performanceMetrics_.convergedLoadSteps << " of "
+                  << performanceMetrics_.loadSteps << " load steps"
                   << std::endl;
         if (performanceMetrics_.directLinearSolveCount > 0) {
             std::cerr << "FEModel: Direct sparse fallback was used in "
@@ -456,10 +616,10 @@ bool FEModel::solveHyperelastic() {
         performanceMetrics_.maxPenetration = finalContactInfo.state.maxPenetration;
         performanceMetrics_.contactForceNorm = finalContactInfo.state.contactForceNorm;
         calculateReactionForcesFromInternalForce(
-            internalForce, externalForce, currentContactForce);
+            internalForce, finalExternalForce, currentContactForce);
     }
     else {
-        calculateReactionForcesFromInternalForce(internalForce, externalForce);
+        calculateReactionForcesFromInternalForce(internalForce, finalExternalForce);
     }
     if (performanceMetrics_.directLinearSolveCount > 0) {
         std::cerr << "FEModel: Hyperelastic solve used direct sparse fallback in "
@@ -668,12 +828,14 @@ bool FEModel::solveContactIterative() {
     const auto assemblyStartTime = std::chrono::high_resolution_clock::now();
     const auto structuralAssemblyStartTime = std::chrono::high_resolution_clock::now();
     assembly_->assembleGlobalStiffnessMatrix(globalK_);
+    const Eigen::SparseMatrix<double> structuralFullK = globalK_;
     const auto structuralAssemblyEndTime = std::chrono::high_resolution_clock::now();
     performanceMetrics_.structuralAssemblyTimeSeconds =
         std::chrono::duration<double>(
             structuralAssemblyEndTime - structuralAssemblyStartTime).count();
     performanceMetrics_.structuralMatrixNonZeros = globalK_.nonZeros();
     assembleExternalForces(globalF_);
+    const Eigen::VectorXd structuralFullF = globalF_;
     Assembly::BoundaryConditionApplicationStats boundaryConditionStats;
     assembly_->applyBoundaryConditions(globalK_, globalF_, &boundaryConditionStats);
     const auto assemblyEndTime = std::chrono::high_resolution_clock::now();
@@ -697,6 +859,8 @@ bool FEModel::solveContactIterative() {
     const bool useNestedAugmentedLagrangianLoop =
         contactSolver_->getMethod() == RigidPlaneContactMethod::AugmentedLagrangian;
     bool converged = false;
+    ContactIterationInfo finalContactInfo;
+    bool haveFinalContactInfo = false;
 
     if (!useNestedAugmentedLagrangianLoop) {
         Eigen::VectorXd previousDisplacements = displacements_;
@@ -768,6 +932,8 @@ bool FEModel::solveContactIterative() {
                 convergedStateInfo.updateInfo.maxNormalMultiplier;
             performanceMetrics_.meanNormalContactMultiplier =
                 convergedStateInfo.updateInfo.meanNormalMultiplier;
+            finalContactInfo = convergedStateInfo;
+            haveFinalContactInfo = true;
 
             previousDisplacements = displacements_;
 
@@ -880,6 +1046,8 @@ bool FEModel::solveContactIterative() {
                 convergedStateInfo.updateInfo.maxNormalMultiplier;
             performanceMetrics_.meanNormalContactMultiplier =
                 convergedStateInfo.updateInfo.meanNormalMultiplier;
+            finalContactInfo = convergedStateInfo;
+            haveFinalContactInfo = true;
 
             if (convergedStateInfo.updateInfo.converged) {
                 converged = true;
@@ -897,7 +1065,13 @@ bool FEModel::solveContactIterative() {
         return false;
     }
 
-    calculateReactionForces();
+    if (haveFinalContactInfo) {
+        calculateReactionForcesFromInternalForce(
+            structuralFullK * displacements_, structuralFullF, finalContactInfo.force);
+    }
+    else {
+        calculateReactionForcesFromInternalForce(structuralFullK * displacements_, structuralFullF);
+    }
     const auto totalEndTime = std::chrono::high_resolution_clock::now();
     performanceMetrics_.totalTimeSeconds =
         std::chrono::duration<double>(totalEndTime - totalStartTime).count();

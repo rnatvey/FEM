@@ -161,6 +161,8 @@ private:
     void buildNodeIndexMap();
 
     std::unordered_map<int, int> nodeIdToIndex_; // Быстрый поиск узлов по ID
+    std::unordered_map<int, int> elementIdToIndex_;
+    std::unordered_map<int, int> finiteStrainElementIdToIndex_;
 
     mutable DofMapping dofMapping_;
     ConstraintData buildConstraintData() const;

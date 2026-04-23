@@ -3,8 +3,9 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
-#include <stdexcept>
 #include <iostream>
+#include <limits>
+#include <stdexcept>
 #include "planeisometric/Planeisoparametric.h"
 
 Assembly::Assembly() {
@@ -15,18 +16,18 @@ void Assembly::addNode(std::shared_ptr<Node> node) {
         throw std::invalid_argument("Cannot add null node");
     }
 
-    // РџСЂРѕРІРµСЂСЏРµРј СѓРЅРёРєР°Р»СЊРЅРѕСЃС‚СЊ ID
-    for (const auto& existingNode : nodes_) {
-        if (existingNode->getId() == node->getId()) {
-            throw std::invalid_argument("Node with ID " + std::to_string(node->getId()) + " already exists");
-        }
+    if (nodeIdToIndex_.find(node->getId()) != nodeIdToIndex_.end()) {
+        throw std::invalid_argument(
+            "Node with ID " + std::to_string(node->getId()) + " already exists");
     }
 
     nodes_.push_back(node);
-    buildNodeIndexMap(); // РћР±РЅРѕРІР»СЏРµРј РєР°СЂС‚Сѓ РёРЅРґРµРєСЃРѕРІ
+    nodeIdToIndex_[node->getId()] = static_cast<int>(nodes_.size() - 1);
 }
 
 void Assembly::addNodes(const std::vector<std::shared_ptr<Node>>& nodes) {
+    nodes_.reserve(nodes_.size() + nodes.size());
+    nodeIdToIndex_.reserve(nodeIdToIndex_.size() + nodes.size());
     for (const auto& node : nodes) {
         addNode(node);
     }
@@ -41,7 +42,12 @@ void Assembly::addLineofNodes(size_t startId, vector2 start_point,  vector2 end_
     for (int i = 0; i < num_of_nodes;i++)
     {
         auto current_position = start_point + (direction * step * i);
-        addNode(std::make_shared<Node>(startId + i, current_position.X, current_position.Y));
+        const size_t rawNodeId = startId + static_cast<size_t>(i);
+        if (rawNodeId > static_cast<size_t>(std::numeric_limits<int>::max())) {
+            throw std::out_of_range("Node ID exceeds int range in addLineofNodes");
+        }
+        addNode(std::make_shared<Node>(
+            static_cast<int>(rawNodeId), current_position.X, current_position.Y));
     }
     return;
 }
@@ -103,11 +109,9 @@ void Assembly::addElement(std::shared_ptr<BaseElement> element) {
         throw std::invalid_argument("Cannot add null element");
     }
 
-    // РџСЂРѕРІРµСЂСЏРµРј СѓРЅРёРєР°Р»СЊРЅРѕСЃС‚СЊ ID
-    for (const auto& existingElement : elements_) {
-        if (existingElement->getId() == element->getId()) {
-            throw std::invalid_argument("Element with ID " + std::to_string(element->getId()) + " already exists");
-        }
+    if (elementIdToIndex_.find(element->getId()) != elementIdToIndex_.end()) {
+        throw std::invalid_argument(
+            "Element with ID " + std::to_string(element->getId()) + " already exists");
     }
 
     // РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ СѓР·Р»РѕРІ
@@ -123,9 +127,12 @@ void Assembly::addElement(std::shared_ptr<BaseElement> element) {
     }
 
     elements_.push_back(element);
+    elementIdToIndex_[element->getId()] = static_cast<int>(elements_.size() - 1);
 }
 
 void Assembly::addElements(const std::vector<std::shared_ptr<BaseElement>>& elements) {
+    elements_.reserve(elements_.size() + elements.size());
+    elementIdToIndex_.reserve(elementIdToIndex_.size() + elements.size());
     for (const auto& element : elements) {
         addElement(element);
     }
@@ -136,12 +143,11 @@ void Assembly::addFiniteStrainElement(std::shared_ptr<FiniteStrainQ4Element> ele
         throw std::invalid_argument("Cannot add null finite-strain element");
     }
 
-    for (const auto& existingElement : finiteStrainElements_) {
-        if (existingElement->getId() == element->getId()) {
-            throw std::invalid_argument(
-                "Finite-strain element with ID " + std::to_string(element->getId()) +
-                " already exists");
-        }
+    if (finiteStrainElementIdToIndex_.find(element->getId()) !=
+        finiteStrainElementIdToIndex_.end()) {
+        throw std::invalid_argument(
+            "Finite-strain element with ID " + std::to_string(element->getId()) +
+            " already exists");
     }
 
     for (int nodeId : element->getNodeIds()) {
@@ -161,29 +167,32 @@ void Assembly::addFiniteStrainElement(std::shared_ptr<FiniteStrainQ4Element> ele
     }
 
     finiteStrainElements_.push_back(std::move(element));
+    finiteStrainElementIdToIndex_[finiteStrainElements_.back()->getId()] =
+        static_cast<int>(finiteStrainElements_.size() - 1);
 }
 
 void Assembly::addFiniteStrainElements(
     const std::vector<std::shared_ptr<FiniteStrainQ4Element>>& elements) {
+    finiteStrainElements_.reserve(finiteStrainElements_.size() + elements.size());
+    finiteStrainElementIdToIndex_.reserve(
+        finiteStrainElementIdToIndex_.size() + elements.size());
     for (const auto& element : elements) {
         addFiniteStrainElement(element);
     }
 }
 
 std::shared_ptr<BaseElement> Assembly::getElement(int id) const {
-    for (const auto& element : elements_) {
-        if (element->getId() == id) {
-            return element;
-        }
+    auto it = elementIdToIndex_.find(id);
+    if (it != elementIdToIndex_.end()) {
+        return elements_[static_cast<size_t>(it->second)];
     }
     return nullptr;
 }
 
 std::shared_ptr<FiniteStrainQ4Element> Assembly::getFiniteStrainElement(int id) const {
-    for (const auto& element : finiteStrainElements_) {
-        if (element->getId() == id) {
-            return element;
-        }
+    auto it = finiteStrainElementIdToIndex_.find(id);
+    if (it != finiteStrainElementIdToIndex_.end()) {
+        return finiteStrainElements_[static_cast<size_t>(it->second)];
     }
     return nullptr;
 }
@@ -715,8 +724,9 @@ int Assembly::getGlobalDofIndex(int nodeId, int direction) const {
 
 void Assembly::buildNodeIndexMap() {
     nodeIdToIndex_.clear();
+    nodeIdToIndex_.reserve(nodes_.size());
     for (size_t i = 0; i < nodes_.size(); ++i) {
-        nodeIdToIndex_[nodes_[i]->getId()] = i;
+        nodeIdToIndex_[nodes_[i]->getId()] = static_cast<int>(i);
     }
 }
 

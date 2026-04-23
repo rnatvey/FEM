@@ -14,6 +14,7 @@
 #include "ContactTypes.h"
 #include "planeisometric/FiniteStrainQ4Element.h"
 #include "planeisometric/Planeisoparametric.h"
+#include "meshgenerator.h"
 
 namespace HyperelasticScenarioSupport {
 
@@ -23,6 +24,14 @@ struct BlockCase {
     std::shared_ptr<Assembly> assembly;
     int anchorNodeId = -1;
     int topEdgeNodeCount = 0;
+};
+
+struct TireContactCase {
+    std::shared_ptr<Assembly> assembly;
+    MeshGenerator::TireContactMeshResult mesh;
+    RigidPlane2D rigidPlane = RigidPlane2D{Eigen::Vector2d(0.0, 1.0), 0.0};
+    std::vector<int> innerBoundaryNodeIds;
+    int anchorNodeId = -1;
 };
 
 inline BlockCase buildFiniteStrainBlockCase(int nodesX,
@@ -320,6 +329,77 @@ inline std::vector<ContactFacet> collectBoundaryFacetsByCoordinate(
     }
 
     return facets;
+}
+
+inline TireContactCase buildFiniteStrainTireContactCase(
+    const MeshGenerator::TireContactAnalysisControl& control,
+    double youngsModulus,
+    double poissonsRatio,
+    double thickness) {
+    auto temporaryAssembly = std::make_shared<Assembly>();
+    auto temporaryMaterial = std::make_shared<Material>(
+        1, youngsModulus, poissonsRatio, thickness);
+    temporaryAssembly->addMaterial(temporaryMaterial);
+
+    MeshGenerator temporaryMeshGenerator(temporaryAssembly);
+    const auto setup = temporaryMeshGenerator.generateTireContactAnalysisSetup(control);
+
+    TireContactCase tireCase;
+    tireCase.assembly = std::make_shared<Assembly>();
+    auto finiteStrainMaterial = std::make_shared<NeoHookeanMaterial>(
+        NeoHookeanMaterial::fromYoungsModulusAndPoissonsRatio(
+            1, youngsModulus, poissonsRatio, thickness));
+    tireCase.assembly->addFiniteStrainMaterial(finiteStrainMaterial);
+
+    std::vector<std::shared_ptr<Node>> nodes;
+    nodes.reserve(temporaryAssembly->getNodes().size());
+    for (const auto& node : temporaryAssembly->getNodes()) {
+        nodes.push_back(std::make_shared<Node>(
+            node->getId(),
+            node->getCoordinates().x(),
+            node->getCoordinates().y()));
+    }
+    tireCase.assembly->addNodes(nodes);
+
+    std::vector<std::shared_ptr<FiniteStrainQ4Element>> finiteStrainElements;
+    finiteStrainElements.reserve(temporaryAssembly->getElements().size());
+    for (const auto& element : temporaryAssembly->getElements()) {
+        finiteStrainElements.push_back(std::make_shared<FiniteStrainQ4Element>(
+            element->getId(), element->getNodeIds(), finiteStrainMaterial->getId()));
+    }
+    tireCase.assembly->addFiniteStrainElements(finiteStrainElements);
+
+    for (int nodeId : setup.innerBoundaryNodeIds) {
+        if (control.prescribeInnerBoundaryX && control.prescribeInnerBoundaryY) {
+            tireCase.assembly->addPrescribedDisplacement(
+                nodeId,
+                control.prescribedInnerBoundaryDx,
+                control.prescribedInnerBoundaryDy);
+        }
+        else if (control.prescribeInnerBoundaryX) {
+            tireCase.assembly->addPrescribedDisplacementX(
+                nodeId, control.prescribedInnerBoundaryDx);
+        }
+        else if (control.prescribeInnerBoundaryY) {
+            tireCase.assembly->addPrescribedDisplacementY(
+                nodeId, control.prescribedInnerBoundaryDy);
+        }
+    }
+
+    if (control.addInnerBoundaryAnchor) {
+        if (setup.anchorNodeId < 0) {
+            throw std::runtime_error(
+                "Failed to select anchor node for finite-strain tire-contact case");
+        }
+        tireCase.assembly->addFixedNode(
+            setup.anchorNodeId, control.anchorFixX, control.anchorFixY);
+    }
+
+    tireCase.mesh = setup.mesh;
+    tireCase.rigidPlane = setup.rigidPlane;
+    tireCase.innerBoundaryNodeIds = setup.innerBoundaryNodeIds;
+    tireCase.anchorNodeId = setup.anchorNodeId;
+    return tireCase;
 }
 
 } // namespace HyperelasticScenarioSupport

@@ -41,8 +41,6 @@ public:
     void resetState() override;
 
 private:
-    static std::pair<double, double> mapSurfaceCoordinates(int surfaceIndex, double surfaceParameter);
-
     void initializeGaussPointStates();
 
     std::shared_ptr<Assembly> assembly_;

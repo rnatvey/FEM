@@ -22,14 +22,14 @@
     "prescribed_dofs": 11
   },
   "timings": {
-    "structural_assembly_time_seconds": 0.00040320000000000004,
+    "structural_assembly_time_seconds": 0.0004082,
     "contact_assembly_time_seconds": 0,
-    "boundary_condition_time_seconds": 4.7700000000000001e-05,
-    "reduction_time_seconds": 3.7100000000000001e-05,
-    "assembly_time_seconds": 0.00045150000000000002,
-    "linear_solve_time_seconds": 0.00047840000000000003,
-    "solve_time_seconds": 0.00047840000000000003,
-    "total_time_seconds": 0.0013166
+    "boundary_condition_time_seconds": 4.9700000000000002e-05,
+    "reduction_time_seconds": 4.2000000000000004e-05,
+    "assembly_time_seconds": 0.00046150000000000005,
+    "linear_solve_time_seconds": 0.00047210000000000004,
+    "solve_time_seconds": 0.00047210000000000004,
+    "total_time_seconds": 0.00094350000000000011
   },
   "formulation": {
     "finite_strain": false,

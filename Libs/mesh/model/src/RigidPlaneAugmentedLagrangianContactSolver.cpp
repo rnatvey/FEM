@@ -1,6 +1,7 @@
 #include "RigidPlaneAugmentedLagrangianContactSolver.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <stdexcept>
 
@@ -14,24 +15,21 @@
 namespace {
 
 constexpr double kGaussPoint = 0.577350269189626;
-const std::vector<double> kGaussPoints = {-kGaussPoint, kGaussPoint};
-const std::vector<double> kGaussWeights = {1.0, 1.0};
+constexpr std::array<double, 2> kGaussPoints = {-kGaussPoint, kGaussPoint};
+constexpr std::array<double, 2> kGaussWeights = {1.0, 1.0};
 constexpr int kGaussPointCountPerFacet = 2;
-
-std::pair<double, double> mapSurfaceCoordinatesLocal(int surfaceIndex, double surfaceParameter) {
-    switch (surfaceIndex) {
-    case 0:
-        return {surfaceParameter, -1.0};
-    case 1:
-        return {1.0, surfaceParameter};
-    case 2:
-        return {surfaceParameter, 1.0};
-    case 3:
-        return {-1.0, surfaceParameter};
-    default:
-        throw std::invalid_argument("Surface index must be in [0, 3]");
-    }
-}
+constexpr std::array<std::pair<double, double>, 4> kSurfaceMidpointCoordinates = {{
+    {0.0, -1.0},
+    {1.0, 0.0},
+    {0.0, 1.0},
+    {-1.0, 0.0}
+}};
+constexpr std::array<std::array<std::pair<double, double>, 2>, 4> kSurfaceGaussCoordinates = {{
+    {{{-kGaussPoint, -1.0}, {kGaussPoint, -1.0}}},
+    {{{1.0, -kGaussPoint}, {1.0, kGaussPoint}}},
+    {{{-kGaussPoint, 1.0}, {kGaussPoint, 1.0}}},
+    {{{-1.0, -kGaussPoint}, {-1.0, kGaussPoint}}}
+}};
 
 struct ContactElementView {
     int elementId = -1;
@@ -41,6 +39,11 @@ struct ContactElementView {
     std::vector<int> nodeIds;
     std::shared_ptr<PlaneIsoparametricElement> linearElement;
     std::shared_ptr<FiniteStrainQ4Element> finiteStrainElement;
+};
+
+struct ContactElementAssemblyData {
+    std::vector<std::shared_ptr<Node>> elementNodes;
+    std::vector<int> dofIndices;
 };
 
 ContactElementView resolveContactElementView(
@@ -98,51 +101,34 @@ ContactElementView resolveContactElementView(
         std::to_string(elementId));
 }
 
-std::vector<std::shared_ptr<Node>> getElementNodes(
+ContactElementAssemblyData buildContactElementAssemblyData(
     const std::shared_ptr<Assembly>& assembly,
-    const std::vector<int>& nodeIds) {
-    std::vector<std::shared_ptr<Node>> elementNodes;
-    elementNodes.reserve(nodeIds.size());
-    for (int nodeId : nodeIds) {
+    const ContactElementView& elementView) {
+    ContactElementAssemblyData data;
+    data.elementNodes.reserve(elementView.nodeIds.size());
+    data.dofIndices.reserve(elementView.nodeIds.size() * 2);
+
+    for (int nodeId : elementView.nodeIds) {
         auto node = assembly->getNode(nodeId);
         if (!node) {
             throw std::invalid_argument("Node not found: " + std::to_string(nodeId));
         }
-        elementNodes.push_back(node);
+
+        data.elementNodes.push_back(node);
+        data.dofIndices.push_back(assembly->getGlobalDofIndex(nodeId, 0));
+        data.dofIndices.push_back(assembly->getGlobalDofIndex(nodeId, 1));
     }
-    return elementNodes;
+
+    return data;
 }
 
-std::vector<int> getElementFullDofIndices(
-    const std::shared_ptr<Assembly>& assembly,
-    const std::vector<int>& nodeIds) {
-    std::vector<int> dofIndices;
-    dofIndices.reserve(nodeIds.size() * 2);
-    for (int nodeId : nodeIds) {
-        dofIndices.push_back(assembly->getGlobalDofIndex(nodeId, 0));
-        dofIndices.push_back(assembly->getGlobalDofIndex(nodeId, 1));
-    }
-    return dofIndices;
-}
-
-Eigen::Vector4d evaluateScalarShapeFunctions(
-    const ContactElementView& elementView,
-    double xi,
-    double eta) {
-    if (elementView.linearElement) {
-        Eigen::MatrixXd shapeMatrix = elementView.linearElement->shapeFunctions(xi, eta);
-        Eigen::Vector4d N = Eigen::Vector4d::Zero();
-        for (int i = 0; i < 4; ++i) {
-            N(i) = shapeMatrix(0, 2 * i);
-        }
-        return N;
-    }
-
-    if (elementView.finiteStrainElement) {
-        return elementView.finiteStrainElement->shapeFunctionsLocal(xi, eta);
-    }
-
-    throw std::runtime_error("Unsupported contact element view without element backend");
+Eigen::Vector4d evaluateScalarShapeFunctions(double xi, double eta) {
+    Eigen::Vector4d N;
+    N(0) = 0.25 * (1.0 + xi) * (1.0 + eta);
+    N(1) = 0.25 * (1.0 - xi) * (1.0 + eta);
+    N(2) = 0.25 * (1.0 - xi) * (1.0 - eta);
+    N(3) = 0.25 * (1.0 + xi) * (1.0 - eta);
+    return N;
 }
 
 double computeSurfaceJacobian(int surfaceIndex,
@@ -177,8 +163,9 @@ double computeReferenceFacetLength(int surfaceIndex,
     const ContactElementView& elementView,
     const std::vector<std::shared_ptr<Node>>& elementNodes) {
     double facetLength = 0.0;
-    for (size_t gpIndex = 0; gpIndex < kGaussPoints.size(); ++gpIndex) {
-        const auto [xi, eta] = mapSurfaceCoordinatesLocal(surfaceIndex, kGaussPoints[gpIndex]);
+    const auto& surfaceGaussCoordinates = kSurfaceGaussCoordinates[surfaceIndex];
+    for (size_t gpIndex = 0; gpIndex < surfaceGaussCoordinates.size(); ++gpIndex) {
+        const auto [xi, eta] = surfaceGaussCoordinates[gpIndex];
         facetLength += computeSurfaceJacobian(
             surfaceIndex, elementView, elementNodes, xi, eta) * kGaussWeights[gpIndex];
     }
@@ -304,10 +291,10 @@ void RigidPlaneAugmentedLagrangianContactSolver::assembleContact(
         const auto& facet = facets_[facetIndex];
         const ContactElementView elementView =
             resolveContactElementView(assembly_, facet.elementId);
-        std::vector<std::shared_ptr<Node>> elementNodes =
-            getElementNodes(assembly_, elementView.nodeIds);
-        std::vector<int> dofIndices =
-            getElementFullDofIndices(assembly_, elementView.nodeIds);
+        const ContactElementAssemblyData assemblyData =
+            buildContactElementAssemblyData(assembly_, elementView);
+        const auto& elementNodes = assemblyData.elementNodes;
+        const auto& dofIndices = assemblyData.dofIndices;
         const double characteristicFacetLength =
             computeReferenceFacetLength(facet.surfaceIndex, elementView, elementNodes);
         const double augmentationParameter = effectiveAugmentationParameter(
@@ -321,9 +308,9 @@ void RigidPlaneAugmentedLagrangianContactSolver::assembleContact(
         facetResult.thickness = elementView.thickness;
         bool facetActive = false;
 
-        auto [midXi, midEta] = mapSurfaceCoordinates(facet.surfaceIndex, 0.0);
+        const auto [midXi, midEta] = kSurfaceMidpointCoordinates[facet.surfaceIndex];
         Eigen::Vector4d midpointShapeFunctions =
-            evaluateScalarShapeFunctions(elementView, midXi, midEta);
+            evaluateScalarShapeFunctions(midXi, midEta);
         for (int localNode = 0; localNode < 4; ++localNode) {
             facetResult.referenceMidpoint +=
                 midpointShapeFunctions(localNode) * elementNodes[localNode]->getCoordinates();
@@ -339,14 +326,14 @@ void RigidPlaneAugmentedLagrangianContactSolver::assembleContact(
         }
         facetResult.deformedMidpoint += facetResult.referenceMidpoint;
 
+        const auto& surfaceGaussCoordinates = kSurfaceGaussCoordinates[facet.surfaceIndex];
         for (int gpIndex = 0; gpIndex < kGaussPointCountPerFacet; ++gpIndex) {
             const int stateIndex =
                 static_cast<int>(facetIndex) * kGaussPointCountPerFacet + gpIndex;
             const ContactGaussPointState& storedState = gaussPointStates_[stateIndex];
 
-            auto [xi, eta] =
-                mapSurfaceCoordinates(facet.surfaceIndex, kGaussPoints[gpIndex]);
-            Eigen::Vector4d N = evaluateScalarShapeFunctions(elementView, xi, eta);
+            const auto [xi, eta] = surfaceGaussCoordinates[gpIndex];
+            Eigen::Vector4d N = evaluateScalarShapeFunctions(xi, eta);
 
             Eigen::Vector2d xGp = Eigen::Vector2d::Zero();
             Eigen::Vector2d uGp = Eigen::Vector2d::Zero();
@@ -456,10 +443,10 @@ ContactSolverUpdateInfo RigidPlaneAugmentedLagrangianContactSolver::updateState(
         const auto& facet = facets_[facetIndex];
         const ContactElementView elementView =
             resolveContactElementView(assembly_, facet.elementId);
-        std::vector<std::shared_ptr<Node>> elementNodes =
-            getElementNodes(assembly_, elementView.nodeIds);
-        std::vector<int> dofIndices =
-            getElementFullDofIndices(assembly_, elementView.nodeIds);
+        const ContactElementAssemblyData assemblyData =
+            buildContactElementAssemblyData(assembly_, elementView);
+        const auto& elementNodes = assemblyData.elementNodes;
+        const auto& dofIndices = assemblyData.dofIndices;
         const double characteristicFacetLength =
             computeReferenceFacetLength(facet.surfaceIndex, elementView, elementNodes);
         characteristicFacetLengthSum += characteristicFacetLength;
@@ -467,14 +454,14 @@ ContactSolverUpdateInfo RigidPlaneAugmentedLagrangianContactSolver::updateState(
         const double augmentationParameter = effectiveAugmentationParameter(
             settings_, elementView, characteristicFacetLength);
 
+        const auto& surfaceGaussCoordinates = kSurfaceGaussCoordinates[facet.surfaceIndex];
         for (int gpIndex = 0; gpIndex < kGaussPointCountPerFacet; ++gpIndex) {
             const int stateIndex =
                 static_cast<int>(facetIndex) * kGaussPointCountPerFacet + gpIndex;
             ContactGaussPointState& gaussPointState = gaussPointStates_[stateIndex];
 
-            auto [xi, eta] =
-                mapSurfaceCoordinates(facet.surfaceIndex, kGaussPoints[gpIndex]);
-            Eigen::Vector4d N = evaluateScalarShapeFunctions(elementView, xi, eta);
+            const auto [xi, eta] = surfaceGaussCoordinates[gpIndex];
+            Eigen::Vector4d N = evaluateScalarShapeFunctions(xi, eta);
 
             Eigen::Vector2d xGp = Eigen::Vector2d::Zero();
             Eigen::Vector2d uGp = Eigen::Vector2d::Zero();
@@ -550,32 +537,15 @@ void RigidPlaneAugmentedLagrangianContactSolver::resetState() {
     initializeGaussPointStates();
 }
 
-std::pair<double, double> RigidPlaneAugmentedLagrangianContactSolver::mapSurfaceCoordinates(
-    int surfaceIndex,
-    double surfaceParameter) {
-    switch (surfaceIndex) {
-    case 0:
-        return {surfaceParameter, -1.0};
-    case 1:
-        return {1.0, surfaceParameter};
-    case 2:
-        return {surfaceParameter, 1.0};
-    case 3:
-        return {-1.0, surfaceParameter};
-    default:
-        throw std::invalid_argument("Surface index must be in [0, 3]");
-    }
-}
-
 void RigidPlaneAugmentedLagrangianContactSolver::initializeGaussPointStates() {
     gaussPointStates_.clear();
     gaussPointStates_.reserve(facets_.size() * kGaussPointCountPerFacet);
 
     for (size_t facetIndex = 0; facetIndex < facets_.size(); ++facetIndex) {
         const auto& facet = facets_[facetIndex];
+        const auto& surfaceGaussCoordinates = kSurfaceGaussCoordinates[facet.surfaceIndex];
         for (int gpIndex = 0; gpIndex < kGaussPointCountPerFacet; ++gpIndex) {
-            auto [xi, eta] =
-                mapSurfaceCoordinates(facet.surfaceIndex, kGaussPoints[gpIndex]);
+            const auto [xi, eta] = surfaceGaussCoordinates[gpIndex];
 
             ContactGaussPointState gaussPointState;
             gaussPointState.facetId = static_cast<int>(facetIndex);

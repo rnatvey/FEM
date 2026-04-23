@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <memory>
@@ -14,6 +15,8 @@
 class FEModel {
 public:
     struct PerformanceMetrics {
+        int loadSteps = 1;
+        int convergedLoadSteps = 0;
         int linearSolveCount = 0;
         int directLinearSolveCount = 0;
         int linearIterations = 0;
@@ -60,6 +63,7 @@ public:
     void setSolverTolerance(double tolerance) { tolerance_ = tolerance; }
     void setMaxIterations(int maxIter) { maxIterations_ = maxIter; }
     void setPenaltyParameter(double penalty) { penaltyParameter_ = penalty; }
+    void setHyperelasticLoadSteps(int loadSteps) { hyperelasticLoadSteps_ = std::max(1, loadSteps); }
 
     void setContactSolver(std::unique_ptr<IRigidPlaneContactSolver> contactSolver);
     void configureRigidPlaneContact(const RigidPlane2D& plane,
@@ -142,6 +146,7 @@ private:
     double tolerance_ = 1.0e-8;
     int maxIterations_ = 100;
     double penaltyParameter_ = 1.0e6;
+    int hyperelasticLoadSteps_ = 1;
     AugmentedLagrangianSettings augmentedLagrangianSettings_;
     int iterationCount_ = 0;
 

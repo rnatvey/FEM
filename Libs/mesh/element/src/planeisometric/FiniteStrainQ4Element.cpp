@@ -2,7 +2,6 @@
 
 #include <array>
 #include <cmath>
-#include <limits>
 #include <stdexcept>
 
 namespace {
@@ -24,14 +23,25 @@ Eigen::Vector3d greenLagrangeTensorToVoigt(const Eigen::Matrix2d& strainTensor) 
     return Eigen::Vector3d(strainTensor(0, 0), strainTensor(1, 1), strainTensor(0, 1));
 }
 
-double polygonArea(const Eigen::Matrix<double, 2, 4>& coordinates) {
-    double twiceArea = 0.0;
-    for (int i = 0; i < 4; ++i) {
-        const int j = (i + 1) % 4;
-        twiceArea +=
-            coordinates(0, i) * coordinates(1, j) - coordinates(0, j) * coordinates(1, i);
-    }
-    return 0.5 * std::abs(twiceArea);
+double materialTangentComponent(const MaterialPointResponse::PlaneStrainTangent& tangentVoigt,
+    int i,
+    int j,
+    int k,
+    int l) {
+    const auto componentIndex = [](int a, int b) -> int {
+        if (a == 0 && b == 0) {
+            return 0;
+        }
+        if (a == 1 && b == 1) {
+            return 1;
+        }
+        if ((a == 0 && b == 1) || (a == 1 && b == 0)) {
+            return 2;
+        }
+        throw std::invalid_argument("Plane-strain tangent index out of range");
+    };
+
+    return tangentVoigt(componentIndex(i, j), componentIndex(k, l));
 }
 
 } // namespace
@@ -50,85 +60,6 @@ FiniteStrainElementResponse FiniteStrainQ4Element::evaluateResponse(
     const Eigen::VectorXd& elementDisplacements,
     const FiniteStrainMaterial& material,
     bool computeTangent) const {
-    FiniteStrainElementResponse response =
-        evaluateResponseWithoutTangent(nodes, elementDisplacements, material);
-
-    if (!computeTangent) {
-        response.tangent = Eigen::MatrixXd::Zero(kDofCount, kDofCount);
-        return response;
-    }
-
-    response.tangent = Eigen::MatrixXd::Zero(kDofCount, kDofCount);
-    const Eigen::Matrix<double, 2, 4> coordinates = nodalCoordinates(nodes);
-    const double characteristicLength = std::max(std::sqrt(std::max(polygonArea(coordinates), 0.0)), 1.0);
-
-    for (int dofIndex = 0; dofIndex < kDofCount; ++dofIndex) {
-        const double perturbation = finiteDifferenceStep(
-            elementDisplacements(dofIndex), characteristicLength);
-
-        Eigen::VectorXd displacedPlus = elementDisplacements;
-        displacedPlus(dofIndex) += perturbation;
-        const Eigen::VectorXd internalForcePlus =
-            evaluateResponseWithoutTangent(nodes, displacedPlus, material).internalForce;
-
-        Eigen::VectorXd displacedMinus = elementDisplacements;
-        displacedMinus(dofIndex) -= perturbation;
-        const Eigen::VectorXd internalForceMinus =
-            evaluateResponseWithoutTangent(nodes, displacedMinus, material).internalForce;
-
-        response.tangent.col(dofIndex) =
-            (internalForcePlus - internalForceMinus) / (2.0 * perturbation);
-    }
-
-    return response;
-}
-
-Eigen::Vector4d FiniteStrainQ4Element::shapeFunctionsLocal(double xi, double eta) const {
-    Eigen::Vector4d shapeFunctions;
-    shapeFunctions(0) = 0.25 * (1.0 + xi) * (1.0 + eta);
-    shapeFunctions(1) = 0.25 * (1.0 - xi) * (1.0 + eta);
-    shapeFunctions(2) = 0.25 * (1.0 - xi) * (1.0 - eta);
-    shapeFunctions(3) = 0.25 * (1.0 + xi) * (1.0 - eta);
-    return shapeFunctions;
-}
-
-Eigen::Matrix<double, 4, 2> FiniteStrainQ4Element::shapeFunctionsDerivativesLocal(
-    double xi,
-    double eta) const {
-    Eigen::Matrix<double, 4, 2> derivatives = Eigen::Matrix<double, 4, 2>::Zero();
-    derivatives(0, 0) = 0.25 * (1.0 + eta);
-    derivatives(0, 1) = 0.25 * (1.0 + xi);
-    derivatives(1, 0) = -0.25 * (1.0 + eta);
-    derivatives(1, 1) = 0.25 * (1.0 - xi);
-    derivatives(2, 0) = -0.25 * (1.0 - eta);
-    derivatives(2, 1) = -0.25 * (1.0 - xi);
-    derivatives(3, 0) = 0.25 * (1.0 - eta);
-    derivatives(3, 1) = -0.25 * (1.0 + xi);
-    return derivatives;
-}
-
-Eigen::Matrix2d FiniteStrainQ4Element::referenceJacobian(
-    double xi,
-    double eta,
-    const std::vector<std::shared_ptr<Node>>& nodes) const {
-    const Eigen::Matrix<double, 2, 4> coordinates = nodalCoordinates(nodes);
-    const Eigen::Matrix<double, 4, 2> localDerivatives =
-        shapeFunctionsDerivativesLocal(xi, eta);
-
-    Eigen::Matrix2d jacobian = Eigen::Matrix2d::Zero();
-    for (int nodeIndex = 0; nodeIndex < kNodeCount; ++nodeIndex) {
-        jacobian(0, 0) += localDerivatives(nodeIndex, 0) * coordinates(0, nodeIndex);
-        jacobian(0, 1) += localDerivatives(nodeIndex, 0) * coordinates(1, nodeIndex);
-        jacobian(1, 0) += localDerivatives(nodeIndex, 1) * coordinates(0, nodeIndex);
-        jacobian(1, 1) += localDerivatives(nodeIndex, 1) * coordinates(1, nodeIndex);
-    }
-    return jacobian;
-}
-
-FiniteStrainElementResponse FiniteStrainQ4Element::evaluateResponseWithoutTangent(
-    const std::vector<std::shared_ptr<Node>>& nodes,
-    const Eigen::VectorXd& elementDisplacements,
-    const FiniteStrainMaterial& material) const {
     if (nodes.size() != kNodeCount) {
         throw std::invalid_argument("FiniteStrainQ4Element requires exactly 4 element nodes");
     }
@@ -181,6 +112,53 @@ FiniteStrainElementResponse FiniteStrainQ4Element::evaluateResponseWithoutTangen
                 response.internalForce.segment<2>(2 * nodeIndex) += nodalForce;
             }
 
+            if (computeTangent) {
+                for (int a = 0; a < kNodeCount; ++a) {
+                    const Eigen::Vector2d gradientA =
+                        gradientsReference.row(a).transpose();
+
+                    for (int b = 0; b < kNodeCount; ++b) {
+                        const Eigen::Vector2d gradientB =
+                            gradientsReference.row(b).transpose();
+
+                        const double geometricScalar =
+                            gradientA.dot(secondPiolaStress * gradientB);
+                        Eigen::Matrix2d block =
+                            geometricScalar * Eigen::Matrix2d::Identity();
+
+                        for (int i = 0; i < 2; ++i) {
+                            for (int p = 0; p < 2; ++p) {
+                                double materialContribution = 0.0;
+                                for (int I = 0; I < 2; ++I) {
+                                    for (int J = 0; J < 2; ++J) {
+                                        for (int K = 0; K < 2; ++K) {
+                                            for (int L = 0; L < 2; ++L) {
+                                                materialContribution +=
+                                                    deformationGradient(i, I) *
+                                                    gradientA(J) *
+                                                    materialTangentComponent(
+                                                        materialResponse.materialTangentVoigt,
+                                                        I,
+                                                        J,
+                                                        K,
+                                                        L) *
+                                                    deformationGradient(p, K) *
+                                                    gradientB(L);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                block(i, p) += materialContribution;
+                            }
+                        }
+
+                        response.tangent.block<2, 2>(2 * a, 2 * b) +=
+                            block * integrationWeight;
+                    }
+                }
+            }
+
             FiniteStrainGaussPointResult gaussPointResult;
             gaussPointResult.xi = xi;
             gaussPointResult.eta = eta;
@@ -199,7 +177,52 @@ FiniteStrainElementResponse FiniteStrainQ4Element::evaluateResponseWithoutTangen
         }
     }
 
+    if (!computeTangent) {
+        response.tangent.setZero();
+    }
+
     return response;
+}
+
+Eigen::Vector4d FiniteStrainQ4Element::shapeFunctionsLocal(double xi, double eta) const {
+    Eigen::Vector4d shapeFunctions;
+    shapeFunctions(0) = 0.25 * (1.0 + xi) * (1.0 + eta);
+    shapeFunctions(1) = 0.25 * (1.0 - xi) * (1.0 + eta);
+    shapeFunctions(2) = 0.25 * (1.0 - xi) * (1.0 - eta);
+    shapeFunctions(3) = 0.25 * (1.0 + xi) * (1.0 - eta);
+    return shapeFunctions;
+}
+
+Eigen::Matrix<double, 4, 2> FiniteStrainQ4Element::shapeFunctionsDerivativesLocal(
+    double xi,
+    double eta) const {
+    Eigen::Matrix<double, 4, 2> derivatives = Eigen::Matrix<double, 4, 2>::Zero();
+    derivatives(0, 0) = 0.25 * (1.0 + eta);
+    derivatives(0, 1) = 0.25 * (1.0 + xi);
+    derivatives(1, 0) = -0.25 * (1.0 + eta);
+    derivatives(1, 1) = 0.25 * (1.0 - xi);
+    derivatives(2, 0) = -0.25 * (1.0 - eta);
+    derivatives(2, 1) = -0.25 * (1.0 - xi);
+    derivatives(3, 0) = 0.25 * (1.0 - eta);
+    derivatives(3, 1) = -0.25 * (1.0 + xi);
+    return derivatives;
+}
+
+Eigen::Matrix2d FiniteStrainQ4Element::referenceJacobian(double xi,
+    double eta,
+    const std::vector<std::shared_ptr<Node>>& nodes) const {
+    const Eigen::Matrix<double, 2, 4> coordinates = nodalCoordinates(nodes);
+    const Eigen::Matrix<double, 4, 2> localDerivatives =
+        shapeFunctionsDerivativesLocal(xi, eta);
+
+    Eigen::Matrix2d jacobian = Eigen::Matrix2d::Zero();
+    for (int nodeIndex = 0; nodeIndex < kNodeCount; ++nodeIndex) {
+        jacobian(0, 0) += localDerivatives(nodeIndex, 0) * coordinates(0, nodeIndex);
+        jacobian(0, 1) += localDerivatives(nodeIndex, 0) * coordinates(1, nodeIndex);
+        jacobian(1, 0) += localDerivatives(nodeIndex, 1) * coordinates(0, nodeIndex);
+        jacobian(1, 1) += localDerivatives(nodeIndex, 1) * coordinates(1, nodeIndex);
+    }
+    return jacobian;
 }
 
 Eigen::Matrix<double, 4, 2> FiniteStrainQ4Element::shapeFunctionGradientsReference(
@@ -239,9 +262,4 @@ Eigen::Matrix<double, 2, 4> FiniteStrainQ4Element::nodalCoordinates(
         coordinates(1, nodeIndex) = nodes[nodeIndex]->getCoordinates().y();
     }
     return coordinates;
-}
-
-double FiniteStrainQ4Element::finiteDifferenceStep(double dofValue, double characteristicLength) const {
-    const double scale = std::max({1.0, std::abs(dofValue), characteristicLength});
-    return 1.0e-7 * scale;
 }

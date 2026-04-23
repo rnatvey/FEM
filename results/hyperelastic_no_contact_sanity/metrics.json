@@ -22,14 +22,21 @@
     "prescribed_dofs": 7
   },
   "timings": {
-    "assembly_time_seconds": 0.0013324000000000001,
-    "solve_time_seconds": 0.00036800000000000005,
-    "total_time_seconds": 0.0017849000000000001
+    "structural_assembly_time_seconds": 0.0013458000000000001,
+    "contact_assembly_time_seconds": 0,
+    "boundary_condition_time_seconds": 5.02e-05,
+    "reduction_time_seconds": 5.02e-05,
+    "assembly_time_seconds": 0.0013522,
+    "linear_solve_time_seconds": 0.00033620000000000004,
+    "solve_time_seconds": 0.00033620000000000004,
+    "total_time_seconds": 0.0017652000000000002
   },
   "formulation": {
     "finite_strain": true,
     "point_stress_measure": "cauchy",
-    "point_strain_measure": "green_lagrange"
+    "point_strain_measure": "green_lagrange",
+    "point_field_semantics": "nodal_averaged_from_element_summaries",
+    "cell_field_semantics": "element_mean_over_integration_points"
   },
   "iterations": {
     "linear_solves": 3,
@@ -43,25 +50,28 @@
     "used_direct_solver": false
   },
   "residuals": {
-    "linear_residual_estimate": 5.8684853072463543e-11,
-    "linear_relative_residual_norm": 1.2074243220565255e-10,
-    "equilibrium_residual_norm": 4.4484073001929791e-09
+    "linear_residual_estimate": 5.8662873817872445e-11,
+    "linear_relative_residual_norm": 5.8662652576227069e-11,
+    "equilibrium_residual_norm": 4.4423631704123419e-09
   },
   "matrix": {
+    "structural_nnz": 1444,
+    "contact_nnz": 0,
+    "total_nnz": 1444,
     "nnz": 1444
   },
   "finite_strain": {
     "configured": true,
-    "strain_energy": 2.7551178098381266,
+    "strain_energy": 2.7551178098380031,
     "has_near_incompressible_material": false,
     "max_effective_poissons_ratio": 0.29999999999999993,
     "max_bulk_to_shear_ratio": 2.1666666666666661,
-    "min_cell_jacobian_determinant": 0.99713716175612988,
+    "min_cell_jacobian_determinant": 0.99713716175612976,
     "mean_cell_jacobian_determinant": 0.99713716175616518,
-    "max_cell_jacobian_determinant": 0.99713716175617539,
+    "max_cell_jacobian_determinant": 0.99713716175617528,
     "min_cell_strain_energy_density": 2.7551178098244971,
-    "mean_cell_strain_energy_density": 2.7551178098381257,
-    "max_cell_strain_energy_density": 2.7551178098827123
+    "mean_cell_strain_energy_density": 2.7551178098380023,
+    "max_cell_strain_energy_density": 2.7551178098785307
   },
   "contact": {
     "configured": false,
@@ -88,8 +98,8 @@
     "center_of_pressure_y": 0
   },
   "extrema": {
-    "max_displacement_magnitude": 0.0054418268838102683,
-    "max_reaction_force_magnitude": 183.93784312494546,
+    "max_displacement_magnitude": 0.0054418268838102735,
+    "max_reaction_force_magnitude": 183.93784312494225,
     "max_contact_force_magnitude": 0
   },
   "extra": {
@@ -100,12 +110,12 @@
     "prescribed_top_edge_dy": -0.0050000000000000001,
     "top_edge_node_count": 7,
     "anchor_node_id": 1,
-    "relative_displacement_difference_to_linear": 2.1217970488197262e-05,
+    "relative_displacement_difference_to_linear": 2.1217970488268324e-05,
     "maximum_prescribed_displacement_error": 0,
-    "minimum_jacobian_determinant": 0.99713716175612988,
-    "maximum_jacobian_determinant": 0.99713716175617539,
-    "maximum_strain_energy_density": 2.7551178098872482,
-    "reaction_force_sum_x": 5.169878828456423e-26,
-    "reaction_force_sum_y": -3.4106051316484809e-13
+    "minimum_jacobian_determinant": 0.99713716175612976,
+    "maximum_jacobian_determinant": 0.99713716175617528,
+    "maximum_strain_energy_density": 2.7551178098835702,
+    "reaction_force_sum_x": 2.5849394142282115e-25,
+    "reaction_force_sum_y": -3.836930773104541e-13
   }
 }
