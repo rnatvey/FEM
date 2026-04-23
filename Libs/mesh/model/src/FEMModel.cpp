@@ -292,9 +292,18 @@ bool FEModel::solveHyperelastic() {
             return false;
         };
 
+    std::vector<double> targetLoadFactors;
+    targetLoadFactors.reserve(static_cast<size_t>(performanceMetrics_.loadSteps));
     for (int loadStep = 1; loadStep <= performanceMetrics_.loadSteps; ++loadStep) {
-        const double loadFactor =
-            static_cast<double>(loadStep) / static_cast<double>(performanceMetrics_.loadSteps);
+        targetLoadFactors.push_back(
+            static_cast<double>(loadStep) / static_cast<double>(performanceMetrics_.loadSteps));
+    }
+
+    double convergedLoadFactor = 0.0;
+    size_t targetLoadFactorIndex = 0;
+    while (targetLoadFactorIndex < targetLoadFactors.size()) {
+        const int loadStep = static_cast<int>(targetLoadFactorIndex) + 1;
+        const double loadFactor = targetLoadFactors[targetLoadFactorIndex];
         const Assembly::ConstraintData stepConstraintData =
             buildScaledConstraintData(loadFactor);
         const Eigen::VectorXd stepExternalForce = baseExternalForce * loadFactor;
@@ -302,9 +311,11 @@ bool FEModel::solveHyperelastic() {
         const double referenceForceNorm =
             std::max(computeFreeDofNorm(stepExternalForce, stepConstraintData), 1.0);
 
+        const Eigen::VectorXd convergedStepDisplacements = displacements_;
         applyPrescribedDisplacements(stepConstraintData, displacements_);
 
         bool stepConverged = false;
+        bool retryableStepFailure = false;
         if (!useAugmentedLagrangianContact) {
             double lastRelativeIncrement = std::numeric_limits<double>::infinity();
             std::vector<int> previousActiveFacetIds;
@@ -315,11 +326,25 @@ bool FEModel::solveHyperelastic() {
                 double totalStrainEnergy = 0.0;
                 Eigen::SparseMatrix<double> structuralTangent;
                 const auto structuralAssemblyStartTime = std::chrono::high_resolution_clock::now();
-                assembly_->assembleFiniteStrainSystem(
-                    displacements_,
-                    structuralTangent,
-                    internalForce,
-                    totalStrainEnergy);
+                try {
+                    assembly_->assembleFiniteStrainSystem(
+                        displacements_,
+                        structuralTangent,
+                        internalForce,
+                        totalStrainEnergy);
+                }
+                catch (const std::exception& exception) {
+                    const std::string_view message(exception.what());
+                    const bool invalidDeformationGradient =
+                        message.find("positive determinant") != std::string_view::npos ||
+                        message.find("positive Jacobian") != std::string_view::npos;
+                    if (!invalidDeformationGradient) {
+                        throw;
+                    }
+
+                    retryableStepFailure = true;
+                    break;
+                }
                 const auto structuralAssemblyEndTime = std::chrono::high_resolution_clock::now();
                 performanceMetrics_.structuralAssemblyTimeSeconds +=
                     std::chrono::duration<double>(
@@ -387,10 +412,8 @@ bool FEModel::solveHyperelastic() {
                 Eigen::VectorXd displacementIncrement;
                 if (!solveReducedIncrementSystem(
                         globalK_, globalF_, stepConstraintData, displacementIncrement)) {
-                    const auto failureTime = std::chrono::high_resolution_clock::now();
-                    performanceMetrics_.totalTimeSeconds =
-                        std::chrono::duration<double>(failureTime - totalStartTime).count();
-                    return false;
+                    retryableStepFailure = true;
+                    break;
                 }
 
                 const double freeDisplacementNorm =
@@ -404,14 +427,8 @@ bool FEModel::solveHyperelastic() {
                         displacementIncrement,
                         stepExternalForce,
                         freeResidualNorm)) {
-                    std::cerr << "FEModel: Hyperelastic step update failed line search "
-                              << "(invalid deformation gradient or non-decreasing residual) "
-                              << "during load step " << loadStep
-                              << ", Newton iteration " << stepIteration << std::endl;
-                    const auto failureTime = std::chrono::high_resolution_clock::now();
-                    performanceMetrics_.totalTimeSeconds =
-                        std::chrono::duration<double>(failureTime - totalStartTime).count();
-                    return false;
+                    retryableStepFailure = true;
+                    break;
                 }
             }
         }
@@ -435,11 +452,25 @@ bool FEModel::solveHyperelastic() {
                     Eigen::SparseMatrix<double> structuralTangent;
                     const auto structuralAssemblyStartTime =
                         std::chrono::high_resolution_clock::now();
-                    assembly_->assembleFiniteStrainSystem(
-                        displacements_,
-                        structuralTangent,
-                        internalForce,
-                        totalStrainEnergy);
+                    try {
+                        assembly_->assembleFiniteStrainSystem(
+                            displacements_,
+                            structuralTangent,
+                            internalForce,
+                            totalStrainEnergy);
+                    }
+                    catch (const std::exception& exception) {
+                        const std::string_view message(exception.what());
+                        const bool invalidDeformationGradient =
+                            message.find("positive determinant") != std::string_view::npos ||
+                            message.find("positive Jacobian") != std::string_view::npos;
+                        if (!invalidDeformationGradient) {
+                            throw;
+                        }
+
+                        retryableStepFailure = true;
+                        break;
+                    }
                     const auto structuralAssemblyEndTime =
                         std::chrono::high_resolution_clock::now();
                     performanceMetrics_.structuralAssemblyTimeSeconds +=
@@ -489,10 +520,8 @@ bool FEModel::solveHyperelastic() {
                     Eigen::VectorXd displacementIncrement;
                     if (!solveReducedIncrementSystem(
                             globalK_, globalF_, stepConstraintData, displacementIncrement)) {
-                        const auto failureTime = std::chrono::high_resolution_clock::now();
-                        performanceMetrics_.totalTimeSeconds =
-                            std::chrono::duration<double>(failureTime - totalStartTime).count();
-                        return false;
+                        retryableStepFailure = true;
+                        break;
                     }
 
                     const double freeDisplacementNorm =
@@ -507,35 +536,18 @@ bool FEModel::solveHyperelastic() {
                             displacementIncrement,
                             stepExternalForce,
                             freeResidualNorm)) {
-                        std::cerr
-                            << "FEModel: Hyperelastic augmented Lagrangian update failed "
-                            << "line search (invalid deformation gradient or non-decreasing "
-                            << "residual) during load step " << loadStep
-                            << ", outer iteration " << outerIteration
-                            << ", equilibrium iteration " << equilibriumIteration
-                            << std::endl;
-                        const auto failureTime = std::chrono::high_resolution_clock::now();
-                        performanceMetrics_.totalTimeSeconds =
-                            std::chrono::duration<double>(failureTime - totalStartTime).count();
-                        return false;
+                        retryableStepFailure = true;
+                        break;
                     }
                 }
 
+                if (retryableStepFailure) {
+                    break;
+                }
+
                 if (!equilibriumConverged) {
-                    std::cerr
-                        << "FEModel: Hyperelastic augmented Lagrangian equilibrium solve did "
-                        << "not converge during load step " << loadStep
-                        << ", outer iteration " << outerIteration << std::endl;
-                    if (performanceMetrics_.directLinearSolveCount > 0) {
-                        std::cerr << "FEModel: Direct sparse fallback was used in "
-                                  << performanceMetrics_.directLinearSolveCount
-                                  << " of " << performanceMetrics_.linearSolveCount
-                                  << " Newton linear solves before failure." << std::endl;
-                    }
-                    const auto failureTime = std::chrono::high_resolution_clock::now();
-                    performanceMetrics_.totalTimeSeconds =
-                        std::chrono::duration<double>(failureTime - totalStartTime).count();
-                    return false;
+                    retryableStepFailure = true;
+                    break;
                 }
 
                 convergedStateInfo.updateInfo = contactSolver_->updateState(displacements_);
@@ -570,11 +582,38 @@ bool FEModel::solveHyperelastic() {
         }
 
         if (!stepConverged) {
-            converged = false;
-            break;
+            retryableStepFailure = true;
+            displacements_ = convergedStepDisplacements;
+            const Assembly::ConstraintData convergedConstraintData =
+                buildScaledConstraintData(convergedLoadFactor);
+            applyPrescribedDisplacements(convergedConstraintData, displacements_);
+
+            const double stepSize = loadFactor - convergedLoadFactor;
+            const bool canSplitStep =
+                retryableStepFailure &&
+                stepSize > (1.0 / static_cast<double>(maxAdaptiveHyperelasticLoadSteps_)) &&
+                targetLoadFactors.size() < static_cast<size_t>(maxAdaptiveHyperelasticLoadSteps_);
+
+            if (!canSplitStep) {
+                converged = false;
+                break;
+            }
+
+            const double splitLoadFactor = convergedLoadFactor + 0.5 * stepSize;
+            targetLoadFactors.insert(
+                targetLoadFactors.begin() + static_cast<std::ptrdiff_t>(targetLoadFactorIndex),
+                splitLoadFactor);
+            performanceMetrics_.loadSteps = static_cast<int>(targetLoadFactors.size());
+
+            std::cerr << "FEModel: Hyperelastic load step to factor "
+                      << loadFactor << " failed; retrying with adaptive split at "
+                      << splitLoadFactor << std::endl;
+            continue;
         }
 
-        performanceMetrics_.convergedLoadSteps = loadStep;
+        convergedLoadFactor = loadFactor;
+        performanceMetrics_.convergedLoadSteps = static_cast<int>(targetLoadFactorIndex) + 1;
+        ++targetLoadFactorIndex;
     }
 
     if (!converged) {

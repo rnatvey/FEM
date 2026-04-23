@@ -64,6 +64,9 @@ public:
     void setMaxIterations(int maxIter) { maxIterations_ = maxIter; }
     void setPenaltyParameter(double penalty) { penaltyParameter_ = penalty; }
     void setHyperelasticLoadSteps(int loadSteps) { hyperelasticLoadSteps_ = std::max(1, loadSteps); }
+    void setMaxAdaptiveHyperelasticLoadSteps(int loadSteps) {
+        maxAdaptiveHyperelasticLoadSteps_ = std::max(1, loadSteps);
+    }
 
     void setContactSolver(std::unique_ptr<IRigidPlaneContactSolver> contactSolver);
     void configureRigidPlaneContact(const RigidPlane2D& plane,
@@ -147,6 +150,7 @@ private:
     int maxIterations_ = 100;
     double penaltyParameter_ = 1.0e6;
     int hyperelasticLoadSteps_ = 1;
+    int maxAdaptiveHyperelasticLoadSteps_ = 120;
     AugmentedLagrangianSettings augmentedLagrangianSettings_;
     int iterationCount_ = 0;
 

@@ -776,6 +776,88 @@ def closest_angle_level(levels: list[float], target: float) -> float:
     return min(levels, key=lambda value: abs(wrap_angle(value - target)))
 
 
+def cluster_sorted_indices(
+    indices: np.ndarray,
+    values: np.ndarray,
+    tolerance: float,
+) -> list[np.ndarray]:
+    if indices.size == 0:
+        return []
+
+    ordered_indices = indices[np.argsort(values[indices])]
+    clusters: list[list[int]] = [[int(ordered_indices[0])]]
+    last_value = float(values[int(ordered_indices[0])])
+    for ordered_index in ordered_indices[1:]:
+        index = int(ordered_index)
+        value = float(values[index])
+        if abs(value - last_value) <= tolerance:
+            clusters[-1].append(index)
+        else:
+            clusters.append([index])
+        last_value = value
+    return [np.array(cluster, dtype=int) for cluster in clusters]
+
+
+def select_ring_contour_indices(
+    fields: dict[str, np.ndarray],
+    *,
+    target_radius: float,
+    radial_tolerance: float,
+    angle_tolerance: float,
+) -> np.ndarray:
+    candidate_indices = np.where(
+        np.abs(fields["reference_radii"] - target_radius) <= radial_tolerance
+    )[0]
+    if candidate_indices.size < 2:
+        return np.empty(0, dtype=int)
+
+    angle_clusters = cluster_sorted_indices(
+        candidate_indices,
+        fields["reference_relative_angles"],
+        angle_tolerance * 0.5,
+    )
+    selected_indices = [
+        min(
+            angle_cluster,
+            key=lambda index: abs(fields["reference_radii"][int(index)] - target_radius),
+        )
+        for angle_cluster in angle_clusters
+    ]
+    ordered_indices = np.array(selected_indices, dtype=int)
+    return ordered_indices[np.argsort(fields["reference_relative_angles"][ordered_indices])]
+
+
+def select_ring_radial_section_indices(
+    fields: dict[str, np.ndarray],
+    *,
+    target_angle: float,
+    angle_tolerance: float,
+    radial_tolerance: float,
+) -> np.ndarray:
+    candidate_indices = np.where(
+        np.abs(wrap_angles(fields["reference_relative_angles"] - target_angle)) <= angle_tolerance
+    )[0]
+    if candidate_indices.size < 2:
+        return np.empty(0, dtype=int)
+
+    radial_clusters = cluster_sorted_indices(
+        candidate_indices,
+        fields["reference_radii"],
+        radial_tolerance * 0.5,
+    )
+    selected_indices = [
+        min(
+            radial_cluster,
+            key=lambda index: abs(
+                wrap_angle(fields["reference_relative_angles"][int(index)] - target_angle)
+            ),
+        )
+        for radial_cluster in radial_clusters
+    ]
+    ordered_indices = np.array(selected_indices, dtype=int)
+    return ordered_indices[np.argsort(fields["reference_radii"][ordered_indices])]
+
+
 def point_array(mesh: pv.DataSet, name: str, default_components: int = 1) -> np.ndarray:
     if name not in mesh.point_data:
         if default_components == 1:
@@ -799,10 +881,20 @@ def write_rows_csv(path: Path, headers: list[str], rows: list[list[Any]]) -> Non
 
 def build_ring_point_fields(case: dict[str, Any], ring_metadata: dict[str, Any]) -> dict[str, np.ndarray]:
     mesh = case["mesh"]
+    reference_points = np.asarray(mesh.points)[:, :2]
     if "deformed_position" in mesh.point_data:
         points = np.asarray(mesh.point_data["deformed_position"])[:, :2]
     else:
-        points = np.asarray(mesh.points)[:, :2]
+        points = reference_points
+
+    reference_relative_points = reference_points - ring_metadata["center"]
+    reference_radii = np.linalg.norm(reference_relative_points, axis=1)
+    reference_angles = np.arctan2(reference_relative_points[:, 1], reference_relative_points[:, 0])
+    reference_relative_angles = wrap_angles(
+        reference_angles - ring_metadata["contact_center_angle"]
+    )
+    reference_relative_angles_deg = np.rad2deg(reference_relative_angles)
+
     relative_points = points - ring_metadata["center"]
     radii = np.linalg.norm(relative_points, axis=1)
     angles = np.arctan2(relative_points[:, 1], relative_points[:, 0])
@@ -836,10 +928,15 @@ def build_ring_point_fields(case: dict[str, Any], ring_metadata: dict[str, Any])
 
     return {
         "points": points,
+        "reference_points": reference_points,
         "radii": radii,
         "angles": angles,
         "relative_angles": relative_angles,
         "relative_angles_deg": relative_angles_deg,
+        "reference_radii": reference_radii,
+        "reference_angles": reference_angles,
+        "reference_relative_angles": reference_relative_angles,
+        "reference_relative_angles_deg": reference_relative_angles_deg,
         "sigma_rr": sigma_rr,
         "sigma_tt": sigma_tt,
         "tau_rt": tau_rt,
@@ -938,7 +1035,11 @@ def save_ring_contour_profiles(case: dict[str, Any], ring_metadata: dict[str, An
             0.01 * (ring_metadata["outer_radius"] - ring_metadata["inner_radius"]),
         ),
     )
-    radial_levels = cluster_levels(fields["radii"], radial_tolerance * 0.5)
+    angle_tolerance = max(
+        1.0e-8,
+        0.45 * max(ring_metadata["angular_step_hint"], math.radians(0.5)),
+    )
+    radial_levels = cluster_levels(fields["reference_radii"], radial_tolerance * 0.5)
     if len(radial_levels) < 3:
         return
 
@@ -975,13 +1076,16 @@ def save_ring_contour_profiles(case: dict[str, Any], ring_metadata: dict[str, An
 
     for contour_key, target_radius in contour_targets.items():
         selected_radius = closest_numeric_level(radial_levels, target_radius)
-        indices = np.where(np.abs(fields["radii"] - selected_radius) <= radial_tolerance)[0]
-        if indices.size < 2:
+        ordered_indices = select_ring_contour_indices(
+            fields,
+            target_radius=selected_radius,
+            radial_tolerance=radial_tolerance,
+            angle_tolerance=angle_tolerance,
+        )
+        if ordered_indices.size < 2:
             continue
 
-        order = np.argsort(fields["relative_angles"][indices])
-        ordered_indices = indices[order]
-        x_values = fields["relative_angles_deg"][ordered_indices]
+        x_values = fields["reference_relative_angles_deg"][ordered_indices]
 
         for field_name, axis in axis_specs:
             plot_profile_series(
@@ -997,8 +1101,8 @@ def save_ring_contour_profiles(case: dict[str, Any], ring_metadata: dict[str, An
             csv_rows.append(
                 [
                     contour_key,
-                    fields["relative_angles_deg"][ordered_index],
-                    fields["radii"][ordered_index],
+                    fields["reference_relative_angles_deg"][ordered_index],
+                    fields["reference_radii"][ordered_index],
                     fields["sigma_rr"][ordered_index] * STRESS_TO_MPA,
                     fields["sigma_tt"][ordered_index] * STRESS_TO_MPA,
                     fields["tau_rt"][ordered_index] * STRESS_TO_MPA,
@@ -1032,23 +1136,33 @@ def save_ring_radial_profiles(case: dict[str, Any], ring_metadata: dict[str, Any
         1.0e-8,
         0.45 * max(ring_metadata["angular_step_hint"], math.radians(0.5)),
     )
-    angle_levels = cluster_levels(fields["relative_angles"], angle_tolerance * 0.5)
+    radial_tolerance = max(
+        1.0e-8,
+        0.35 * max(
+            ring_metadata["radial_step_hint"],
+            0.01 * (ring_metadata["outer_radius"] - ring_metadata["inner_radius"]),
+        ),
+    )
+    angle_levels = cluster_levels(fields["reference_relative_angles"], angle_tolerance * 0.5)
     if not angle_levels:
         return
 
     selected_angle = closest_angle_level(angle_levels, 0.0)
-    indices = np.where(np.abs(wrap_angles(fields["relative_angles"] - selected_angle)) <= angle_tolerance)[0]
-    if indices.size < 2:
+    ordered_indices = select_ring_radial_section_indices(
+        fields,
+        target_angle=selected_angle,
+        angle_tolerance=angle_tolerance,
+        radial_tolerance=radial_tolerance,
+    )
+    if ordered_indices.size < 2:
         return
 
-    order = np.argsort(fields["radii"][indices])
-    ordered_indices = indices[order]
-    radii = fields["radii"][ordered_indices]
+    radii = fields["reference_radii"][ordered_indices]
 
     csv_rows = [
         [
             radii[i],
-            fields["relative_angles_deg"][ordered_indices[i]],
+            fields["reference_relative_angles_deg"][ordered_indices[i]],
             fields["sigma_rr"][ordered_indices[i]] * STRESS_TO_MPA,
             fields["sigma_tt"][ordered_indices[i]] * STRESS_TO_MPA,
             fields["radial_displacement"][ordered_indices[i]],
@@ -1222,19 +1336,25 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
             0.01 * (ring_metadata["outer_radius"] - ring_metadata["inner_radius"]),
         ),
     )
-    radial_levels = cluster_levels(fields["radii"], radial_tolerance * 0.5)
-    if not radial_levels:
+    angle_tolerance = max(
+        1.0e-8,
+        0.45 * max(ring_metadata["angular_step_hint"], math.radians(0.5)),
+    )
+    reference_radial_levels = cluster_levels(fields["reference_radii"], radial_tolerance * 0.5)
+    if not reference_radial_levels:
+        return
+    outer_radius = closest_numeric_level(reference_radial_levels, ring_metadata["outer_radius"])
+    ordered_indices = select_ring_contour_indices(
+        fields,
+        target_radius=outer_radius,
+        radial_tolerance=radial_tolerance,
+        angle_tolerance=angle_tolerance,
+    )
+    if ordered_indices.size < 2:
         return
 
-    outer_radius = closest_numeric_level(radial_levels, ring_metadata["outer_radius"])
-    indices = np.where(np.abs(fields["radii"] - outer_radius) <= radial_tolerance)[0]
-    if indices.size < 2:
-        return
-
-    order = np.argsort(fields["relative_angles"][indices])
-    ordered_indices = indices[order]
     ordered_points = fields["points"][ordered_indices]
-    ordered_relative_angles = fields["relative_angles"][ordered_indices]
+    ordered_relative_angles = fields["reference_relative_angles"][ordered_indices]
     arc_coordinate = ring_metadata["outer_radius"] * ordered_relative_angles
 
     segment_lengths = np.linalg.norm(np.diff(ordered_points, axis=0), axis=1)

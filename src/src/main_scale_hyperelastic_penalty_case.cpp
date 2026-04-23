@@ -167,6 +167,9 @@ int main() {
             environmentDouble("FEM_MAIN_SCALE_HYPERELASTIC_PENALTY_VALUE", 5.0e2);
         const int loadSteps =
             std::max(2, environmentInt("FEM_MAIN_SCALE_HYPERELASTIC_LOAD_STEPS", 12));
+        const int maxAdaptiveLoadSteps =
+            std::max(loadSteps,
+                environmentInt("FEM_MAIN_SCALE_HYPERELASTIC_MAX_ADAPTIVE_LOAD_STEPS", 120));
         const int maxIterations =
             std::max(8, environmentInt("FEM_MAIN_SCALE_HYPERELASTIC_MAX_ITERATIONS", 30));
         const std::string outputSubdirectory =
@@ -182,6 +185,7 @@ int main() {
         model.setSolverTolerance(1.0e-8);
         model.setMaxIterations(maxIterations);
         model.setHyperelasticLoadSteps(loadSteps);
+        model.setMaxAdaptiveHyperelasticLoadSteps(maxAdaptiveLoadSteps);
         model.configureRigidPlanePenaltyContact(
             tireCase.rigidPlane, tireCase.mesh.candidateContactFacets, penalty);
 
@@ -215,6 +219,7 @@ int main() {
             {"contact_parameter_value", penalty},
             {"penalty_parameter", penalty},
             {"hyperelastic_load_steps", static_cast<double>(loadSteps)},
+            {"max_adaptive_hyperelastic_load_steps", static_cast<double>(maxAdaptiveLoadSteps)},
             {"youngs_modulus", kYoungsModulus},
             {"poissons_ratio", kPoissonsRatio},
             {"thickness", kThickness},

@@ -22,14 +22,14 @@
     "prescribed_dofs": 7
   },
   "timings": {
-    "structural_assembly_time_seconds": 0.0013458000000000001,
+    "structural_assembly_time_seconds": 0.0014256000000000002,
     "contact_assembly_time_seconds": 0,
-    "boundary_condition_time_seconds": 5.02e-05,
-    "reduction_time_seconds": 5.02e-05,
-    "assembly_time_seconds": 0.0013522,
-    "linear_solve_time_seconds": 0.00033620000000000004,
-    "solve_time_seconds": 0.00033620000000000004,
-    "total_time_seconds": 0.0017652000000000002
+    "boundary_condition_time_seconds": 7.400000000000001e-05,
+    "reduction_time_seconds": 7.400000000000001e-05,
+    "assembly_time_seconds": 0.001433,
+    "linear_solve_time_seconds": 0.0003525,
+    "solve_time_seconds": 0.0003525,
+    "total_time_seconds": 0.0018794
   },
   "formulation": {
     "finite_strain": true,
@@ -39,6 +39,8 @@
     "cell_field_semantics": "element_mean_over_integration_points"
   },
   "iterations": {
+    "load_steps": 1,
+    "converged_load_steps": 1,
     "linear_solves": 3,
     "direct_linear_solves": 0,
     "nonlinear_iterations": 4,
