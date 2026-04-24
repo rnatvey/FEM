@@ -150,6 +150,7 @@ def humanize_contact_method(method_name: str) -> str:
     mapping = {
         "penalty": "Штрафной метод",
         "augmented_lagrangian": "Расширенный метод Лагранжа",
+        "none": "Бесконтактная суррогатная задача",
     }
     return mapping.get(method_name, method_name.replace("_", " "))
 
@@ -160,6 +161,7 @@ def humanize_contact_parameter_name(parameter_name: str, method_name: str) -> st
         "augmentation_parameter": f"Параметр расширенного Лагранжа, {STRESS_UNIT_LABEL}/{LENGTH_UNIT_LABEL}",
         "augmentation_scaling_factor": "Коэффициент масштабирования AL, -",
         "contact_parameter": f"Параметр контактного метода, {STRESS_UNIT_LABEL}/{LENGTH_UNIT_LABEL}",
+        "surrogate_parabolic_pressure": f"Эквивалентное максимальное давление, {STRESS_UNIT_LABEL}",
     }
     if parameter_name in mapping:
         return mapping[parameter_name]
@@ -218,6 +220,11 @@ def summary_method_styles() -> dict[str, dict[str, Any]]:
             "label": "Расширенный метод Лагранжа",
             "linestyle": "--",
             "marker": "s",
+        },
+        "none": {
+            "label": "Бесконтактная суррогатная задача",
+            "linestyle": "-.",
+            "marker": "^",
         },
     }
 

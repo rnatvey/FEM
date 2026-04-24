@@ -1,0 +1,11 @@
+case,success,load_steps,converged_load_steps,nonlinear_iterations,max_penetration,total_time_seconds,contact_force_norm,minimum_signed_distance,minimum_jacobian_determinant,maximum_jacobian_determinant,linear_solver_backend
+augmented_lagrangian_contact,true,39,39,922,7.59002e-09,3025.86,273.028,-1.302402097e-08,0.977183,1.02092,mixed
+
+parameter,value
+surrogate_max_pressure,3.06254
+surrogate_contact_half_angle_rad,0.177812
+surrogate_contact_half_angle_deg,10.1879
+surrogate_contact_half_width,53.0617
+surrogate_contact_center_x,-3.97305e-11
+surrogate_total_normal_force,273.028
+surrogate_active_facets,70

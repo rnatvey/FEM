@@ -590,24 +590,32 @@ void Assembly::populateDofMapping(int totalDof,
 }
 
 std::vector<int> Assembly::getElementDofIndices(int elementId) const {
-    auto element = getElement(elementId);
-    if (!element) {
-        throw std::invalid_argument("Element with ID " + std::to_string(elementId) + " not found");
-    }
-
     std::vector<int> fullDofIndices;
-
-    // РџРѕР»СѓС‡Р°РµРј РїРѕР»РЅС‹Рµ РёРЅРґРµРєСЃС‹ DOF
-    for (int nodeId : element->getNodeIds()) {
-        auto node = getNode(nodeId);
-        if (node) {
-            int nodeIndex = nodeIdToIndex_.at(nodeId);
-            fullDofIndices.push_back(nodeIndex * 2);     // DOF X
-            fullDofIndices.push_back(nodeIndex * 2 + 1); // DOF Y
+    if (auto element = getElement(elementId)) {
+        for (int nodeId : element->getNodeIds()) {
+            auto node = getNode(nodeId);
+            if (node) {
+                int nodeIndex = nodeIdToIndex_.at(nodeId);
+                fullDofIndices.push_back(nodeIndex * 2);
+                fullDofIndices.push_back(nodeIndex * 2 + 1);
+            }
         }
+        return fullDofIndices;
     }
 
-    return fullDofIndices; // Р’РћР—Р’Р РђР©РђР•Рњ РџРћР›РќР«Р• РРќР”Р•РљРЎР«!
+    if (auto finiteStrainElement = getFiniteStrainElement(elementId)) {
+        for (int nodeId : finiteStrainElement->getNodeIds()) {
+            auto node = getNode(nodeId);
+            if (node) {
+                int nodeIndex = nodeIdToIndex_.at(nodeId);
+                fullDofIndices.push_back(nodeIndex * 2);
+                fullDofIndices.push_back(nodeIndex * 2 + 1);
+            }
+        }
+        return fullDofIndices;
+    }
+
+    throw std::invalid_argument("Element with ID " + std::to_string(elementId) + " not found");
 }
 
 bool Assembly::validate() const {
@@ -832,8 +840,7 @@ void Assembly::addSurfaceLoad(int elementId, int surfaceIndex,
         throw std::invalid_argument("Cannot add null load function");
     }
 
-    // РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ СЌР»РµРјРµРЅС‚Р°
-    if (!getElement(elementId)) {
+    if (!getElement(elementId) && !getFiniteStrainElement(elementId)) {
         throw std::invalid_argument("Element with ID " + std::to_string(elementId) + " not found");
     }
 

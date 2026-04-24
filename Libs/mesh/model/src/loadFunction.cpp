@@ -1,168 +1,232 @@
-﻿#include "loadFunction.h"
-#include "assembly.h"
-#include "planeisometric/Planeisoparametric.h"
+#include "loadFunction.h"
+
 #include <cmath>
 #include <iostream>
+#include <stdexcept>
 
-Eigen::VectorXd LoadFunction::applyToElementSurface(int elementId, int surfaceIndex,
-     const std::shared_ptr<const Assembly>& assembly)  {
-    auto element = assembly->getElement(elementId);
-    auto material = assembly->getMaterial(element->getMaterialId());
+#include "assembly.h"
+#include "planeisometric/FiniteStrainQ4Element.h"
+#include "planeisometric/Planeisoparametric.h"
+
+namespace {
+
+std::vector<std::shared_ptr<Node>> loadElementNodes(
+    const std::vector<int>& nodeIds,
+    const std::shared_ptr<const Assembly>& assembly,
+    int elementId,
+    const char* elementKind) {
     std::vector<std::shared_ptr<Node>> nodes;
-
-    for (int nodeId : element->getNodeIds()) {
+    nodes.reserve(nodeIds.size());
+    for (int nodeId : nodeIds) {
         auto node = assembly->getNode(nodeId);
         if (node) {
             nodes.push_back(node);
         }
         else {
-            std::cerr << "Assembly validation failed: Element " << element->getId()
-                << " references non-existent node " << nodeId << std::endl;
-           break;
+            std::cerr << "Assembly validation failed: " << elementKind << " element "
+                      << elementId << " references non-existent node " << nodeId
+                      << std::endl;
+            break;
         }
     }
+    return nodes;
+}
 
-    if (!element || !material) {
-        throw std::invalid_argument("Invalid element or material");
+Eigen::Vector2d legacyRigidPlaneNormal() {
+    // Preserve the semantics used in the historical no-contact surrogate:
+    // pressure acts along the rigid-plane normal, not the local outer-surface normal.
+    return Eigen::Vector2d(0.0, 1.0);
+}
+
+double surfaceJacobianFromReferenceJacobian(
+    const Eigen::Matrix2d& jacobian,
+    int surfaceIndex) {
+    switch (surfaceIndex) {
+    case 0:
+    case 2:
+        return std::sqrt(jacobian(0, 0) * jacobian(0, 0) +
+                         jacobian(0, 1) * jacobian(0, 1));
+    case 1:
+    case 3:
+        return std::sqrt(jacobian(1, 0) * jacobian(1, 0) +
+                         jacobian(1, 1) * jacobian(1, 1));
+    default:
+        throw std::invalid_argument("Invalid surface index");
     }
+}
 
-    // Преобразуем в PlaneIsoparametricElement для доступа к методам поверхности
-    auto planeElement = std::dynamic_pointer_cast<PlaneIsoparametricElement>(element);
-    if (!planeElement) {
-        throw std::runtime_error("Element is not a PlaneIsoparametricElement");
+void surfaceLocalCoordinates(int surfaceIndex, double param, double& xi, double& eta) {
+    switch (surfaceIndex) {
+    case 0: xi = param; eta = -1.0; break;
+    case 1: xi = 1.0; eta = param; break;
+    case 2: xi = param; eta = 1.0; break;
+    case 3: xi = -1.0; eta = param; break;
+    default:
+        throw std::invalid_argument("Invalid surface index");
     }
+}
 
-     //Точки Гаусса для интегрирования по поверхности
+} // namespace
+
+Eigen::VectorXd LoadFunction::applyToElementSurface(
+    int elementId,
+    int surfaceIndex,
+    const std::shared_ptr<const Assembly>& assembly) {
     const double gp = 0.577350269189626;
-    const std::vector<double> gaussPoints = { -gp, gp };
-    const std::vector<double> weights = { 1.0, 1.0 };
+    const std::vector<double> gaussPoints = {-gp, gp};
+    const std::vector<double> weights = {1.0, 1.0};
 
-    //const std::vector<double> gaussPoints3 = {
-    // -0.774596669241483,  // -√(3/5)
-    // 0.0,                 // 0
-    // 0.774596669241483    // √(3/5)
-    //};
-    //const std::vector<double> weights3 = {
-    //    5.0 / 9.0,            // 5/9
-    //    8.0 / 9.0,            // 8/9  
-    //    5.0 / 9.0             // 5/9
-    //};
-
-    //const auto& gaussPoints = gaussPoints3;
-    //const auto& weights = weights3;
-
-    Eigen::VectorXd surfaceForces = Eigen::VectorXd::Zero(element->getDofCount());
-
-    for (int i = 0; i < gaussPoints.size(); ++i) {
-        double param = gaussPoints[i];
-        double weight = weights[i];
-
-        // Определяем локальные координаты на поверхности
-        double xi, eta;
-        switch (surfaceIndex) {
-        case 0: xi = param; eta = -1.0; break; // нижняя
-        case 1: xi = 1.0; eta = param; break;  // правая
-        case 2: xi = param; eta = 1.0; break;  // верхняя
-        case 3: xi = -1.0; eta = param; break; // левая
-        default:
-            throw std::invalid_argument("Invalid surface index");
+    if (auto element = assembly->getElement(elementId)) {
+        auto material = assembly->getMaterial(element->getMaterialId());
+        const auto nodes =
+            loadElementNodes(element->getNodeIds(), assembly, element->getId(), "linear");
+        if (!material || nodes.size() != element->getNodeIds().size()) {
+            throw std::invalid_argument("Invalid linear element or material");
         }
 
-        // Вычисляем глобальные координаты точки
-        Eigen::MatrixXd N = planeElement->shapeFunctions(xi, eta);
-        Eigen::Vector2d point(0, 0);
-        auto nodeCoords = planeElement->getNodalCoordinates(nodes);
-
-        for (int nodeIdx = 0; nodeIdx < 4; ++nodeIdx) {
-            double shapeFunc = N(0, nodeIdx * 2); // N_x или N_y одинаковы
-            point += shapeFunc * nodeCoords.row(nodeIdx).transpose();
+        auto planeElement = std::dynamic_pointer_cast<PlaneIsoparametricElement>(element);
+        if (!planeElement) {
+            throw std::runtime_error("Element is not a PlaneIsoparametricElement");
         }
 
-        // Нормаль к поверхности
-        Eigen::Vector2d normal = planeElement->getSurfaceNormal(surfaceIndex, nodes);
-        normal = Eigen::Vector2d(0.0, 1.0);
-        // Вычисляем нагрузку в точке
-        Eigen::Vector2d load = distribution_(point.x(), point.y(), normal);
+        Eigen::VectorXd surfaceForces = Eigen::VectorXd::Zero(element->getDofCount());
+        const auto nodeCoords = planeElement->getNodalCoordinates(nodes);
 
-        // Длина сегмента (якобиан преобразования на поверхности)
-        Eigen::Matrix2d J = planeElement->jacobian(xi, eta, nodes);
-        double surfaceJacobian;
-        switch (surfaceIndex) {
-        case 0: case 2:
-            surfaceJacobian = std::sqrt(J(0, 0) * J(0, 0) + J(0, 1) * J(0, 1));
-            break;
-        case 1: case 3:
-            surfaceJacobian = std::sqrt(J(1, 0) * J(1, 0) + J(1, 1) * J(1, 1));
-            break;
-        default:
-            surfaceJacobian = 1.0;
+        for (int gaussIndex = 0; gaussIndex < static_cast<int>(gaussPoints.size()); ++gaussIndex) {
+            double xi = 0.0;
+            double eta = 0.0;
+            const double param = gaussPoints[static_cast<size_t>(gaussIndex)];
+            const double weight = weights[static_cast<size_t>(gaussIndex)];
+            surfaceLocalCoordinates(surfaceIndex, param, xi, eta);
+
+            const Eigen::MatrixXd N = planeElement->shapeFunctions(xi, eta);
+            Eigen::Vector2d point = Eigen::Vector2d::Zero();
+            for (int nodeIdx = 0; nodeIdx < 4; ++nodeIdx) {
+                const double shapeFunction = N(0, nodeIdx * 2);
+                point += shapeFunction * nodeCoords.row(nodeIdx).transpose();
+            }
+
+            const Eigen::Vector2d load =
+                distribution_(point.x(), point.y(), legacyRigidPlaneNormal());
+            const Eigen::Matrix2d jacobian = planeElement->jacobian(xi, eta, nodes);
+            const double surfaceJacobian =
+                surfaceJacobianFromReferenceJacobian(jacobian, surfaceIndex);
+
+            for (int nodeIdx = 0; nodeIdx < 4; ++nodeIdx) {
+                const double shapeFunction = N(0, nodeIdx * 2);
+                const int dofX = nodeIdx * 2;
+                const int dofY = nodeIdx * 2 + 1;
+                surfaceForces(dofX) += shapeFunction * load.x() * weight *
+                    surfaceJacobian * material->getThickness();
+                surfaceForces(dofY) += shapeFunction * load.y() * weight *
+                    surfaceJacobian * material->getThickness();
+            }
         }
 
-        // Добавляем вклад в узловые силы
-        for (int nodeIdx = 0; nodeIdx < 4; ++nodeIdx) {
-            double shapeFunc = N(0, nodeIdx * 2);
-            int dofX = nodeIdx * 2;
-            int dofY = nodeIdx * 2 + 1;
-
-            surfaceForces(dofX) += shapeFunc * load.x() * weight * surfaceJacobian * material->getThickness();
-            surfaceForces(dofY) += shapeFunc * load.y() * weight * surfaceJacobian * material->getThickness();
-        }
+        return surfaceForces;
     }
 
-    return surfaceForces;
+    if (auto element = assembly->getFiniteStrainElement(elementId)) {
+        auto material = assembly->getFiniteStrainMaterial(element->getMaterialId());
+        const auto nodes =
+            loadElementNodes(element->getNodeIds(), assembly, element->getId(), "finite-strain");
+        if (!material || nodes.size() != element->getNodeIds().size()) {
+            throw std::invalid_argument("Invalid finite-strain element or material");
+        }
+
+        Eigen::VectorXd surfaceForces =
+            Eigen::VectorXd::Zero(FiniteStrainQ4Element::kDofCount);
+
+        for (int gaussIndex = 0; gaussIndex < static_cast<int>(gaussPoints.size()); ++gaussIndex) {
+            double xi = 0.0;
+            double eta = 0.0;
+            const double param = gaussPoints[static_cast<size_t>(gaussIndex)];
+            const double weight = weights[static_cast<size_t>(gaussIndex)];
+            surfaceLocalCoordinates(surfaceIndex, param, xi, eta);
+
+            const Eigen::Vector4d N = element->shapeFunctionsLocal(xi, eta);
+            Eigen::Vector2d point = Eigen::Vector2d::Zero();
+            for (int nodeIdx = 0; nodeIdx < FiniteStrainQ4Element::kNodeCount; ++nodeIdx) {
+                point += N(nodeIdx) * nodes[static_cast<size_t>(nodeIdx)]->getCoordinates();
+            }
+
+            const Eigen::Vector2d load =
+                distribution_(point.x(), point.y(), legacyRigidPlaneNormal());
+            const Eigen::Matrix2d jacobian = element->referenceJacobian(xi, eta, nodes);
+            const double surfaceJacobian =
+                surfaceJacobianFromReferenceJacobian(jacobian, surfaceIndex);
+
+            for (int nodeIdx = 0; nodeIdx < FiniteStrainQ4Element::kNodeCount; ++nodeIdx) {
+                const int dofX = nodeIdx * 2;
+                const int dofY = nodeIdx * 2 + 1;
+                surfaceForces(dofX) += N(nodeIdx) * load.x() * weight *
+                    surfaceJacobian * material->getThickness();
+                surfaceForces(dofY) += N(nodeIdx) * load.y() * weight *
+                    surfaceJacobian * material->getThickness();
+            }
+        }
+
+        return surfaceForces;
+    }
+
+    throw std::invalid_argument(
+        "Element with ID " + std::to_string(elementId) + " not found");
 }
 
 LoadFunction LoadFunction::constantLoad(double fx, double fy) {
     return LoadFunction([fx, fy](double x, double y, const Eigen::Vector2d& normal) {
+        (void)x;
+        (void)y;
+        (void)normal;
         return Eigen::Vector2d(fx, fy);
-        });
+    });
 }
 
 LoadFunction LoadFunction::linearPressure(double p0, double gradient) {
     return LoadFunction([p0, gradient](double x, double y, const Eigen::Vector2d& normal) {
-        double pressure = p0 + gradient * x; // Линейная зависимость от x
-        return Eigen::Vector2d(pressure * normal); // Давление действует по нормали
-        });
+        (void)y;
+        const double pressure = p0 + gradient * x;
+        return Eigen::Vector2d(pressure * normal);
+    });
 }
 
 LoadFunction LoadFunction::hertzianPressure(double maxPressure, double contactWidth, double x0) {
-    return LoadFunction([maxPressure, contactWidth, x0](double x, double y, const Eigen::Vector2d& normal) {
-        double dx = x - x0;  // Расстояние от центра контакта
+    return LoadFunction(
+        [maxPressure, contactWidth, x0](double x, double y, const Eigen::Vector2d& normal) {
+            (void)y;
+            const double dx = x - x0;
+            if (std::abs(dx) > contactWidth) {
+                return Eigen::Vector2d(0.0, 0.0);
+            }
 
-        // Если точка вне зоны контакта
-        if (std::abs(dx) > contactWidth) {
-            return Eigen::Vector2d(0, 0);
-        }
-
-        // Эллиптическое распределение Герца
-        double relativeX = dx / contactWidth;  // x/a
-        double pressure = maxPressure * std::sqrt(1.0 - relativeX * relativeX);
-
-        // Давление действует по нормали к поверхности
-        return Eigen::Vector2d(pressure * normal);
+            const double relativeX = dx / contactWidth;
+            const double pressure = maxPressure * std::sqrt(1.0 - relativeX * relativeX);
+            return Eigen::Vector2d(pressure * normal);
         });
 }
 
 LoadFunction LoadFunction::sinusoidalLoad(double amplitude, double wavelength) {
-    return LoadFunction([amplitude, wavelength](double x, double y, const Eigen::Vector2d& normal) {
-        double pressure = amplitude * std::sin(2 * M_PI * x / wavelength);
-        return Eigen::Vector2d(pressure * normal);
+    return LoadFunction(
+        [amplitude, wavelength](double x, double y, const Eigen::Vector2d& normal) {
+            (void)y;
+            const double pressure = amplitude * std::sin(2 * M_PI * x / wavelength);
+            return Eigen::Vector2d(pressure * normal);
         });
 }
 
-LoadFunction LoadFunction::parabolicPressure(double maxPressure, double contactHalfWidth, double x0) {
-    return LoadFunction([maxPressure, contactHalfWidth, x0](double x, double y, const Eigen::Vector2d& normal) {
-        double dx = x - x0;
+LoadFunction LoadFunction::parabolicPressure(double maxPressure,
+    double contactHalfWidth,
+    double x0) {
+    return LoadFunction(
+        [maxPressure, contactHalfWidth, x0](double x, double y, const Eigen::Vector2d& normal) {
+            (void)y;
+            const double dx = x - x0;
+            if (std::abs(dx) > contactHalfWidth) {
+                return Eigen::Vector2d(0.0, 0.0);
+            }
 
-        if (std::abs(dx) > contactHalfWidth) {
-            return Eigen::Vector2d(0, 0);
-        }
-
-        // Параболическое распределение: p(x) = p0 * (1 - (x/a)^2)
-        double relativeX = dx / contactHalfWidth;
-        double pressure = maxPressure * (1.0 - relativeX * relativeX);
-
-        return Eigen::Vector2d(pressure * normal);
+            const double relativeX = dx / contactHalfWidth;
+            const double pressure = maxPressure * (1.0 - relativeX * relativeX);
+            return Eigen::Vector2d(pressure * normal);
         });
 }
-
