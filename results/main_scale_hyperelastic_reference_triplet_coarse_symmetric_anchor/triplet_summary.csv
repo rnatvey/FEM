@@ -1,0 +1,13 @@
+case,success,load_steps,converged_load_steps,nonlinear_iterations,max_penetration,total_time_seconds,contact_force_norm,minimum_signed_distance,minimum_jacobian_determinant,maximum_jacobian_determinant,linear_solver_backend
+penalty_contact,true,27,27,704,0.00609533,1013.07,272.859,-0.006095401792,0.977207,1.01949,mixed
+augmented_lagrangian_contact,true,41,41,917,7.59002e-09,3367.84,273.028,-1.302396413e-08,0.977183,1.02092,mixed
+no_contact_surrogate,true,8,8,32,0,30.5978,0,nan,0.973979,1.02496,PardisoLDLT
+
+parameter,value
+surrogate_max_pressure,3.06254
+surrogate_contact_half_angle_rad,0.177812
+surrogate_contact_half_angle_deg,10.1879
+surrogate_contact_half_width,53.0617
+surrogate_contact_center_x,-3.25962e-11
+surrogate_total_normal_force,273.028
+surrogate_active_facets,70

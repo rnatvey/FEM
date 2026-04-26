@@ -489,6 +489,7 @@ MeshGenerator::TireContactAnalysisSetup MeshGenerator::generateTireContactAnalys
     double anchorSelectorCoordinate = control.anchorSelectMinimumX
         ? std::numeric_limits<double>::infinity()
         : -std::numeric_limits<double>::infinity();
+    double anchorAngleDistance = std::numeric_limits<double>::infinity();
 
     for (const auto& node : assembly_->getNodes()) {
         const Eigen::Vector2d coordinates = node->getCoordinates();
@@ -516,9 +517,25 @@ MeshGenerator::TireContactAnalysisSetup MeshGenerator::generateTireContactAnalys
         }
 
         const double selectorCoordinate = coordinates.x();
-        const bool updateAnchor = control.anchorSelectMinimumX
-            ? (selectorCoordinate < anchorSelectorCoordinate)
-            : (selectorCoordinate > anchorSelectorCoordinate);
+        bool updateAnchor = false;
+        if (control.anchorSelectContactCenterAngle) {
+            const Eigen::Vector2d relativeCoordinates = coordinates - control.mesh.center;
+            const double nodeAngle =
+                std::atan2(relativeCoordinates.y(), relativeCoordinates.x());
+            const double angleDifference =
+                std::atan2(std::sin(nodeAngle - control.mesh.expectedContactCenterAngle),
+                    std::cos(nodeAngle - control.mesh.expectedContactCenterAngle));
+            const double angleDistance = std::abs(angleDifference);
+            updateAnchor = angleDistance < anchorAngleDistance;
+            if (updateAnchor) {
+                anchorAngleDistance = angleDistance;
+            }
+        }
+        else {
+            updateAnchor = control.anchorSelectMinimumX
+                ? (selectorCoordinate < anchorSelectorCoordinate)
+                : (selectorCoordinate > anchorSelectorCoordinate);
+        }
         if (updateAnchor) {
             anchorSelectorCoordinate = selectorCoordinate;
             setup.anchorNodeId = node->getId();

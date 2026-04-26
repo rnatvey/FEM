@@ -103,6 +103,7 @@ public:
         bool anchorFixX = true;
         bool anchorFixY = false;
         bool anchorSelectMinimumX = true;
+        bool anchorSelectContactCenterAngle = false;
     };
 
     struct TireContactAnalysisSetup {

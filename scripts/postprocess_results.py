@@ -11,6 +11,7 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.colors import BoundaryNorm
 from matplotlib.lines import Line2D
 from matplotlib.ticker import AutoMinorLocator
 
@@ -41,6 +42,7 @@ TECHNICAL_COLORS = {
 }
 
 FIELD_EDGE_HIDE_CELL_THRESHOLD = 30000
+FIELD_DISCRETE_LEVELS = 14
 FIELD_IMAGE_CROP_TOLERANCE = 245
 FIELD_IMAGE_CROP_PADDING_PX = 8
 DISPLAY_BOUNDS_PADDING_RATIO = 0.025
@@ -437,18 +439,44 @@ def figure_size_from_bounds(
 
 
 def field_render_style(mesh: pv.DataSet) -> dict[str, Any]:
-    if mesh.n_cells >= FIELD_EDGE_HIDE_CELL_THRESHOLD:
-        return {
-            "show_edges": False,
-            "line_width": 0.0,
-            "draw_outline_only": True,
-        }
-
     return {
-        "show_edges": True,
-        "line_width": 0.75,
-        "draw_outline_only": False,
+        "show_edges": False,
+        "line_width": 0.0,
+        "draw_outline_only": True,
     }
+
+
+def set_xy_camera_to_bounds(
+    plotter: pv.Plotter,
+    bounds: tuple[float, float, float, float],
+    *,
+    window_size: tuple[int, int] = (1400, 900),
+) -> None:
+    x_min, x_max, y_min, y_max = padded_bounds(bounds, padding_ratio=0.01)
+    width = max(x_max - x_min, 1.0e-9)
+    height = max(y_max - y_min, 1.0e-9)
+    aspect = window_size[0] / window_size[1]
+    scale = 0.5 * max(height, width / aspect)
+    center_x = 0.5 * (x_min + x_max)
+    center_y = 0.5 * (y_min + y_max)
+
+    plotter.view_xy()
+    plotter.camera.parallel_projection = True
+    plotter.camera.position = (center_x, center_y, 1.0)
+    plotter.camera.focal_point = (center_x, center_y, 0.0)
+    plotter.camera.parallel_scale = scale
+
+
+def scalar_mesh_for_rendering(
+    mesh: pv.DataSet,
+    scalar_name: str,
+) -> tuple[pv.DataSet, np.ndarray]:
+    if scalar_name in mesh.cell_data:
+        return mesh, np.asarray(mesh.cell_data[scalar_name])
+    if scalar_name in mesh.point_data:
+        cell_mesh = mesh.point_data_to_cell_data(pass_point_data=True)
+        return cell_mesh, np.asarray(cell_mesh.cell_data[scalar_name])
+    return mesh, np.asarray(mesh[scalar_name])
 
 
 def save_rendered_image_figure(
@@ -461,6 +489,7 @@ def save_rendered_image_figure(
     cmap: str | None = None,
     value_range: tuple[float, float] | None = None,
     indicator_ticks: list[float] | None = None,
+    discrete_levels: int | None = None,
 ) -> None:
     image = crop_rendered_image(image)
     displayed_bounds = padded_bounds(bounds)
@@ -489,8 +518,16 @@ def save_rendered_image_figure(
     apply_axes_style(axis)
 
     if colorbar_label and cmap and value_range is not None:
-        normalizer = plt.Normalize(vmin=value_range[0], vmax=value_range[1])
-        scalar_mappable = plt.cm.ScalarMappable(norm=normalizer, cmap=cmap)
+        if discrete_levels is not None and discrete_levels > 1:
+            boundaries = np.linspace(value_range[0], value_range[1], discrete_levels + 1)
+            normalizer = BoundaryNorm(boundaries, discrete_levels)
+            scalar_mappable = plt.cm.ScalarMappable(
+                norm=normalizer,
+                cmap=plt.get_cmap(cmap, discrete_levels),
+            )
+        else:
+            normalizer = plt.Normalize(vmin=value_range[0], vmax=value_range[1])
+            scalar_mappable = plt.cm.ScalarMappable(norm=normalizer, cmap=cmap)
         colorbar = fig.colorbar(scalar_mappable, ax=axis, pad=0.03, fraction=0.046)
         colorbar.set_label(colorbar_label)
         if indicator_ticks is not None:
@@ -512,31 +549,35 @@ def save_scalar_field_plot(
     scale: float = 1.0,
     scalar_bar_format: str = "%.3e",
     is_indicator: bool = False,
+    zoom_bounds: tuple[float, float, float, float] | None = None,
 ) -> None:
-    plotter = pv.Plotter(off_screen=True, window_size=(1400, 900))
+    window_size = (1400, 900)
+    plotter = pv.Plotter(off_screen=True, window_size=window_size)
     configure_plotter(plotter)
     render_style = field_render_style(mesh)
 
-    field_values = np.asarray(mesh[scalar_name])
+    render_mesh, field_values = scalar_mesh_for_rendering(mesh, scalar_name)
     if scale != 1.0:
         field_values = field_values * scale
 
+    n_colors = 2 if is_indicator else FIELD_DISCRETE_LEVELS
     add_mesh_kwargs: dict[str, Any] = {
         "scalars": field_values,
         "show_edges": render_style["show_edges"],
         "edge_color": TECHNICAL_COLORS["gray"],
         "line_width": render_style["line_width"],
         "cmap": cmap,
+        "n_colors": n_colors,
+        "interpolate_before_map": False,
         "show_scalar_bar": False,
         "lighting": False,
     }
     if is_indicator:
         add_mesh_kwargs["clim"] = (0.0, 1.0)
-        add_mesh_kwargs["n_colors"] = 2
 
-    plotter.add_mesh(mesh, **add_mesh_kwargs)
+    plotter.add_mesh(render_mesh, **add_mesh_kwargs)
     if render_style["draw_outline_only"]:
-        outline = mesh.extract_feature_edges(
+        outline = render_mesh.extract_feature_edges(
             boundary_edges=True,
             non_manifold_edges=False,
             feature_edges=False,
@@ -547,8 +588,13 @@ def save_scalar_field_plot(
             color=TECHNICAL_COLORS["gray"],
             line_width=1.2,
         )
-    plotter.view_xy()
-    plotter.camera.zoom(1.05)
+    plot_bounds = zoom_bounds or (
+        float(render_mesh.bounds[0]),
+        float(render_mesh.bounds[1]),
+        float(render_mesh.bounds[2]),
+        float(render_mesh.bounds[3]),
+    )
+    set_xy_camera_to_bounds(plotter, plot_bounds, window_size=window_size)
     rendered_image = plotter.screenshot(return_img=True)
     plotter.close()
 
@@ -563,13 +609,14 @@ def save_scalar_field_plot(
 
     save_rendered_image_figure(
         rendered_image,
-        (float(mesh.bounds[0]), float(mesh.bounds[1]), float(mesh.bounds[2]), float(mesh.bounds[3])),
+        plot_bounds,
         case_dir / file_name,
         title,
         colorbar_label=title,
         cmap=cmap,
         value_range=value_range,
         indicator_ticks=[0.0, 1.0] if is_indicator else None,
+        discrete_levels=n_colors,
     )
 
 
@@ -577,7 +624,8 @@ def save_mesh_plot(case: dict[str, Any]) -> None:
     case_dir = case["case_dir"]
     mesh = case["mesh"]
 
-    plotter = pv.Plotter(off_screen=True, window_size=(1400, 900))
+    window_size = (1400, 900)
+    plotter = pv.Plotter(off_screen=True, window_size=window_size)
     configure_plotter(plotter)
     plotter.add_mesh(
         mesh,
@@ -587,14 +635,14 @@ def save_mesh_plot(case: dict[str, Any]) -> None:
         line_width=1.0,
         lighting=False,
     )
-    plotter.view_xy()
-    plotter.camera.zoom(1.05)
+    bounds = (float(mesh.bounds[0]), float(mesh.bounds[1]), float(mesh.bounds[2]), float(mesh.bounds[3]))
+    set_xy_camera_to_bounds(plotter, bounds, window_size=window_size)
     rendered_image = plotter.screenshot(return_img=True)
     plotter.close()
 
     save_rendered_image_figure(
         rendered_image,
-        (float(mesh.bounds[0]), float(mesh.bounds[1]), float(mesh.bounds[2]), float(mesh.bounds[3])),
+        bounds,
         case_dir / "computational_mesh.png",
         "Расчетная конечно-элементная сетка",
     )
@@ -911,11 +959,14 @@ def build_ring_point_fields(case: dict[str, Any], ring_metadata: dict[str, Any])
     displacement = point_array(mesh, "displacement", default_components=3)[:, :2]
     stress = point_array(mesh, "stress_2d", default_components=3)
     contact_force = point_array(mesh, "contact_force", default_components=3)[:, :2]
+    reaction_force = point_array(mesh, "reaction_force", default_components=3)[:, :2]
     signed_distance = point_array(mesh, "rigid_plane_signed_distance")
     penetration = point_array(mesh, "rigid_plane_penetration")
 
     cosine = np.cos(angles)
     sine = np.sin(angles)
+    reference_cosine = np.cos(reference_angles)
+    reference_sine = np.sin(reference_angles)
 
     sigma_xx = stress[:, 0]
     sigma_yy = stress[:, 1]
@@ -926,6 +977,9 @@ def build_ring_point_fields(case: dict[str, Any], ring_metadata: dict[str, Any])
 
     radial_displacement = cosine * displacement[:, 0] + sine * displacement[:, 1]
     tangential_displacement = -sine * displacement[:, 0] + cosine * displacement[:, 1]
+    radial_reaction = reference_cosine * reaction_force[:, 0] + reference_sine * reaction_force[:, 1]
+    tangential_reaction = -reference_sine * reaction_force[:, 0] + reference_cosine * reaction_force[:, 1]
+    reaction_magnitude = np.linalg.norm(reaction_force, axis=1)
 
     plane_normal = ring_metadata["plane_normal"]
     plane_normal_norm = np.linalg.norm(plane_normal)
@@ -949,6 +1003,9 @@ def build_ring_point_fields(case: dict[str, Any], ring_metadata: dict[str, Any])
         "tau_rt": tau_rt,
         "radial_displacement": radial_displacement,
         "tangential_displacement": tangential_displacement,
+        "radial_reaction": radial_reaction,
+        "tangential_reaction": tangential_reaction,
+        "reaction_magnitude": reaction_magnitude,
         "contact_normal_force": contact_normal_force,
         "signed_distance": signed_distance,
         "penetration": penetration,
@@ -1029,6 +1086,30 @@ def summarize_contact_facet_rows(
             summary["center_of_pressure_arc"] = ring_metadata["outer_radius"] * cp_relative_angle
 
     return summary
+
+
+def contact_zoom_bounds(case: dict[str, Any], *, active_only: bool) -> tuple[float, float, float, float] | None:
+    rows = case.get("contact_facet_rows", [])
+    if active_only:
+        rows = [row for row in rows if bool(row.get("active"))]
+    if not rows:
+        return None
+
+    x_values = []
+    y_values = []
+    for row in rows:
+        x_values.append(float(row.get("deformed_midpoint_x", row.get("reference_midpoint_x", 0.0))))
+        y_values.append(float(row.get("deformed_midpoint_y", row.get("reference_midpoint_y", 0.0))))
+
+    x_min = min(x_values)
+    x_max = max(x_values)
+    y_min = min(y_values)
+    y_max = max(y_values)
+    width = max(x_max - x_min, 8.0)
+    height = max(y_max - y_min, 4.0)
+    x_pad = max(0.35 * width, 8.0)
+    y_pad = max(2.0 * height, 10.0)
+    return (x_min - x_pad, x_max + x_pad, y_min - y_pad, y_max + y_pad)
 
 
 def save_ring_contour_profiles(case: dict[str, Any], ring_metadata: dict[str, Any]) -> None:
@@ -1215,6 +1296,89 @@ def save_ring_radial_profiles(case: dict[str, Any], ring_metadata: dict[str, Any
     write_rows_csv(
         case_dir / "ring_radial_section_profiles.csv",
         [f"radius_{LENGTH_UNIT_LABEL}", "relative_angle_deg", "sigma_rr_mpa", "sigma_tt_mpa", f"radial_displacement_{LENGTH_UNIT_LABEL}"],
+        csv_rows,
+    )
+
+
+def save_inner_boundary_reaction_profile(case: dict[str, Any], ring_metadata: dict[str, Any]) -> None:
+    case_dir = case["case_dir"]
+    fields = build_ring_point_fields(case, ring_metadata)
+
+    radial_tolerance = max(
+        1.0e-8,
+        0.35 * max(
+            ring_metadata["radial_step_hint"],
+            0.01 * (ring_metadata["outer_radius"] - ring_metadata["inner_radius"]),
+        ),
+    )
+    angle_tolerance = max(
+        1.0e-8,
+        0.45 * max(ring_metadata["angular_step_hint"], math.radians(0.5)),
+    )
+    ordered_indices = select_ring_contour_indices(
+        fields,
+        target_radius=ring_metadata["inner_radius"],
+        radial_tolerance=radial_tolerance,
+        angle_tolerance=angle_tolerance,
+    )
+    if ordered_indices.size < 2:
+        return
+
+    reaction_magnitude = fields["reaction_magnitude"][ordered_indices]
+    if float(np.nanmax(np.abs(reaction_magnitude))) <= 1.0e-12:
+        return
+
+    x_values = fields["reference_relative_angles_deg"][ordered_indices]
+    radial_reaction = fields["radial_reaction"][ordered_indices] * FORCE_TO_KN
+    tangential_reaction = fields["tangential_reaction"][ordered_indices] * FORCE_TO_KN
+    magnitude = reaction_magnitude * FORCE_TO_KN
+
+    fig, axis = plt.subplots(figsize=(10, 4.8))
+    plot_profile_series(
+        axis,
+        x_values,
+        radial_reaction,
+        color=TECHNICAL_COLORS["blue"],
+        label="R_r",
+        marker="o",
+    )
+    plot_profile_series(
+        axis,
+        x_values,
+        tangential_reaction,
+        color=TECHNICAL_COLORS["orange"],
+        label="R_θ",
+        marker="s",
+    )
+    plot_profile_series(
+        axis,
+        x_values,
+        magnitude,
+        color=TECHNICAL_COLORS["green"],
+        label="|R|",
+        marker="^",
+    )
+    axis.set_title("Р РµР°РєС†РёРё РЅР° РІРЅСѓС‚СЂРµРЅРЅРµРј РєРѕРЅС‚СѓСЂРµ")
+    axis.set_xlabel("РЈРіРѕР» РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕ С†РµРЅС‚СЂР° РєРѕРЅС‚Р°РєС‚Р°, РіСЂР°Рґ")
+    axis.set_ylabel(f"Р РµР°РєС†РёСЏ, {FORCE_UNIT_LABEL}")
+    apply_axes_style(axis)
+    axis.legend(loc="best", fontsize=9)
+    fig.tight_layout()
+    fig.savefig(case_dir / "inner_boundary_reaction_profile.png", dpi=180)
+    plt.close(fig)
+
+    csv_rows = [
+        [
+            x_values[i],
+            radial_reaction[i],
+            tangential_reaction[i],
+            magnitude[i],
+        ]
+        for i in range(len(ordered_indices))
+    ]
+    write_rows_csv(
+        case_dir / "inner_boundary_reaction_profile.csv",
+        ["relative_angle_deg", "reaction_radial_kn", "reaction_tangential_kn", "reaction_magnitude_kn"],
         csv_rows,
     )
 
@@ -1603,6 +1767,11 @@ def save_case_metric_overview(case: dict[str, Any]) -> None:
 def save_case_plots(case: dict[str, Any], warp_factor: float) -> None:
     case_dir = case["case_dir"]
     mesh = case["mesh"]
+    if "displacement" in mesh.point_data:
+        displacement = np.asarray(mesh.point_data["displacement"])
+        if displacement.ndim == 2 and displacement.shape[1] >= 2:
+            mesh.point_data["displacement_x"] = displacement[:, 0]
+            mesh.point_data["displacement_y"] = displacement[:, 1]
 
     plot_specs = [
         (
@@ -1610,6 +1779,22 @@ def save_case_plots(case: dict[str, Any], warp_factor: float) -> None:
             "displacement_magnitude.png",
             f"Модуль перемещений, {LENGTH_UNIT_LABEL}",
             "viridis",
+            1.0,
+            False,
+        ),
+        (
+            "displacement_x",
+            "displacement_x.png",
+            f"Горизонтальное перемещение u_x, {LENGTH_UNIT_LABEL}",
+            "coolwarm",
+            1.0,
+            False,
+        ),
+        (
+            "displacement_y",
+            "displacement_y.png",
+            f"Вертикальное перемещение u_y, {LENGTH_UNIT_LABEL}",
+            "coolwarm",
             1.0,
             False,
         ),
@@ -1677,6 +1862,35 @@ def save_case_plots(case: dict[str, Any], warp_factor: float) -> None:
             is_indicator=is_indicator,
         )
 
+        if scalar_name == "active_contact_facet":
+            zoom_bounds = contact_zoom_bounds(case, active_only=True)
+            if zoom_bounds is not None:
+                save_scalar_field_plot(
+                    deformed_mesh,
+                    case_dir,
+                    scalar_name,
+                    "active_contact_facet_zoom.png",
+                    title,
+                    cmap,
+                    scale=scale,
+                    is_indicator=is_indicator,
+                    zoom_bounds=zoom_bounds,
+                )
+        elif scalar_name == "candidate_contact_facet":
+            zoom_bounds = contact_zoom_bounds(case, active_only=False)
+            if zoom_bounds is not None:
+                save_scalar_field_plot(
+                    deformed_mesh,
+                    case_dir,
+                    scalar_name,
+                    "candidate_contact_facet_zoom.png",
+                    title,
+                    cmap,
+                    scale=scale,
+                    is_indicator=is_indicator,
+                    zoom_bounds=zoom_bounds,
+                )
+
 
 def save_ring_specific_plots(case: dict[str, Any]) -> None:
     ring_metadata = load_ring_metadata(case)
@@ -1685,6 +1899,7 @@ def save_ring_specific_plots(case: dict[str, Any]) -> None:
 
     save_ring_contour_profiles(case, ring_metadata)
     save_ring_radial_profiles(case, ring_metadata)
+    save_inner_boundary_reaction_profile(case, ring_metadata)
     save_contact_patch_profiles(case, ring_metadata)
 
 

@@ -180,6 +180,7 @@ MeshGenerator::TireContactAnalysisControl buildContactControl(const MeshVariant&
     control.anchorFixX = true;
     control.anchorFixY = false;
     control.anchorSelectMinimumX = true;
+    control.anchorSelectContactCenterAngle = true;
     return control;
 }
 
