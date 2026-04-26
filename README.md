@@ -1,377 +1,316 @@
-# FEM Tire Contact Solver
+# Расчет контакта шины с жесткой плоскостью
 
-Этот репозиторий содержит 2D Q4 FEM-решатель с нелинейным penalty-contact для постановки
-`шина -> жесткая плоскость` без трения.
+Этот репозиторий содержит двумерный конечно-элементный решатель для задачи
+деформирования кольцевого сектора шины при взаимодействии с жесткой опорной
+плоскостью. Основное внимание уделено сравнению способов учета контакта и
+переходу от линейно-упругой модели к конечно-деформационной гиперупругой
+постановке.
 
-Основной инженерный workflow такой:
+Задача рассматривается в плоской деформации. Геометрия задается в миллиметрах,
+напряжения и модуль упругости в МПа, силы в итоговых таблицах и графиках
+показываются в кН.
 
-1. C++ собирает задачу и решает ее.
-2. C++ пишет результаты в файловый pipeline:
-   - `solution.vtu`
-   - `metrics.json`
-   - для contact-case дополнительно `contact_facets.csv`
-   - при серийных расчетах дополнительно `study_summary.csv`
-3. Python используется только для чтения результатов, графиков и автоматических проверок.
+## Механическая Постановка
 
-## Быстрый старт
+Расчетная область представляет собой сектор кольца, соответствующий сечению
+шины. В основных расчетах использованы параметры исходной задачи:
 
-После конфигурации CMake доступны основные исполняемые файлы:
+- внутренний радиус: `250 мм`;
+- наружный радиус: `300 мм`;
+- угловой размер сектора: `60°`;
+- модуль Юнга: `E = 11.84 МПа`;
+- коэффициент Пуассона: `nu = 0.48`;
+- толщина расчетного сечения: `1 мм`.
 
-- `FEMBasicLinearReference`
-  Базовая линейная verification-задача без контакта.
-- `FEM`
-  Канонический одиночный расчет контакта шины с жесткой плоскостью.
-- `FEMContactFarPlaneScenario`
-  Contact-enabled сценарий, в котором плоскость вынесена далеко и контакта быть не должно.
-- `FEMBlockOnRigidPlane`
-  Маленький sanity-case для контактного контура.
-- `FEMRingContactStudy`
-  Серия расчетов по штрафному параметру и типу сетки.
-- `FEMMainScaleContactStudy`
-  Более тяжелая серия contact-расчетов на параметрах из старого `main.cpp`,
-  где одновременно отслеживаются влияние `penalty` и влияние contact-focused сетки.
-- `FEMContactNoContactRegression`
-  Проверка, что `solveContact()` не портит решение при отсутствии контакта.
-- `FEMContactBlockRegression`
-  Регрессия для блока на жесткой плоскости.
+Контакт с опорой считается гладким: трение, качение и касательные контактные
+напряжения не учитываются. Жесткая плоскость задается аналитически, а условие
+контакта формулируется как одностороннее условие непроникания.
 
-### Сборка
+В проекте реализованы три расчетные постановки:
 
-Пример для Windows + Visual Studio:
+- линейно-упругая малодеформационная задача;
+- конечно-деформационная гиперупругая задача с материалом Neo-Hookean;
+- бесконтактная суррогатная задача, где контакт заменяется распределенной
+  нагрузкой на наружном контуре.
+
+## Численные Методы
+
+Для пространственной дискретизации используется четырехузловой изопараметрический
+элемент `Q4`.
+
+В линейной постановке применяется стандартная малодеформационная схема:
+
+- матрица деформаций `B`;
+- матрица упругости `D`;
+- элементная жесткость вида `B^T D B`.
+
+В гиперупругой постановке используется конечно-деформационная схема в исходной
+конфигурации:
+
+- градиент деформации `F`;
+- определитель `J = det(F)`;
+- тензор деформаций Грина-Лагранжа;
+- второй тензор Пиолы-Кирхгофа;
+- материальная и геометрическая касательная жесткость.
+
+Гиперупругий материал имеет вид сжимаемой модели Neo-Hookean:
+
+```text
+W = mu / 2 * (I1 - 3 - 2 ln J) + lambda / 2 * (ln J)^2
+lambda = K - 2/3 mu
+```
+
+Параметры модели вычисляются из `E` и `nu`:
+
+```text
+mu = E / (2 * (1 + nu))
+K  = E / (3 * (1 - 2 * nu))
+```
+
+Для финального материала:
+
+- `mu = 4.0 МПа`;
+- `K = 98.6667 МПа`;
+- `lambda = 96.0 МПа`;
+- `nu = 0.48`, то есть материал является почти несжимаемым.
+
+Контакт решается двумя способами:
+
+- штрафной метод;
+- метод расширенного Лагранжа.
+
+В штрафном методе нормальное контактное давление пропорционально прониканию.
+Метод устойчив и удобен для серийных расчетов, но допускает конечное
+проникание в жесткую плоскость.
+
+В методе расширенного Лагранжа контактное давление определяется через
+множители Лагранжа и добавочный штрафной член. Множители обновляются во
+внешнем итерационном цикле. Этот метод точнее выполняет условие непроникания,
+но требует более аккуратного выбора параметров и более дорог по времени.
+
+Нелинейные задачи решаются методом Ньютона с пошаговым нагружением. Если
+очередной шаг нагрузки не сходится, он автоматически делится. Дополнительно
+используется уменьшение шага Ньютона, если пробное приращение ухудшает
+невязку или приводит к недопустимой деформации.
+
+Линеаризованные системы сначала решаются методом сопряженных градиентов с
+неполным разложением Холецкого. При ухудшении обусловленности выполняется
+переход на прямой разреженный метод `LDLT`. В гиперупругих расчетах при
+`nu = 0.48` прямой метод используется часто, что ожидаемо для почти
+несжимаемой постановки.
+
+## Сетки
+
+Для задач шины используется контактно-ориентированная сетка:
+
+- сгущение по окружности сосредоточено около ожидаемой зоны контакта;
+- сгущение по радиусу направлено к наружной поверхности;
+- угловое сгущение локализовано у наружного контура, чтобы не расходовать
+  элементы в глубине сечения без необходимости.
+
+В финальном сравнении используется сетка `contact_focused_coarse`:
+
+- узлов: `11011`;
+- элементов: `10800`;
+- радиальных слоев: `91`;
+- узлов по окружности: `121`;
+- минимальный радиальный шаг: около `0.319 мм`;
+- минимальный шаг по наружной дуге: около `0.656 мм`.
+
+Эта сетка выбрана как рабочий компромисс: она уже разрешает контактную область
+лучше, чем самая грубая сетка, но еще остается приемлемой по времени для
+полной гиперупругой триады.
+
+## Финальное Сравнение
+
+Основной итоговый расчет находится в:
+
+- [results/final_hyperelastic_triplet](/c:/Users/Admin/Fem_diplom/FEM/results/final_hyperelastic_triplet)
+
+В этой папке собраны три задачи на одной геометрии, одном материале и одной
+сетке:
+
+- `penalty_contact` - явный контакт, штрафной метод;
+- `augmented_lagrangian_contact` - явный контакт, метод расширенного Лагранжа;
+- `no_contact_surrogate` - бесконтактная задача с параболической нагрузкой,
+  восстановленной по результатам явного контакта.
+
+Сводная таблица:
+
+- [triplet_summary.csv](/c:/Users/Admin/Fem_diplom/FEM/results/final_hyperelastic_triplet/triplet_summary.csv)
+
+Ключевые результаты:
+
+| Расчет | Успех | Шаги нагрузки | Нелинейные итерации | Макс. проникание, мм | Суммарная реакция, кН | Время, с |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Штрафной метод | да | `27/27` | `704` | `6.095e-3` | `0.272859` | `1013.07` |
+| Расширенный Лагранж | да | `41/41` | `917` | `7.590e-9` | `0.273028` | `3367.84` |
+| Бесконтактная нагрузка | да | `8/8` | `32` | `0` | `0` | `30.60` |
+
+Параметры суррогатной нагрузки, восстановленные по расчету методом расширенного
+Лагранжа:
+
+- максимальное давление: `3.06254 МПа`;
+- полуугол пятна контакта: `10.1879°`;
+- полуширина пятна контакта: `53.0617 мм`;
+- суммарная нормальная сила: `0.273028 кН`.
+
+## Основные Результаты Постобработки
+
+В папке каждого расчета сохраняются поля и графики:
+
+- `displacement_x.png`, `displacement_y.png`, `displacement_magnitude.png`;
+- `sigma_yy.png`;
+- `von_mises_stress.png`;
+- `jacobian_determinant.png`;
+- `strain_energy_density.png`;
+- `ring_contour_stress_profiles.png`;
+- `ring_radial_section_profiles.png`;
+- `inner_boundary_reaction_profile.png`;
+- `case_overview.png`;
+- `computational_mesh.png`.
+
+Для контактных расчетов дополнительно сохраняются:
+
+- `contact_patch_profiles.png`;
+- `penetration.png`;
+- `signed_distance.png`;
+- `contact_force_magnitude.png`;
+- `active_contact_facet.png`;
+- `candidate_contact_facet.png`;
+- `active_contact_facet_zoom.png`;
+- `candidate_contact_facet_zoom.png`;
+- `contact_facets.csv`.
+
+В корневой папке итоговой триады лежат общие сводные графики:
+
+- [summary_metrics.png](/c:/Users/Admin/Fem_diplom/FEM/results/final_hyperelastic_triplet/summary_metrics.png)
+- [summary_contact_metrics.png](/c:/Users/Admin/Fem_diplom/FEM/results/final_hyperelastic_triplet/summary_contact_metrics.png)
+
+Карты полей строятся с дискретными цветовыми уровнями, без сглаживания цвета
+между элементами. Это ближе к инженерному просмотру конечно-элементного
+результата и лучше показывает локальные зоны изменения поля.
+
+## Сборка
+
+Пример для Windows и Visual Studio:
 
 ```powershell
 cmake -S . -B build
-cmake --build build --config Release --target FEM FEMBlockOnRigidPlane FEMRingContactStudy FEMMainScaleContactStudy
+cmake --build build --config Release --target FEMMainScaleHyperelasticReferenceTriplet
 ```
 
-Если `cmake` не лежит в `PATH`, можно использовать `cmake.exe` из установки Visual Studio.
+Если `cmake` не находится через `PATH`, можно использовать `cmake.exe` из
+установки Visual Studio.
 
-### Запуск одиночного tire-contact case
+## Запуск Финальной Триады
 
 ```powershell
-.\build\bin\Release\FEM.exe
+$env:FEM_MAIN_SCALE_HYPERELASTIC_TRIPLET_MESH='contact_focused_coarse'
+$env:FEM_MAIN_SCALE_HYPERELASTIC_TRIPLET_AL_SCALING='20'
+$env:FEM_MAIN_SCALE_HYPERELASTIC_TRIPLET_AL_STEPS='16'
+$env:FEM_MAIN_SCALE_HYPERELASTIC_TRIPLET_AL_MAX_STEPS='200'
+$env:FEM_MAIN_SCALE_HYPERELASTIC_TRIPLET_AL_MAX_ITERATIONS='50'
+$env:FEM_MAIN_SCALE_HYPERELASTIC_TRIPLET_CONTACT_STEPS='12'
+$env:FEM_MAIN_SCALE_HYPERELASTIC_TRIPLET_MAX_CONTACT_STEPS='120'
+$env:FEM_MAIN_SCALE_HYPERELASTIC_TRIPLET_SURROGATE_STEPS='8'
+$env:FEM_MAIN_SCALE_HYPERELASTIC_TRIPLET_MAX_SURROGATE_STEPS='80'
+$env:FEM_MAIN_SCALE_HYPERELASTIC_TRIPLET_OUTPUT_SUBDIRECTORY='final_hyperelastic_triplet'
+.\build\bin\Release\FEMMainScaleHyperelasticReferenceTriplet.exe
 ```
 
-Этот target использует файл [src/src/tire_contact_single_case.cpp](/c:/Users/Admin/Fem_diplom/FEM/src/src/tire_contact_single_case.cpp:1)
-как канонический пример.
-
-Примеры и study-сценарии теперь всегда пишут результаты в `results/...` в корне репозитория,
-независимо от текущей рабочей директории.
-После успешного расчета Python-постпроцессор запускается автоматически, поэтому рядом с
-`solution.vtu` и `metrics.json` сразу появляются PNG-графики.
-Для `FEM.exe` результаты появятся в:
-
-- [results/tire_contact_single_case/solution.vtu](/c:/Users/Admin/Fem_diplom/FEM/results/tire_contact_single_case/solution.vtu)
-- [results/tire_contact_single_case/metrics.json](/c:/Users/Admin/Fem_diplom/FEM/results/tire_contact_single_case/metrics.json)
-
-### Запуск block sanity-case
+После расчета можно заново построить графики:
 
 ```powershell
-.\build\bin\Release\FEMBlockOnRigidPlane.exe
+python scripts\postprocess_results.py results\final_hyperelastic_triplet
 ```
 
-Результаты:
+## Другие Исполняемые Файлы
 
-- [results/block_on_rigid_plane/solution.vtu](/c:/Users/Admin/Fem_diplom/FEM/results/block_on_rigid_plane/solution.vtu)
-- [results/block_on_rigid_plane/metrics.json](/c:/Users/Admin/Fem_diplom/FEM/results/block_on_rigid_plane/metrics.json)
+Наиболее полезные программы:
 
-### Запуск серии tire-contact cases
+| Имя | Назначение |
+| --- | --- |
+| `FEMBasicLinearReference` | Проверка линейной сборки, граничных условий и реакций |
+| `FEM` | Одиночная линейная контактная задача шины с жесткой плоскостью |
+| `FEMBlockOnRigidPlane` | Малый проверочный расчет контакта блока с плоскостью |
+| `FEMRingContactStudy` | Серия линейных расчетов по сетке и штрафному параметру |
+| `FEMMainScaleContactStudy` | Линейная задача на геометрии исходного `main.cpp` |
+| `FEMMainScaleContactMethodComparisonStudy` | Сравнение штрафного метода и метода расширенного Лагранжа |
+| `FEMHyperelasticNoContactSanity` | Проверка гиперупругой ветки без контакта |
+| `FEMHyperelasticBlockOnRigidPlane` | Гиперупругий блок на жесткой плоскости |
+| `FEMMainScaleHyperelasticReferenceTriplet` | Финальная гиперупругая триада |
+
+Запуск проверок:
 
 ```powershell
-.\build\bin\Release\FEMRingContactStudy.exe
+ctest --test-dir build\src -C Release --output-on-failure
 ```
 
-### Запуск main-scale contact study
+## Файлы Результатов
 
-```powershell
-.\build\bin\Release\FEMMainScaleContactStudy.exe
-```
+Каждый расчет сохраняет:
 
-Этот target использует геометрию и материал из старого [src/src/main.cpp](/c:/Users/Admin/Fem_diplom/FEM/src/src/main.cpp:1),
-но решает уже контактную задачу с жесткой плоскостью.
-По умолчанию это тяжелый прогон по нескольким уровням сетки и нескольким значениям `penalty`.
+- `solution.vtu` - сетка, перемещения, напряжения, реакции и контактные поля;
+- `metrics.json` - численные характеристики расчета;
+- `contact_facets.csv` - данные по контактным фасеткам, если контакт включен.
 
-Результаты:
+В `metrics.json` записываются:
 
-- [results/main_scale_contact_study/study_summary.csv](/c:/Users/Admin/Fem_diplom/FEM/results/main_scale_contact_study/study_summary.csv)
-- [results/main_scale_contact_study/summary_metrics.png](/c:/Users/Admin/Fem_diplom/FEM/results/main_scale_contact_study/summary_metrics.png)
-- [results/main_scale_contact_study/summary_contact_metrics.png](/c:/Users/Admin/Fem_diplom/FEM/results/main_scale_contact_study/summary_contact_metrics.png)
+- число узлов, элементов и степеней свободы;
+- времена сборки, решения системы и полного расчета;
+- число линейных и нелинейных итераций;
+- число ненулевых коэффициентов матрицы;
+- максимальное проникание;
+- суммарная нормальная контактная сила;
+- длина пятна контакта;
+- максимальное среднее контактное давление;
+- минимальный и максимальный `det(F)`;
+- энергия деформации;
+- сведения о выбранном линейном методе.
 
-Для быстрой sanity-проверки можно ограничить прогон одной комбинацией `mesh x penalty`:
+В `contact_facets.csv` записываются данные по каждой кандидатной фасетке:
 
-```powershell
-$env:FEM_MAIN_SCALE_CONTACT_QUICK='1'
-.\build\bin\Release\FEMMainScaleContactStudy.exe
-```
+- активна ли фасетка;
+- положение середины фасетки в исходной и деформированной конфигурациях;
+- длина фасетки и активная длина;
+- зазор и проникание;
+- интегральная нормальная сила;
+- среднее контактное давление.
 
-Результаты:
+## Ограничения Модели
 
-- [results/ring_contact_study/study_summary.csv](/c:/Users/Admin/Fem_diplom/FEM/results/ring_contact_study/study_summary.csv)
-- по одной папке на кейс, каждая с `solution.vtu` и `metrics.json`
+Текущая модель является инженерной двумерной постановкой. Она не учитывает:
 
-## Что лежит в файловом pipeline
+- трение;
+- качение;
+- трехмерную ширину шины;
+- деформируемое основание;
+- структуру корда;
+- вязкоупругость;
+- модели Mooney-Rivlin и Ogden.
 
-### `solution.vtu`
+Гиперупругая ветка использует полностью интегрированный элемент `Q4` в
+перемещениях. Для `nu = 0.48` это означает риск объемного запирания. В текущей
+версии этот риск диагностируется, но специальные приемы против запирания,
+такие как выборочное понижение интегрирования или смешанная постановка
+`u/p`, не реализованы.
 
-Основной файловый формат обмена между C++-решателем и Python-постпроцессором.
+Метод расширенного Лагранжа работоспособен на целевых расчетах, но требует
+аккуратного выбора параметров нагружения и стабилизации. Поэтому в работе он
+используется как более точная опорная контактная схема, а штрафной метод - как
+более устойчивый инженерный способ для быстрых расчетов.
 
-Экспортируются:
+## Где Смотреть Подробности
 
-- `Points`
-- `Cells / connectivity / offsets / types`
-- nodal `displacement`
-- nodal `stress_2d`, `strain_2d`
-- nodal `reaction_force`
-- для contact-case:
-  - `contact_force`
-  - `rigid_plane_signed_distance`
-  - `rigid_plane_penetration`
-  - cell flags `candidate_contact_facet`
-  - cell flags `active_contact_facet`
+Описание проверочных расчетов:
 
-Экспортер реализован в:
+- [docs/verification_scenarios.md](/c:/Users/Admin/Fem_diplom/FEM/docs/verification_scenarios.md:1)
 
-- [ResultFileExporter.h](/c:/Users/Admin/Fem_diplom/FEM/Libs/mesh/model/include/ResultFileExporter.h:10)
-- [ResultFileExporter.cpp](/c:/Users/Admin/Fem_diplom/FEM/Libs/mesh/model/src/ResultFileExporter.cpp:175)
+Основной расчетный файл финальной триады:
 
-### `metrics.json`
+- [main_scale_hyperelastic_reference_triplet.cpp](/c:/Users/Admin/Fem_diplom/FEM/src/src/main_scale_hyperelastic_reference_triplet.cpp:1)
 
-Содержит:
+Постобработка:
 
-- число узлов и элементов
-- общее число DOF, свободные и закрепленные DOF
-- времена `assembly/solve/total`
-- `linear_iterations`
-- `nonlinear_iterations`
-- `matrix nnz`
-- residuals
-- `max_penetration`
-- `contact_force_norm`
-- `contact_patch_length`
-- `max_facet_average_pressure`
-- `total_normal_force`
-- полезные экстремумы по displacement / reaction / contact force
-
-### `contact_facets.csv`
-
-Facet-level экспорт для контактного постпроцессинга. Для каждой candidate-фасетки записываются:
-
-- `facet_id`, `element_id`, `surface_index`
-- флаг `active`
-- midpoint в исходной и деформированной конфигурации
-- `facet_length`, `active_length`
-- `average_gap`, `average_penetration`, `maximum_penetration`
-- `integrated_normal_force`
-- `average_pressure`
-
-## Как построить графики и проверки
-
-На текущем этапе ParaView не является частью рабочего сценария. Официальный путь такой:
-
-1. C++ пишет `solution.vtu` и `metrics.json`.
-2. Python читает эти файлы.
-3. Python сам сохраняет все основные графики в `.png`.
-
-### Python: PyVista + matplotlib
-
-Скрипт:
-
-- [scripts/postprocess_results.py](/c:/Users/Admin/Fem_diplom/FEM/scripts/postprocess_results.py:1)
-
-Установка зависимостей:
-
-```powershell
-python -m pip install pyvista vtk matplotlib
-```
-
-Пример ручного запуска для одиночного case:
-
-```powershell
-python scripts/postprocess_results.py results/tire_contact_single_case
-```
-
-Пример ручного запуска для серии расчетов:
-
-```powershell
-python scripts/postprocess_results.py results/ring_contact_study
-```
-
-Скрипт:
-
-- читает `metrics.json` и `.vtu`
-- делает базовые consistency-checks
-- сам строит PNG по кейсам
-- строит summary plot по серии расчетов
-- сохраняет обзорный `case_overview.png` с ключевыми метриками
-- использует строгий технический стиль с русскими подписями, единицами измерения и шрифтом `Times New Roman`
-
-Типовые файлы, которые появляются рядом с `solution.vtu`:
-
-- `computational_mesh.png`
-- `displacement_magnitude.png`
-- `sigma_yy.png`
-- `von_mises_stress.png`
-- `reaction_force_magnitude.png`
-- `contact_force_magnitude.png`, если контактное поле есть
-- `penetration.png`, если контактное поле есть
-- `active_contact_facet.png`
-- `candidate_contact_facet.png`
-- `case_overview.png`
-
-Для tire-ring case дополнительно сохраняются графики, ближе к формату РПЗ:
-
-- `ring_contour_stress_profiles.png`
-  Профили `sigma_rr`, `sigma_tt`, `tau_rtheta` вдоль внутреннего, срединного и внешнего контуров.
-- `ring_radial_section_profiles.png`
-  Профили `sigma_rr`, `sigma_tt`, `u_r` по радиальному сечению через центр ожидаемого контакта.
-- `contact_patch_profiles.png`
-  Профили penetration, интегральной нормальной силы и среднего контактного давления по contact facets.
-
-Для этих же графиков рядом сохраняются CSV:
-
-- `ring_contour_stress_profiles.csv`
-- `ring_radial_section_profiles.csv`
-- `contact_patch_profiles.csv`
-
-Для серии расчетов в корневой папке дополнительно сохраняется:
-
-- `summary_metrics.png`
-- `summary_contact_metrics.png`
-- `summary_contact_metrics.csv`
-
-Python не содержит логику решателя и используется только для анализа/визуализации.
-
-## Verification
-
-Полная карта Stage 6 с целями сценариев, критериями успеха и обязательным postprocessing
-собрана в [docs/verification_scenarios.md](/c:/Users/Admin/Fem_diplom/FEM/docs/verification_scenarios.md:1).
-
-## Как собрать задачу с нуля в пустом `main`
-
-Ниже минимальная последовательность, которой достаточно, чтобы из пустого `main` собрать и решить
-задачу контакта шины с жесткой плоскостью.
-
-### 1. Создать `Assembly` и материал
-
-```cpp
-auto assembly = std::make_shared<Assembly>();
-auto material = std::make_shared<Material>(1, 2.0e5, 0.30, 1.0);
-assembly->addMaterial(material);
-```
-
-### 2. Создать structured graded Q4 mesh под tire contact
-
-Используй `MeshGenerator::TireContactAnalysisControl` и
-`MeshGenerator::generateTireContactAnalysisSetup(...)`.
-
-Минимальный каркас:
-
-```cpp
-MeshGenerator meshGenerator(assembly);
-
-MeshGenerator::TireContactAnalysisControl control;
-control.mesh.center = Eigen::Vector2d(0.0, 0.58);
-control.mesh.innerRadius = 0.25;
-control.mesh.outerRadius = 0.50;
-control.mesh.startAngle = -120.0 * DEG_TO_RAD;
-control.mesh.endAngle = -60.0 * DEG_TO_RAD;
-control.mesh.radialLayers = 9;
-control.mesh.circumferentialNodes = 61;
-control.mesh.materialId = material->getId();
-
-control.mesh.refineCircumferentiallyNearContact = true;
-control.mesh.refineRadiallyToOuterSurface = true;
-control.mesh.expectedContactCenterAngle = -90.0 * DEG_TO_RAD;
-control.mesh.expectedContactHalfAngle = 12.0 * DEG_TO_RAD;
-control.mesh.circumferentialRefinementStrength = 6.0;
-control.mesh.radialRefinementStrength = 2.5;
-control.mesh.candidateFacetWindowScale = 3.0;
-
-control.rigidPlane = RigidPlane2D{Eigen::Vector2d(0.0, 1.0), 0.0};
-control.prescribedInnerBoundaryDy = -0.12;
-
-const auto setup = meshGenerator.generateTireContactAnalysisSetup(control);
-```
-
-Что делает этот helper:
-
-- строит structured graded ring mesh без hanging nodes
-- собирает `candidateContactFacets`
-- возвращает `RigidPlane2D`
-- накладывает типовые BC на внутреннюю границу
-- выбирает anchor-узел для устранения лишнего rigid-body mode
-
-Смотри:
-
-- [meshgenerator.h](/c:/Users/Admin/Fem_diplom/FEM/Libs/mesh/meshGenerator/include/meshgenerator.h:55)
-- [meshgenerator.cpp](/c:/Users/Admin/Fem_diplom/FEM/Libs/mesh/meshGenerator/src/meshgenerator.cpp:339)
-- [meshgenerator.cpp](/c:/Users/Admin/Fem_diplom/FEM/Libs/mesh/meshGenerator/src/meshgenerator.cpp:426)
-
-### 3. Создать `FEModel` и настроить контакт
-
-```cpp
-FEModel model;
-model.setAssembly(assembly);
-model.setSolverTolerance(1.0e-8);
-model.setMaxIterations(40);
-model.configureRigidPlaneContact(
-    setup.rigidPlane,
-    setup.mesh.candidateContactFacets,
-    1.0e7);
-```
-
-### 4. Решить
-
-```cpp
-const bool success = model.solveContact();
-if (!success) {
-    return 1;
-}
-```
-
-### 5. Экспортировать результаты
-
-```cpp
-ResultFileExportOptions exportOptions;
-exportOptions.outputDirectory = std::filesystem::path("results") / "my_case";
-exportOptions.baseName = "solution";
-
-const auto artifacts = ResultFileExporter::exportSolution(model, exportOptions);
-```
-
-После этого C++ уже положит в папку:
-
-- `results/my_case/solution.vtu`
-- `results/my_case/metrics.json`
-
-Дальше построй графики:
-
-```powershell
-python scripts/postprocess_results.py results/my_case
-```
-
-После постпроцессинга смотри:
-
-- `results/my_case/displacement_magnitude.png`
-- `results/my_case/sigma_yy.png`
-- `results/my_case/case_overview.png`
-
-## Где смотреть рабочие примеры
-
-Если нужен краткий и чистый пример, смотри:
-
-- [src/src/tire_contact_single_case.cpp](/c:/Users/Admin/Fem_diplom/FEM/src/src/tire_contact_single_case.cpp:1)
-
-Если нужен серийный прогон нескольких кейсов:
-
-- [src/src/ring_contact_study.cpp](/c:/Users/Admin/Fem_diplom/FEM/src/src/ring_contact_study.cpp:1)
-
-Если нужен маленький sanity-case для контактного контура:
-
-- [src/src/block_on_rigid_plane.cpp](/c:/Users/Admin/Fem_diplom/FEM/src/src/block_on_rigid_plane.cpp:1)
-
-## Практическое замечание
-
-В репозитории еще лежит старый файл `src/src/main.cpp` с историческим сценарием.
-Каноническим стартовым примером теперь считается target `FEM`, который собирается из
-[src/src/tire_contact_single_case.cpp](/c:/Users/Admin/Fem_diplom/FEM/src/src/tire_contact_single_case.cpp:1).
+- [postprocess_results.py](/c:/Users/Admin/Fem_diplom/FEM/scripts/postprocess_results.py:1)
