@@ -20,14 +20,23 @@ ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results" / "main_scale_hyperelastic_reference_triplet_coarse"
 OUT = ROOT / "docs" / "figures_numbered"
 
-BLUE = "#1f4e79"
-RED = "#a61c1c"
-GREEN = "#2f6b3b"
-ORANGE = "#b45f06"
-GRAY = "#4d4d4d"
-LIGHT_GRAY = "#eef1f4"
-MID_GRAY = "#b8c0ca"
-TEAL = "#0b6e75"
+# GOST-like drafting palette: mostly monochrome, with muted accents only where
+# they separate boundary conditions, contact state, or comparison curves.
+INK = "#202020"
+BLUE = "#2f5f8f"
+RED = "#8f2f2f"
+GREEN = "#3f6f4f"
+ORANGE = "#8a6630"
+GRAY = "#5c5c5c"
+LIGHT_GRAY = "#f6f7f8"
+MID_GRAY = "#bfc5cc"
+TEAL = "#4f7378"
+
+OBJECT_LW = 1.05
+ACCENT_LW = 1.55
+THIN_LW = 0.45
+DIM_LW = 0.75
+ARROW_SCALE = 8
 
 
 @dataclass(frozen=True)
@@ -47,11 +56,21 @@ def configure_style() -> None:
             "axes.facecolor": "white",
             "font.family": "DejaVu Sans",
             "font.size": 10,
-            "axes.titlesize": 13,
-            "axes.titleweight": "semibold",
-            "axes.labelsize": 10,
+            "axes.titlesize": 11,
+            "axes.titleweight": "normal",
+            "axes.labelsize": 9,
+            "axes.edgecolor": INK,
+            "axes.linewidth": 0.8,
+            "xtick.labelsize": 8,
+            "ytick.labelsize": 8,
+            "grid.color": "#d8dde3",
+            "grid.linewidth": 0.45,
+            "grid.linestyle": "--",
+            "legend.fontsize": 8,
+            "legend.frameon": False,
             "mathtext.fontset": "dejavusans",
-            "savefig.dpi": 220,
+            "savefig.dpi": 300,
+            "svg.fonttype": "none",
         }
     )
 
@@ -63,9 +82,10 @@ def file_name(number: str) -> str:
 
 def save(fig: plt.Figure, path: Path) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
+    fig.savefig(path, dpi=300, bbox_inches="tight", facecolor="white")
+    fig.savefig(path.with_suffix(".svg"), bbox_inches="tight", facecolor="white")
     plt.close(fig)
-    return "generated schematic/chart"
+    return "generated schematic/chart; editable SVG saved"
 
 
 def copy_image(src: Path) -> Callable[[Path], str]:
@@ -128,21 +148,21 @@ def read_triplet_summary() -> tuple[dict[str, dict[str, float | str]], dict[str,
     return cases, params
 
 
-def arrow(ax: plt.Axes, start: tuple[float, float], end: tuple[float, float], color: str = GRAY, lw: float = 1.4, **kwargs) -> None:
+def arrow(ax: plt.Axes, start: tuple[float, float], end: tuple[float, float], color: str = GRAY, lw: float = DIM_LW, **kwargs) -> None:
     ax.annotate(
         "",
         xy=end,
         xytext=start,
-        arrowprops=dict(arrowstyle="->", color=color, lw=lw, shrinkA=0, shrinkB=0, mutation_scale=12, **kwargs),
+        arrowprops=dict(arrowstyle="->", color=color, lw=lw, shrinkA=0, shrinkB=0, mutation_scale=ARROW_SCALE, **kwargs),
     )
 
 
-def double_arrow(ax: plt.Axes, start: tuple[float, float], end: tuple[float, float], color: str = GRAY, lw: float = 1.2) -> None:
+def double_arrow(ax: plt.Axes, start: tuple[float, float], end: tuple[float, float], color: str = GRAY, lw: float = DIM_LW) -> None:
     ax.annotate(
         "",
         xy=end,
         xytext=start,
-        arrowprops=dict(arrowstyle="<->", color=color, lw=lw, shrinkA=0, shrinkB=0, mutation_scale=12),
+        arrowprops=dict(arrowstyle="<->", color=color, lw=lw, shrinkA=0, shrinkB=0, mutation_scale=ARROW_SCALE),
     )
 
 
@@ -154,21 +174,20 @@ def setup_plain(ax: plt.Axes, xlim: tuple[float, float] = (0, 10), ylim: tuple[f
 
 
 def box(ax: plt.Axes, xy: tuple[float, float], width: float, height: float, text: str, fc: str = "white", ec: str = BLUE) -> None:
-    patch = patches.FancyBboxPatch(
+    patch = patches.Rectangle(
         xy,
         width,
         height,
-        boxstyle="round,pad=0.08,rounding_size=0.08",
         facecolor=fc,
         edgecolor=ec,
-        linewidth=1.3,
+        linewidth=OBJECT_LW,
     )
     ax.add_patch(patch)
-    ax.text(xy[0] + width / 2, xy[1] + height / 2, text, ha="center", va="center", fontsize=9)
+    ax.text(xy[0] + width / 2, xy[1] + height / 2, text, ha="center", va="center", fontsize=8.7)
 
 
 def ring_sector(ax: plt.Axes, center: tuple[float, float] = (0, 0), r_outer: float = 3.0, r_inner: float = 2.5,
-                theta1: float = 210, theta2: float = 330, fc: str = "#f6f8fa", ec: str = GRAY, lw: float = 1.3) -> None:
+                theta1: float = 210, theta2: float = 330, fc: str = LIGHT_GRAY, ec: str = INK, lw: float = OBJECT_LW) -> None:
     wedge = patches.Wedge(center, r_outer, theta1, theta2, width=r_outer - r_inner, facecolor=fc, edgecolor=ec, linewidth=lw)
     ax.add_patch(wedge)
 
@@ -181,14 +200,14 @@ def outer_arc_points(theta1: float, theta2: float, radius: float = 3.0, center: 
 def add_ring_mesh(ax: plt.Axes, center: tuple[float, float] = (0, 0), theta1: float = 210, theta2: float = 330) -> None:
     for r in np.linspace(2.5, 3.0, 5):
         x, y = outer_arc_points(theta1, theta2, r, center, 100)
-        ax.plot(x, y, color=MID_GRAY, lw=0.55)
+        ax.plot(x, y, color=MID_GRAY, lw=THIN_LW)
     for th in np.linspace(theta1, theta2, 13):
         rad = math.radians(th)
         ax.plot(
             [center[0] + 2.5 * math.cos(rad), center[0] + 3.0 * math.cos(rad)],
             [center[1] + 2.5 * math.sin(rad), center[1] + 3.0 * math.sin(rad)],
             color=MID_GRAY,
-            lw=0.55,
+            lw=THIN_LW,
         )
 
 
@@ -196,15 +215,15 @@ def figure_2_1(dst: Path) -> str:
     fig, ax = plt.subplots(figsize=(7.2, 4.8))
     setup_plain(ax, (-0.6, 7.2), (-0.4, 5.5))
     pts = np.array([[1.0, 0.8], [2.2, 0.25], [4.7, 0.55], [6.2, 1.7], [5.75, 3.7], [4.1, 4.8], [1.65, 4.25], [0.45, 2.5]])
-    ax.add_patch(patches.Polygon(pts, closed=True, facecolor="#f7fbff", edgecolor=GRAY, lw=1.4))
-    ax.plot(pts[[6, 7, 0], 0], pts[[6, 7, 0], 1], color=BLUE, lw=3)
-    ax.plot(pts[[2, 3, 4], 0], pts[[2, 3, 4], 1], color=RED, lw=3)
+    ax.add_patch(patches.Polygon(pts, closed=True, facecolor=LIGHT_GRAY, edgecolor=INK, lw=OBJECT_LW))
+    ax.plot(pts[[6, 7, 0], 0], pts[[6, 7, 0], 1], color=BLUE, lw=ACCENT_LW)
+    ax.plot(pts[[2, 3, 4], 0], pts[[2, 3, 4], 1], color=RED, lw=ACCENT_LW)
     ax.text(3.3, 2.55, "Ω", fontsize=24, ha="center", color=GRAY)
     ax.text(0.75, 3.65, "Γᵤ", fontsize=15, color=BLUE, fontweight="bold")
     ax.text(6.08, 3.0, "Γₜ", fontsize=15, color=RED, fontweight="bold")
     for p in [(0.9, 1.05), (0.75, 1.85), (0.85, 2.65), (1.15, 3.45)]:
-        ax.plot([p[0] - 0.25, p[0] + 0.25], [p[1] - 0.25, p[1] + 0.25], color=BLUE, lw=1)
-        ax.plot([p[0] - 0.25, p[0] + 0.25], [p[1] + 0.25, p[1] - 0.25], color=BLUE, lw=1)
+        ax.plot([p[0] - 0.25, p[0] + 0.25], [p[1] - 0.25, p[1] + 0.25], color=BLUE, lw=DIM_LW)
+        ax.plot([p[0] - 0.25, p[0] + 0.25], [p[1] + 0.25, p[1] - 0.25], color=BLUE, lw=DIM_LW)
     for start, end in [((5.85, 1.6), (6.55, 1.35)), ((6.0, 2.25), (6.75, 2.25)), ((5.75, 3.0), (6.45, 3.25))]:
         arrow(ax, start, end, RED)
     ax.text(5.25, 0.8, "поверхностная\nнагрузка t", color=RED, ha="center", fontsize=9)
@@ -216,7 +235,7 @@ def figure_2_2(dst: Path) -> str:
     fig, ax = plt.subplots(figsize=(7, 4.8))
     setup_plain(ax, (-0.6, 7.0), (-0.5, 5.1))
     pts = np.array([[1.1, 0.8], [5.6, 0.55], [6.0, 3.8], [0.75, 4.2]])
-    ax.add_patch(patches.Polygon(pts, closed=True, facecolor="#f8fbff", edgecolor=BLUE, lw=1.6))
+    ax.add_patch(patches.Polygon(pts, closed=True, facecolor=LIGHT_GRAY, edgecolor=INK, lw=OBJECT_LW))
     for i, (x, y) in enumerate(pts, start=1):
         ax.scatter(x, y, s=50, color=BLUE, zorder=3)
         ax.text(x + 0.12, y + 0.12, f"{i}", color=BLUE, fontweight="bold")
@@ -236,7 +255,7 @@ def figure_2_3(dst: Path) -> str:
     fig, ax = plt.subplots(figsize=(6.2, 5.2))
     setup_plain(ax, (-1.9, 2.1), (-1.7, 1.9))
     square = np.array([[-1, -1], [1, -1], [1, 1], [-1, 1]])
-    ax.add_patch(patches.Polygon(square, closed=True, facecolor="#f9fbff", edgecolor=BLUE, lw=1.7))
+    ax.add_patch(patches.Polygon(square, closed=True, facecolor=LIGHT_GRAY, edgecolor=INK, lw=OBJECT_LW))
     ax.axhline(0, color=GRAY, lw=0.9)
     ax.axvline(0, color=GRAY, lw=0.9)
     arrow(ax, (-1.5, 0), (1.55, 0), GRAY, lw=1)
@@ -251,7 +270,7 @@ def figure_2_3(dst: Path) -> str:
     gp = 1 / math.sqrt(3)
     for x in [-gp, gp]:
         for y in [-gp, gp]:
-            ax.scatter(x, y, marker="x", s=55, color=RED, lw=1.5)
+            ax.scatter(x, y, marker="x", s=45, color=RED, lw=1.0)
     ax.text(0, -1.45, "локальный квадрат изопараметрического элемента Q4", ha="center", fontsize=9, color=GRAY)
     return save(fig, dst)
 
@@ -294,18 +313,18 @@ def figure_2_5(dst: Path) -> str:
 def figure_2_6(dst: Path) -> str:
     fig, ax = plt.subplots(figsize=(5.6, 5.2))
     setup_plain(ax, (-1.55, 1.75), (-1.45, 1.65))
-    ax.add_patch(patches.Rectangle((-1, -1), 2, 2, facecolor="#f9fbff", edgecolor=BLUE, lw=1.6))
-    ax.axhline(0, color=MID_GRAY, lw=0.8)
-    ax.axvline(0, color=MID_GRAY, lw=0.8)
+    ax.add_patch(patches.Rectangle((-1, -1), 2, 2, facecolor=LIGHT_GRAY, edgecolor=INK, lw=OBJECT_LW))
+    ax.axhline(0, color=MID_GRAY, lw=THIN_LW)
+    ax.axvline(0, color=MID_GRAY, lw=THIN_LW)
     gp = 1 / math.sqrt(3)
     for x in [-gp, gp]:
-        ax.axvline(x, color="#dde3ea", lw=0.8, ls="--")
+        ax.axvline(x, color="#dde3ea", lw=THIN_LW, ls="--")
         ax.text(x, -1.22, "±1/√3" if x > 0 else "-1/√3", ha="center", fontsize=8, color=GRAY)
     for y in [-gp, gp]:
-        ax.axhline(y, color="#dde3ea", lw=0.8, ls="--")
+        ax.axhline(y, color="#dde3ea", lw=THIN_LW, ls="--")
     for x in [-gp, gp]:
         for y in [-gp, gp]:
-            ax.scatter(x, y, marker="x", s=80, color=RED, lw=2)
+            ax.scatter(x, y, marker="x", s=55, color=RED, lw=1.0)
     arrow(ax, (-1.25, 0), (1.35, 0), GRAY)
     arrow(ax, (0, -1.25), (0, 1.35), GRAY)
     ax.text(1.43, -0.05, "ξ", fontsize=13)
@@ -365,12 +384,12 @@ def figure_2_9(dst: Path) -> str:
     fig, ax = plt.subplots(figsize=(7.4, 4.8))
     setup_plain(ax, (-0.5, 8.2), (-0.4, 5.2))
     pts = np.array([[0.8, 0.8], [4.4, 0.6], [4.8, 3.8], [0.6, 4.2]])
-    ax.add_patch(patches.Polygon(pts, closed=True, facecolor="#f9fbff", edgecolor=BLUE, lw=1.5))
+    ax.add_patch(patches.Polygon(pts, closed=True, facecolor=LIGHT_GRAY, edgecolor=INK, lw=OBJECT_LW))
     for x, y in pts:
         ax.scatter(x, y, s=42, color=BLUE)
     gp = np.array([[2.0, 1.7], [3.35, 1.6], [3.45, 2.85], [2.05, 3.0]])
     for i, (x, y) in enumerate(gp, 1):
-        ax.scatter(x, y, marker="x", s=80, color=RED, lw=2)
+        ax.scatter(x, y, marker="x", s=55, color=RED, lw=1.0)
         ax.text(x + 0.1, y + 0.1, f"σᵍ{i}", color=RED, fontsize=9)
     box(ax, (5.55, 2.5), 2.1, 0.9, "σ в точках\nГаусса", "#fff8f8", RED)
     box(ax, (5.55, 1.0), 2.1, 0.9, "экстраполяция\nи усреднение", "#f8fbff", BLUE)
@@ -410,7 +429,7 @@ def figure_2_12(dst: Path) -> str:
     add_ring_mesh(ax, (0, 0), 205, 335)
     for theta, label, dx in [(260, "край пятна\nконтакта", -1.0), (280, "край пятна\nконтакта", 1.0), (270, "зона\nмаксимального\nсжатия", 0.0)]:
         x, y = outer_arc_points(theta - 3, theta + 3, 3.02, (0, 0), 20)
-        ax.plot(x, y, color=RED if theta == 270 else ORANGE, lw=5, solid_capstyle="round")
+        ax.plot(x, y, color=RED if theta == 270 else ORANGE, lw=ACCENT_LW, solid_capstyle="butt")
         rad = math.radians(theta)
         lx, ly = 3.32 * math.cos(rad) + dx, 3.32 * math.sin(rad) - 0.2
         ax.text(lx, ly, label, ha="center", fontsize=8, color=RED if theta == 270 else ORANGE)
@@ -426,13 +445,62 @@ def figure_3_3(dst: Path) -> str:
     ring_sector(ax, (0, 0), 3.0, 2.5, 205, 335, "#f8fbff")
     add_ring_mesh(ax, (0, 0), 205, 335)
     x, y = outer_arc_points(225, 315, 3.02, (0, 0), 100)
-    ax.plot(x, y, color=BLUE, lw=4, label="потенциальная область")
+    ax.plot(x, y, color=BLUE, lw=ACCENT_LW, label="потенциальная область")
     x, y = outer_arc_points(260, 280, 3.08, (0, 0), 60)
-    ax.plot(x, y, color=RED, lw=5, solid_capstyle="round", label="активная область")
-    ax.plot([-3.4, 3.4], [-3.05, -3.05], color=GRAY, lw=1.2)
+    ax.plot(x, y, color=RED, lw=ACCENT_LW, solid_capstyle="butt", label="активная область")
+    ax.plot([-3.4, 3.4], [-3.05, -3.05], color=INK, lw=OBJECT_LW)
     ax.text(-1.7, -2.45, "Γ_c^pot", color=BLUE, fontsize=12)
     ax.text(0.45, -3.0, "Γ_c^act", color=RED, fontsize=12)
     ax.legend(loc="upper center", ncol=2, frameon=False)
+    return save(fig, dst)
+
+
+def figure_3_1(dst: Path) -> str:
+    fig, ax = plt.subplots(figsize=(8.4, 4.8))
+    setup_plain(ax, (-4.35, 4.35), (-3.9, 0.95))
+    ring_sector(ax, (0, 0), 3.0, 2.5, 240, 300)
+    add_ring_mesh(ax, (0, 0), 240, 300)
+    plane_y = -3.35
+    outer_low_y = -3.0
+    ax.plot([-3.85, 3.85], [plane_y, plane_y], color=INK, lw=OBJECT_LW)
+    for x0 in np.arange(-3.75, 3.9, 0.35):
+        ax.plot([x0 - 0.18, x0 + 0.18], [plane_y - 0.16, plane_y], color="#8a8a8a", lw=THIN_LW)
+    ax.text(2.55, -3.68, "жесткая опорная плоскость", color=GRAY, fontsize=9, ha="center")
+
+    for angle in (240, 300):
+        ax.plot(
+            [0, 3.32 * math.cos(math.radians(angle))],
+            [0, 3.32 * math.sin(math.radians(angle))],
+            color="#9da3aa",
+            lw=DIM_LW,
+            ls=(0, (4, 4)),
+        )
+    ax.scatter([0], [0], s=12, color=INK, zorder=4)
+    ax.text(0.08, 0.08, "O", ha="left", va="bottom", fontsize=10, color=INK)
+
+    arrow(ax, (0, 0), (2.5 * math.cos(math.radians(248)), 2.5 * math.sin(math.radians(248))), BLUE)
+    arrow(ax, (0, 0), (3.0 * math.cos(math.radians(292)), 3.0 * math.sin(math.radians(292))), BLUE)
+    ax.annotate("Rᵢ = 250 мм", xy=(2.5 * math.cos(math.radians(248)), 2.5 * math.sin(math.radians(248))), xytext=(-3.55, -1.15),
+                ha="left", va="center", fontsize=9, color=BLUE,
+                arrowprops=dict(arrowstyle="-", color=BLUE, lw=DIM_LW, shrinkA=4, shrinkB=4))
+    ax.annotate("Rₒ = 300 мм", xy=(3.0 * math.cos(math.radians(300)), 3.0 * math.sin(math.radians(300))), xytext=(2.78, -0.66),
+                ha="left", va="center", fontsize=9, color=BLUE,
+                arrowprops=dict(arrowstyle="-", color=BLUE, lw=DIM_LW, shrinkA=4, shrinkB=4))
+
+    ax.add_patch(patches.Arc((0, 0), 1.35, 1.35, theta1=240, theta2=300, color=BLUE, lw=DIM_LW))
+    ax.text(0, -0.84, "φ = 60°", color=BLUE, fontsize=10, ha="center", va="center")
+
+    x_gap = 1.05
+    double_arrow(ax, (x_gap, plane_y), (x_gap, outer_low_y), RED)
+    ax.plot([0.18, x_gap + 0.14], [outer_low_y, outer_low_y], color=RED, lw=THIN_LW, ls=(0, (3, 3)))
+    ax.plot([0.18, x_gap + 0.14], [plane_y, plane_y], color=RED, lw=THIN_LW, ls=(0, (3, 3)))
+    ax.text(1.23, -3.18, "g₀ = 2 мм", color=RED, fontsize=9, va="center", ha="left")
+    for x in (-0.42, 0.0, 0.42):
+        arrow(ax, (x, -2.31), (x, -2.78), RED)
+    ax.annotate("заданное\nперемещение u_y", xy=(0.42, -2.47), xytext=(2.32, -2.52),
+                ha="left", va="center", fontsize=9, color=RED,
+                arrowprops=dict(arrowstyle="-", color=RED, lw=DIM_LW, shrinkA=4, shrinkB=4))
+    ax.text(-3.2, 0.34, "кольцевой сектор шины", ha="left", va="center", fontsize=9, color=GRAY)
     return save(fig, dst)
 
 
@@ -441,11 +509,11 @@ def figure_3_4(dst: Path) -> str:
     setup_plain(ax, (0, 10), (0, 5.8))
     X = np.array([[1.0, 1.1], [3.4, 1.0], [3.2, 3.4], [0.8, 3.2]])
     x = np.array([[6.0, 0.9], [8.75, 1.25], [8.15, 4.0], [5.65, 3.25]])
-    ax.add_patch(patches.Polygon(X, closed=True, facecolor="#f8fbff", edgecolor=BLUE, lw=1.5))
-    ax.add_patch(patches.Polygon(x, closed=True, facecolor="#fff8f8", edgecolor=RED, lw=1.5))
+    ax.add_patch(patches.Polygon(X, closed=True, facecolor=LIGHT_GRAY, edgecolor=BLUE, lw=OBJECT_LW))
+    ax.add_patch(patches.Polygon(x, closed=True, facecolor="#fffafa", edgecolor=RED, lw=OBJECT_LW))
     ax.text(2.1, 4.0, "начальная\nконфигурация X", ha="center", color=BLUE)
     ax.text(7.15, 4.7, "текущая\nконфигурация x", ha="center", color=RED)
-    arrow(ax, (3.7, 2.35), (5.35, 2.35), GRAY, lw=1.6)
+    arrow(ax, (3.7, 2.35), (5.35, 2.35), GRAY, lw=OBJECT_LW)
     ax.text(4.5, 2.65, "x = X + u", ha="center", fontsize=11)
     arrow(ax, (1.8, 1.7), (2.55, 2.55), BLUE)
     arrow(ax, (6.55, 1.7), (7.45, 2.95), RED)
@@ -458,15 +526,15 @@ def figure_3_4(dst: Path) -> str:
 def figure_3_5(dst: Path) -> str:
     fig, ax = plt.subplots(figsize=(7.2, 4.6))
     setup_plain(ax, (-1, 8), (-0.5, 5))
-    ax.plot([0.3, 7.5], [0.9, 0.9], color=GRAY, lw=1.6)
+    ax.plot([0.3, 7.5], [0.9, 0.9], color=INK, lw=OBJECT_LW)
     ax.text(6.1, 0.55, "жесткая плоскость", color=GRAY, fontsize=9)
     xs = np.linspace(1.1, 6.8, 120)
     ys = 2.35 + 0.25 * np.sin((xs - 1.1) * np.pi / 5.7)
-    ax.plot(xs, ys, color=BLUE, lw=2.0)
+    ax.plot(xs, ys, color=BLUE, lw=ACCENT_LW)
     xp = 4.15
     yp = float(2.35 + 0.25 * np.sin((xp - 1.1) * np.pi / 5.7))
     ax.scatter(xp, yp, color=RED, s=44)
-    double_arrow(ax, (xp, 0.9), (xp, yp), RED, lw=1.4)
+    double_arrow(ax, (xp, 0.9), (xp, yp), RED)
     ax.text(xp + 0.15, (yp + 0.9) / 2, "gₙ", color=RED, fontsize=13)
     arrow(ax, (xp - 1.0, 0.9), (xp - 1.0, 1.85), GRAY)
     ax.text(xp - 0.8, 1.55, "n", fontsize=12, color=GRAY)
@@ -479,11 +547,11 @@ def figure_3_6(dst: Path) -> str:
     states = [("отрыв", "gₙ > 0\npₙ = 0", 2.5, False), ("касание", "gₙ = 0\npₙ = 0", 1.1, False), ("активный контакт", "gₙ = 0\npₙ > 0", 1.1, True)]
     for ax, (title, text, ybody, pressure) in zip(axes, states):
         setup_plain(ax, (0, 4), (0, 4))
-        ax.plot([0.5, 3.5], [1, 1], color=GRAY, lw=1.5)
-        ax.plot([0.8, 3.2], [ybody, ybody], color=BLUE, lw=2.2)
+        ax.plot([0.5, 3.5], [1, 1], color=INK, lw=OBJECT_LW)
+        ax.plot([0.8, 3.2], [ybody, ybody], color=BLUE, lw=ACCENT_LW)
         ax.scatter(2.0, ybody, color=RED, s=35)
         if pressure:
-            arrow(ax, (2.0, 0.95), (2.0, 1.75), RED, lw=1.5)
+            arrow(ax, (2.0, 0.95), (2.0, 1.75), RED, lw=OBJECT_LW)
             ax.text(2.15, 1.45, "pₙ", color=RED)
         elif ybody > 1.2:
             double_arrow(ax, (2.0, 1.0), (2.0, ybody), RED)
@@ -500,9 +568,19 @@ def figure_3_7(dst: Path) -> str:
     add_ring_mesh(ax, (0, 0), 210, 330)
     for a1, a2 in zip(np.linspace(230, 310, 9)[:-1], np.linspace(230, 310, 9)[1:]):
         x, y = outer_arc_points(a1, a2, 3.05, (0, 0), 8)
-        ax.plot(x, y, color=RED, lw=2.6, solid_capstyle="round")
-        mid = math.radians((a1 + a2) / 2)
-        ax.text(3.28 * math.cos(mid), 3.28 * math.sin(mid), "facet", fontsize=7, rotation=(a1 + a2) / 2 - 270, ha="center")
+        ax.plot(x, y, color=RED, lw=ACCENT_LW, solid_capstyle="butt")
+    mid = math.radians(245)
+    label_point = (3.05 * math.cos(mid), 3.05 * math.sin(mid))
+    ax.annotate(
+        "контактная фасетка",
+        xy=label_point,
+        xytext=(-2.65, -2.82),
+        ha="center",
+        fontsize=9,
+        arrowprops=dict(arrowstyle="->", color=RED, lw=1.1),
+        color=RED,
+    )
+    ax.text(0, -3.12, "потенциальная контактная граница Γc", ha="center", fontsize=9, color=BLUE)
     ax.text(0, 0.35, "внешний контур представлен набором контактных фасеток", ha="center", fontsize=10, color=GRAY)
     return save(fig, dst)
 
@@ -510,14 +588,14 @@ def figure_3_7(dst: Path) -> str:
 def figure_3_8(dst: Path) -> str:
     fig, ax = plt.subplots(figsize=(7.6, 4.4))
     setup_plain(ax, (0, 8), (0, 4.8))
-    ax.plot([0.7, 7.4], [0.8, 0.8], color=GRAY, lw=1.5)
+    ax.plot([0.7, 7.4], [0.8, 0.8], color=INK, lw=OBJECT_LW)
     ax.text(6.0, 0.45, "жесткая плоскость", color=GRAY, fontsize=9)
     p1, p2 = np.array([1.4, 2.35]), np.array([6.6, 2.0])
-    ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color=BLUE, lw=2.4)
+    ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color=BLUE, lw=ACCENT_LW)
     ax.scatter([p1[0], p2[0]], [p1[1], p2[1]], color=BLUE, s=35)
     for t, active in [(0.28, False), (0.72, True)]:
         p = p1 * (1 - t) + p2 * t
-        ax.scatter(p[0], p[1], marker="x", s=85, color=RED, lw=2)
+        ax.scatter(p[0], p[1], marker="x", s=55, color=RED, lw=1.0)
         double_arrow(ax, (p[0], 0.8), (p[0], p[1]), RED, lw=1.2)
         ax.text(p[0] + 0.12, (p[1] + 0.8) / 2, "gₙ", color=RED, fontsize=10)
         ax.text(p[0], p[1] + 0.35, "активна" if active else "неактивна", ha="center", fontsize=8, color=GREEN if active else GRAY)
@@ -552,9 +630,9 @@ def figure_3_10(dst: Path) -> str:
     ax.grid(True, ls="--", lw=0.5, color="#d4dae2")
     x = np.array([0, 1.3, 2.6, 3.9, 5.2, 6.5, 7.8, 9.1])
     y = np.array([0, 0.15, 0.30, 0.45, 0.60, 0.75, 0.88, 1.0])
-    ax.plot(x[:5], y[:5], marker="o", color=BLUE, lw=1.7, label="успешные шаги")
-    ax.plot([5.2, 7.8], [0.60, 0.88], color=RED, lw=1.5, ls="--", label="неудачный крупный шаг")
-    ax.plot([5.2, 6.5, 7.8, 9.1], [0.60, 0.75, 0.88, 1.0], marker="o", color=GREEN, lw=1.7, label="деление шага")
+    ax.plot(x[:5], y[:5], marker="o", color=BLUE, lw=OBJECT_LW, label="успешные шаги")
+    ax.plot([5.2, 7.8], [0.60, 0.88], color=RED, lw=OBJECT_LW, ls="--", label="неудачный крупный шаг")
+    ax.plot([5.2, 6.5, 7.8, 9.1], [0.60, 0.75, 0.88, 1.0], marker="o", color=GREEN, lw=OBJECT_LW, label="деление шага")
     ax.annotate("шаг делится", xy=(6.5, 0.75), xytext=(6.0, 0.45), arrowprops=dict(arrowstyle="->", color=RED), color=RED)
     ax.legend(frameon=True, loc="lower right")
     return save(fig, dst)
@@ -610,9 +688,9 @@ def figure_4_2(dst: Path) -> str:
 def figure_4_3(dst: Path) -> str:
     fig, ax = plt.subplots(figsize=(9, 4.8))
     setup_plain(ax, (0, 12), (0, 6))
-    ax.add_patch(patches.Rectangle((0.6, 0.7), 10.8, 4.7, fill=False, edgecolor=GREEN, lw=1.5))
+    ax.add_patch(patches.Rectangle((0.6, 0.7), 10.8, 4.7, fill=False, edgecolor=GREEN, lw=OBJECT_LW))
     ax.text(1.0, 5.15, "внешний цикл AL: m = 0, 1, ...", color=GREEN, fontsize=11, fontweight="bold")
-    ax.add_patch(patches.Rectangle((2.0, 1.5), 7.8, 2.7, fill=False, edgecolor=BLUE, lw=1.4, ls="--"))
+    ax.add_patch(patches.Rectangle((2.0, 1.5), 7.8, 2.7, fill=False, edgecolor=BLUE, lw=OBJECT_LW, ls="--"))
     ax.text(2.35, 3.9, "внутренний цикл Ньютона: k = 0, 1, ...", color=BLUE, fontsize=10)
     box(ax, (2.5, 2.4), 1.7, 0.8, "R,K", "#f8fbff")
     box(ax, (5.0, 2.4), 1.7, 0.8, "Δu", "#fffaf2", ORANGE)
@@ -658,7 +736,7 @@ def figure_4_6(dst: Path) -> str:
     for rows, label, color in [(penalty, "штрафной метод", RED), (al, "расширенный Лагранж", GREEN)]:
         x = [float(r["relative_angle_deg"]) for r in rows]
         y = [float(r["average_pressure_mpa"]) for r in rows]
-        ax.plot(x, y, lw=1.8, color=color, label=label)
+        ax.plot(x, y, lw=OBJECT_LW, color=color, label=label)
     ax.set_xlabel("Относительный угол по внешней дуге, град")
     ax.set_ylabel("Среднее контактное давление, МПа")
     ax.grid(True, ls="--", lw=0.5, color="#d4dae2")
@@ -714,7 +792,7 @@ def draw_active_arc_panel(ax: plt.Axes, rows: list[dict[str, float | str]], titl
     ring_sector(ax, (0, 0), 3.0, 2.5, 205, 335, "#f8fbff")
     add_ring_mesh(ax, (0, 0), 205, 335)
     x, y = outer_arc_points(225, 315, 3.04, (0, 0), 140)
-    ax.plot(x, y, color=BLUE, lw=2.8, alpha=0.85)
+    ax.plot(x, y, color=BLUE, lw=ACCENT_LW, alpha=0.85)
     angles = np.array([float(r["relative_angle_deg"]) for r in rows])
     active = np.array([float(r.get("active_length", 0.0)) > 0.0 or float(r.get("active", 0.0)) > 0.0 for r in rows])
     step = float(np.median(np.diff(np.sort(angles)))) if len(angles) > 1 else 1.0
@@ -722,7 +800,7 @@ def draw_active_arc_panel(ax: plt.Axes, rows: list[dict[str, float | str]], titl
         if not is_active:
             continue
         x, y = outer_arc_points(270 + angle - step / 2, 270 + angle + step / 2, 3.11, (0, 0), 8)
-        ax.plot(x, y, color=RED, lw=5, solid_capstyle="round")
+        ax.plot(x, y, color=RED, lw=ACCENT_LW, solid_capstyle="butt")
     ax.plot([-3.4, 3.4], [-3.05, -3.05], color=GRAY, lw=1.1)
     active_length = sum(float(r.get("active_length", 0.0)) for r in rows)
     ax.text(0, 0.48, title, ha="center", fontsize=11, color=GRAY, fontweight="bold")
@@ -749,11 +827,11 @@ def figure_5_1(dst: Path) -> str:
     fig, ax = plt.subplots(figsize=(9, 4.8))
     setup_plain(ax, (-4.2, 7.2), (-3.3, 1.3))
     ring_sector(ax, (-2.0, 0.0), 2.1, 1.65, 215, 325, "#f8fbff")
-    ax.plot([-4.1, 0.1], [-2.25, -2.25], color=GRAY, lw=1.4)
+    ax.plot([-4.1, 0.1], [-2.25, -2.25], color=INK, lw=OBJECT_LW)
     for x in np.linspace(-2.6, -1.4, 5):
         arrow(ax, (x, -2.3), (x, -1.85), RED)
     ax.text(-2.0, 0.75, "явный контакт:\nдавление найдено\nиз условий gₙ ≥ 0", ha="center", fontsize=9)
-    arrow(ax, (0.5, -1.0), (2.0, -1.0), GRAY, lw=1.6)
+    arrow(ax, (0.5, -1.0), (2.0, -1.0), GRAY, lw=OBJECT_LW)
     ax.text(1.25, -0.65, "замена", ha="center", fontsize=10)
     ring_sector(ax, (4.1, 0.0), 2.1, 1.65, 215, 325, "#f8fbff")
     for a in np.linspace(260, 280, 7):
@@ -778,7 +856,7 @@ def figure_5_14(dst: Path) -> str:
     parabola = np.maximum(0.0, p0 * (1.0 - (xs / half_width) ** 2))
     fig, ax = plt.subplots(figsize=(7.4, 4.6))
     ax.plot(x, p, "o", color=GREEN, ms=4, label="давление AL")
-    ax.plot(xs, parabola, color=RED, lw=2.0, label="параболическая аппроксимация")
+    ax.plot(xs, parabola, color=RED, lw=OBJECT_LW, label="параболическая аппроксимация")
     ax.axvline(-half_width, color=GRAY, ls="--", lw=0.9)
     ax.axvline(half_width, color=GRAY, ls="--", lw=0.9)
     ax.text(0, p0 * 1.04, "p₀", ha="center", color=RED)
@@ -792,7 +870,7 @@ def figure_5_14(dst: Path) -> str:
 
 def figure_5_15(dst: Path) -> str:
     fig, ax = plt.subplots(figsize=(7.8, 4.8))
-    setup_plain(ax, (-3.8, 3.8), (-3.35, 0.9))
+    setup_plain(ax, (-3.8, 3.8), (-3.75, 0.9))
     ring_sector(ax, (0, 0), 3.0, 2.5, 205, 335, "#f8fbff")
     add_ring_mesh(ax, (0, 0), 205, 335)
     angles = np.linspace(260, 280, 11)
@@ -801,8 +879,8 @@ def figure_5_15(dst: Path) -> str:
         rad = math.radians(a)
         start = (3.25 * math.cos(rad), 3.25 * math.sin(rad))
         end = ((3.25 - 0.25 - 0.35 * weight) * math.cos(rad), (3.25 - 0.25 - 0.35 * weight) * math.sin(rad))
-        arrow(ax, start, end, RED, lw=1.0 + weight)
-    ax.text(0, -3.2, "p(s) = p₀(1 - (s/a)²), |s| ≤ a", ha="center", color=RED, fontsize=11)
+        arrow(ax, start, end, RED, lw=DIM_LW + 0.45 * weight)
+    ax.text(0, -3.52, "p(s) = p₀(1 - (s/a)²), |s| ≤ a", ha="center", color=RED, fontsize=10)
     ax.text(0, 0.35, "нагрузка прикладывается к заранее выбранной дуге", ha="center", fontsize=10, color=GRAY)
     return save(fig, dst)
 
@@ -829,14 +907,14 @@ def figure_5_17(dst: Path) -> str:
         [float(r["relative_angle_deg"]) for r in al],
         [float(r["integrated_normal_force_kn"]) for r in al],
         color=GREEN,
-        lw=1.8,
+        lw=OBJECT_LW,
         label="контактная сила AL",
     )
     ax.plot(
         [float(r["relative_angle_deg"]) for r in al],
         equivalent_force_kn,
         color=RED,
-        lw=1.8,
+        lw=OBJECT_LW,
         ls="--",
         label="эквивалентная нагрузка",
     )
@@ -854,7 +932,7 @@ def figure_5_20(dst: Path) -> str:
     for ax, component, title in zip(axes, ["sigma_rr_mpa", "sigma_tt_mpa"], [r"$\sigma_{rr}$", r"$\sigma_{\theta\theta}$"]):
         for rows, label, color, ls in [(al, "явный контакт AL", GREEN, "-"), (sur, "бесконтактная нагрузка", RED, "--")]:
             outer = [r for r in rows if str(r["contour"]) == "outer"]
-            ax.plot([float(r["relative_angle_deg"]) for r in outer], [float(r[component]) for r in outer], color=color, ls=ls, lw=1.5, label=label)
+            ax.plot([float(r["relative_angle_deg"]) for r in outer], [float(r[component]) for r in outer], color=color, ls=ls, lw=OBJECT_LW, label=label)
         ax.set_title(title)
         ax.set_xlabel("Угол, град")
         ax.grid(True, ls="--", lw=0.5, color="#d4dae2")
@@ -870,7 +948,7 @@ def figure_5_21(dst: Path) -> str:
     radius_key = next(k for k in al[0].keys() if str(k).startswith("radius_"))
     for ax, component, title in zip(axes, ["sigma_rr_mpa", "sigma_tt_mpa"], [r"$\sigma_{rr}$", r"$\sigma_{\theta\theta}$"]):
         for rows, label, color, ls in [(al, "явный контакт AL", GREEN, "-"), (sur, "бесконтактная нагрузка", RED, "--")]:
-            ax.plot([float(r[radius_key]) for r in rows], [float(r[component]) for r in rows], color=color, ls=ls, lw=1.5, label=label)
+            ax.plot([float(r[radius_key]) for r in rows], [float(r[component]) for r in rows], color=color, ls=ls, lw=OBJECT_LW, label=label)
         ax.set_title(title)
         ax.set_xlabel("Радиус, мм")
         ax.grid(True, ls="--", lw=0.5, color="#d4dae2")
@@ -896,7 +974,7 @@ def build_tasks() -> list[FigureTask]:
         FigureTask("2.10", "Преобразование компонентов напряжений из декартовой системы координат в полярную", figure_2_10),
         FigureTask("2.11", "Типовая конечно-элементная сетка поперечного сечения массивной шины с локальным сгущением в зоне контакта", copy_image(penalty / "computational_mesh.png")),
         FigureTask("2.12", "Характерные зоны концентрации напряжений в поперечном сечении шины", figure_2_12),
-        FigureTask("3.1", "Расчетная схема кольцевого сектора шины и жесткой опорной плоскости", copy_image(penalty / "case_overview.png")),
+        FigureTask("3.1", "Расчетная схема кольцевого сектора шины и жесткой опорной плоскости", figure_3_1),
         FigureTask("3.2", "Конечно-элементная сетка с локальным сгущением в зоне контакта", copy_image(penalty / "computational_mesh.png")),
         FigureTask("3.3", "Потенциальная и активная контактные области на внешнем контуре сектора", figure_3_3),
         FigureTask("3.4", "Переход от начальной конфигурации к текущей и смысл градиента деформации", figure_3_4),
@@ -969,17 +1047,19 @@ def extract_doc_context() -> list[tuple[str, list[str]]]:
 
 def write_manifest(tasks: list[FigureTask]) -> None:
     with (OUT / "manifest.csv").open("w", encoding="utf-8-sig", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["number", "file", "caption", "source"])
+        writer = csv.DictWriter(handle, fieldnames=["number", "file", "vector_file", "caption", "source"])
         writer.writeheader()
         writer.writerows(MANIFEST)
 
     with (OUT / "README.md").open("w", encoding="utf-8-sig") as handle:
         handle.write("# Пронумерованные рисунки для диплома\n\n")
         handle.write("Документ Word не изменялся. Расчетные рисунки взяты из `results/main_scale_hyperelastic_reference_triplet_coarse`, потому что эта папка соответствует численным значениям в тексте диплома.\n\n")
-        handle.write("| Рисунок | Файл | Источник |\n")
-        handle.write("| --- | --- | --- |\n")
+        handle.write("Сгенерированные SVG/PNG-схемы приведены к более строгому инженерному стилю: тонкие основные и выносные линии, прямоугольные блоки, умеренные цветовые акценты и штриховка опорных поверхностей по логике ЕСКД.\n\n")
+        handle.write("| Рисунок | PNG | SVG | Источник |\n")
+        handle.write("| --- | --- | --- | --- |\n")
         for item in MANIFEST:
-            handle.write(f"| {item['number']} | `{item['file']}` | {item['source']} |\n")
+            vector = f"`{item['vector_file']}`" if item["vector_file"] else "—"
+            handle.write(f"| {item['number']} | `{item['file']}` | {vector} | {item['source']} |\n")
 
     contexts = extract_doc_context()
     if contexts:
@@ -998,11 +1078,18 @@ def main() -> None:
     tasks = build_tasks()
     for task in tasks:
         dst = OUT / file_name(task.number)
+        svg_dst = dst.with_suffix(".svg")
+        if dst.exists():
+            dst.unlink()
+        if svg_dst.exists():
+            svg_dst.unlink()
         source = task.builder(dst)
+        vector_file = svg_dst.name if svg_dst.exists() else ""
         MANIFEST.append(
             {
                 "number": task.number,
                 "file": dst.name,
+                "vector_file": vector_file,
                 "caption": task.caption,
                 "source": source,
             }
