@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-05-19T01:26:17.069905</dc:date>
+    <dc:date>2026-05-19T19:30:44.411302</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -31,7 +31,7 @@ z
   <g id="axes_1">
    <g id="PathCollection_1">
     <defs>
-     <path id="m5343c6c313" d="M 0 3.316625 
+     <path id="mb83bfbc6a0" d="M 0 3.316625 
 C 0.879579 3.316625 1.723251 2.967164 2.345208 2.345208 
 C 2.967164 1.723251 3.316625 0.879579 3.316625 0 
 C 3.316625 -0.879579 2.967164 -1.723251 2.345208 -2.345208 
@@ -43,14 +43,14 @@ C -1.723251 2.967164 -0.879579 3.316625 0 3.316625
 z
 " style="stroke: #8f2f2f"/>
     </defs>
-    <g clip-path="url(#pbb004ee250)">
-     <use xlink:href="#m5343c6c313" x="237.096" y="114.403734" style="fill: #8f2f2f; stroke: #8f2f2f"/>
+    <g clip-path="url(#p2962ea98dc)">
+     <use xlink:href="#mb83bfbc6a0" x="237.096" y="114.403734" style="fill: #8f2f2f; stroke: #8f2f2f"/>
     </g>
    </g>
    <g id="line2d_1">
     <path d="M 65.232 190.224 
 L 386.64 190.224 
-" clip-path="url(#pbb004ee250)" style="fill: none; stroke: #202020; stroke-width: 1.05; stroke-linecap: square"/>
+" clip-path="url(#p2962ea98dc)" style="fill: none; stroke: #202020; stroke-width: 1.05; stroke-linecap: square"/>
    </g>
    <g id="line2d_2">
     <path d="M 100.944 125.496 
@@ -173,7 +173,7 @@ L 348.977345 124.613054
 L 351.115563 124.907027 
 L 353.253782 125.201411 
 L 355.392 125.496 
-" clip-path="url(#pbb004ee250)" style="fill: none; stroke: #2f5f8f; stroke-width: 1.55; stroke-linecap: square"/>
+" clip-path="url(#p2962ea98dc)" style="fill: none; stroke: #2f5f8f; stroke-width: 1.55; stroke-linecap: square"/>
    </g>
    <g id="text_1">
     <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #5c5c5c" x="324.144" y="205.848" transform="rotate(-0 324.144 205.848)">жесткая плоскость</text>
@@ -213,7 +213,7 @@ L 194.056 151.854525
   </g>
  </g>
  <defs>
-  <clipPath id="pbb004ee250">
+  <clipPath id="p2962ea98dc">
    <rect x="7.2" y="7.2" width="401.76" height="245.52"/>
   </clipPath>
  </defs>

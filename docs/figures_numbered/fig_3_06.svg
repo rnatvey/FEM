@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-05-19T01:26:17.180390</dc:date>
+    <dc:date>2026-05-19T19:30:44.518107</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -31,7 +31,7 @@ z
   <g id="axes_1">
    <g id="PathCollection_1">
     <defs>
-     <path id="mc2a54ae8fe" d="M 0 2.95804 
+     <path id="me243ee72b1" d="M 0 2.95804 
 C 0.784481 2.95804 1.536938 2.646362 2.09165 2.09165 
 C 2.646362 1.536938 2.95804 0.784481 2.95804 0 
 C 2.95804 -0.784481 2.646362 -1.536938 2.09165 -2.09165 
@@ -43,19 +43,19 @@ C -1.536938 2.646362 -0.784481 2.95804 0 2.95804
 z
 " style="stroke: #8f2f2f"/>
     </defs>
-    <g clip-path="url(#pc89eccf50b)">
-     <use xlink:href="#mc2a54ae8fe" x="108" y="82.8" style="fill: #8f2f2f; stroke: #8f2f2f"/>
+    <g clip-path="url(#p6c7b8ee984)">
+     <use xlink:href="#me243ee72b1" x="108" y="82.8" style="fill: #8f2f2f; stroke: #8f2f2f"/>
     </g>
    </g>
    <g id="line2d_1">
     <path d="M 32.4 158.4 
 L 183.6 158.4 
-" clip-path="url(#pc89eccf50b)" style="fill: none; stroke: #202020; stroke-width: 1.05; stroke-linecap: square"/>
+" clip-path="url(#p6c7b8ee984)" style="fill: none; stroke: #202020; stroke-width: 1.05; stroke-linecap: square"/>
    </g>
    <g id="line2d_2">
     <path d="M 47.52 82.8 
 L 168.48 82.8 
-" clip-path="url(#pc89eccf50b)" style="fill: none; stroke: #2f5f8f; stroke-width: 1.55; stroke-linecap: square"/>
+" clip-path="url(#p6c7b8ee984)" style="fill: none; stroke: #2f5f8f; stroke-width: 1.55; stroke-linecap: square"/>
    </g>
    <g id="patch_2">
     <path d="M 108 157.561475 
@@ -80,19 +80,19 @@ L 109.6 86.838525
   </g>
   <g id="axes_2">
    <g id="PathCollection_2">
-    <g clip-path="url(#p0fcb670711)">
-     <use xlink:href="#mc2a54ae8fe" x="320.4" y="153.36" style="fill: #8f2f2f; stroke: #8f2f2f"/>
+    <g clip-path="url(#pdf864f0b2e)">
+     <use xlink:href="#me243ee72b1" x="320.4" y="153.36" style="fill: #8f2f2f; stroke: #8f2f2f"/>
     </g>
    </g>
    <g id="line2d_3">
     <path d="M 244.8 158.4 
 L 396 158.4 
-" clip-path="url(#p0fcb670711)" style="fill: none; stroke: #202020; stroke-width: 1.05; stroke-linecap: square"/>
+" clip-path="url(#pdf864f0b2e)" style="fill: none; stroke: #202020; stroke-width: 1.05; stroke-linecap: square"/>
    </g>
    <g id="line2d_4">
     <path d="M 259.92 153.36 
 L 380.88 153.36 
-" clip-path="url(#p0fcb670711)" style="fill: none; stroke: #2f5f8f; stroke-width: 1.55; stroke-linecap: square"/>
+" clip-path="url(#pdf864f0b2e)" style="fill: none; stroke: #2f5f8f; stroke-width: 1.55; stroke-linecap: square"/>
    </g>
    <g id="text_3">
     <text style="font-weight: 700; font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: middle" x="320.4" y="39.96" transform="rotate(-0 320.4 39.96)">касание</text>
@@ -104,19 +104,19 @@ L 380.88 153.36
   </g>
   <g id="axes_3">
    <g id="PathCollection_3">
-    <g clip-path="url(#p81e90df249)">
-     <use xlink:href="#mc2a54ae8fe" x="532.8" y="153.36" style="fill: #8f2f2f; stroke: #8f2f2f"/>
+    <g clip-path="url(#pa145397220)">
+     <use xlink:href="#me243ee72b1" x="532.8" y="153.36" style="fill: #8f2f2f; stroke: #8f2f2f"/>
     </g>
    </g>
    <g id="line2d_5">
     <path d="M 457.2 158.4 
 L 608.4 158.4 
-" clip-path="url(#p81e90df249)" style="fill: none; stroke: #202020; stroke-width: 1.05; stroke-linecap: square"/>
+" clip-path="url(#pa145397220)" style="fill: none; stroke: #202020; stroke-width: 1.05; stroke-linecap: square"/>
    </g>
    <g id="line2d_6">
     <path d="M 472.32 153.36 
 L 593.28 153.36 
-" clip-path="url(#p81e90df249)" style="fill: none; stroke: #2f5f8f; stroke-width: 1.55; stroke-linecap: square"/>
+" clip-path="url(#pa145397220)" style="fill: none; stroke: #2f5f8f; stroke-width: 1.55; stroke-linecap: square"/>
    </g>
    <g id="patch_3">
     <path d="M 532.8 160.92 
@@ -140,13 +140,13 @@ L 534.4 124.973936
   </g>
  </g>
  <defs>
-  <clipPath id="pc89eccf50b">
+  <clipPath id="p6c7b8ee984">
    <rect x="7.2" y="7.2" width="201.6" height="201.6"/>
   </clipPath>
-  <clipPath id="p0fcb670711">
+  <clipPath id="pdf864f0b2e">
    <rect x="219.6" y="7.2" width="201.6" height="201.6"/>
   </clipPath>
-  <clipPath id="p81e90df249">
+  <clipPath id="pa145397220">
    <rect x="432" y="7.2" width="201.6" height="201.6"/>
   </clipPath>
  </defs>

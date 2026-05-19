@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-05-19T01:26:15.823757</dc:date>
+    <dc:date>2026-05-19T19:30:43.260301</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -47,7 +47,7 @@ z
     <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #5c5c5c" x="100.3392" y="260.0064" transform="rotate(-0 100.3392 260.0064)">γₓᵧ</text>
    </g>
    <g id="text_6">
-    <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #5c5c5c" x="299.9232" y="248.9184" transform="rotate(-0 299.9232 248.9184)">столбцы соответствуют uᵢ и vᵢ каждого узла</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #5c5c5c" x="299.9232" y="248.9184" transform="rotate(-0 299.9232 248.9184)">uᵢ, vᵢ</text>
    </g>
   </g>
  </g>

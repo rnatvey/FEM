@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-05-19T01:26:17.382753</dc:date>
+    <dc:date>2026-05-19T19:30:44.705457</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -31,7 +31,7 @@ z
   <g id="axes_1">
    <g id="PathCollection_1">
     <defs>
-     <path id="mb86b962649" d="M 0 2.95804 
+     <path id="m09f75c617b" d="M 0 2.95804 
 C 0.784481 2.95804 1.536938 2.646362 2.09165 2.09165 
 C 2.646362 1.536938 2.95804 0.784481 2.95804 0 
 C 2.95804 -0.784481 2.646362 -1.536938 2.09165 -2.09165 
@@ -43,37 +43,37 @@ C -1.536938 2.646362 -0.784481 2.95804 0 2.95804
 z
 " style="stroke: #2f5f8f"/>
     </defs>
-    <g clip-path="url(#p941f069d05)">
-     <use xlink:href="#mb86b962649" x="78.348" y="131.709" style="fill: #2f5f8f; stroke: #2f5f8f"/>
-     <use xlink:href="#mb86b962649" x="342.612" y="149.496" style="fill: #2f5f8f; stroke: #2f5f8f"/>
+    <g clip-path="url(#p5cb3040d64)">
+     <use xlink:href="#m09f75c617b" x="78.348" y="131.709" style="fill: #2f5f8f; stroke: #2f5f8f"/>
+     <use xlink:href="#m09f75c617b" x="342.612" y="149.496" style="fill: #2f5f8f; stroke: #2f5f8f"/>
     </g>
    </g>
    <g id="PathCollection_2">
     <defs>
-     <path id="m524648d53f" d="M -3.708099 3.708099 
+     <path id="mebf7f3183d" d="M -3.708099 3.708099 
 L 3.708099 -3.708099 
 M -3.708099 -3.708099 
 L 3.708099 3.708099 
 " style="stroke: #8f2f2f"/>
     </defs>
-    <g clip-path="url(#p941f069d05)">
-     <use xlink:href="#m524648d53f" x="152.34192" y="136.68936" style="fill: #8f2f2f; stroke: #8f2f2f"/>
+    <g clip-path="url(#p5cb3040d64)">
+     <use xlink:href="#mebf7f3183d" x="152.34192" y="136.68936" style="fill: #8f2f2f; stroke: #8f2f2f"/>
     </g>
    </g>
    <g id="PathCollection_3">
-    <g clip-path="url(#p941f069d05)">
-     <use xlink:href="#m524648d53f" x="268.61808" y="144.51564" style="fill: #8f2f2f; stroke: #8f2f2f"/>
+    <g clip-path="url(#p5cb3040d64)">
+     <use xlink:href="#mebf7f3183d" x="268.61808" y="144.51564" style="fill: #8f2f2f; stroke: #8f2f2f"/>
     </g>
    </g>
    <g id="line2d_1">
     <path d="M 42.774 210.48 
 L 383.268 210.48 
-" clip-path="url(#p941f069d05)" style="fill: none; stroke: #202020; stroke-width: 1.05; stroke-linecap: square"/>
+" clip-path="url(#p5cb3040d64)" style="fill: none; stroke: #202020; stroke-width: 1.05; stroke-linecap: square"/>
    </g>
    <g id="line2d_2">
     <path d="M 78.348 131.709 
 L 342.612 149.496 
-" clip-path="url(#p941f069d05)" style="fill: none; stroke: #2f5f8f; stroke-width: 1.55; stroke-linecap: square"/>
+" clip-path="url(#p5cb3040d64)" style="fill: none; stroke: #2f5f8f; stroke-width: 1.55; stroke-linecap: square"/>
    </g>
    <g id="text_1">
     <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #5c5c5c" x="312.12" y="228.267" transform="rotate(-0 312.12 228.267)">жесткая плоскость</text>
@@ -116,13 +116,10 @@ L 270.21808 149.057281
    <g id="text_5">
     <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #3f6f4f" x="268.61808" y="126.72864" transform="rotate(-0 268.61808 126.72864)">активна</text>
    </g>
-   <g id="text_6">
-    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="210.48" y="58.02" transform="rotate(-0 210.48 58.02)">двухточечная квадратура по контактной фасетке</text>
-   </g>
   </g>
  </g>
  <defs>
-  <clipPath id="p941f069d05">
+  <clipPath id="p5cb3040d64">
    <rect x="7.2" y="7.2" width="406.56" height="243.936"/>
   </clipPath>
  </defs>

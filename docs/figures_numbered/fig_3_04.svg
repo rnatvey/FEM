@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-05-19T01:26:16.983242</dc:date>
+    <dc:date>2026-05-19T19:30:44.329410</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -35,7 +35,7 @@ L 158.976 221.472
 L 150.048 114.336 
 L 42.912 123.264 
 z
-" clip-path="url(#p341eeabf92)" style="fill: #f6f7f8; stroke: #2f5f8f; stroke-width: 1.05; stroke-linejoin: miter"/>
+" clip-path="url(#pf675ac46dc)" style="fill: #f6f7f8; stroke: #2f5f8f; stroke-width: 1.05; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
     <path d="M 275.04 225.936 
@@ -43,7 +43,7 @@ L 397.8 210.312
 L 371.016 87.552 
 L 259.416 121.032 
 z
-" clip-path="url(#p341eeabf92)" style="fill: #fffafa; stroke: #8f2f2f; stroke-width: 1.05; stroke-linejoin: miter"/>
+" clip-path="url(#pf675ac46dc)" style="fill: #fffafa; stroke: #8f2f2f; stroke-width: 1.05; stroke-linejoin: miter"/>
    </g>
    <g id="text_1">
     <text style="font-size: 10px; font-family: 'DejaVu Sans'; fill: #2f5f8f" transform="translate(73.109625 76.354187)">начальная</text>
@@ -90,12 +90,12 @@ L 338.706725 138.63629
     <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #8f2f2f" x="290.664" y="201.384" transform="rotate(-0 290.664 201.384)">dx</text>
    </g>
    <g id="text_6">
-    <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #5c5c5c" x="219.24" y="239.328" transform="rotate(-0 219.24 239.328)">F = ∂x / ∂X: локальное растяжение и поворот материального отрезка</text>
+    <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #5c5c5c" x="219.24" y="239.328" transform="rotate(-0 219.24 239.328)">F = ∂x / ∂X</text>
    </g>
   </g>
  </g>
  <defs>
-  <clipPath id="p341eeabf92">
+  <clipPath id="pf675ac46dc">
    <rect x="7.2" y="7.2" width="446.4" height="258.912"/>
   </clipPath>
  </defs>

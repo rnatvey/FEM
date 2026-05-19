@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-05-19T01:26:15.921663</dc:date>
+    <dc:date>2026-05-19T19:30:43.350393</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -35,7 +35,7 @@ L 111.190909 107.031273
 L 111.190909 61.275273 
 L 23.838545 61.275273 
 z
-" clip-path="url(#pa047abb955)" style="fill: #f8fbff; stroke: #2f5f8f; stroke-width: 1.05; stroke-linejoin: miter"/>
+" clip-path="url(#pa96addb0e0)" style="fill: #f8fbff; stroke: #2f5f8f; stroke-width: 1.05; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
     <path d="M 23.838545 181.904727 
@@ -43,7 +43,7 @@ L 111.190909 181.904727
 L 111.190909 136.148727 
 L 23.838545 136.148727 
 z
-" clip-path="url(#pa047abb955)" style="fill: #fffaf2; stroke: #8a6630; stroke-width: 1.05; stroke-linejoin: miter"/>
+" clip-path="url(#pa96addb0e0)" style="fill: #fffaf2; stroke: #8a6630; stroke-width: 1.05; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
     <path d="M 148.627636 144.468 
@@ -51,7 +51,7 @@ L 244.299273 144.468
 L 244.299273 94.552364 
 L 148.627636 94.552364 
 z
-" clip-path="url(#pa047abb955)" style="fill: #f8fbff; stroke: #2f5f8f; stroke-width: 1.05; stroke-linejoin: miter"/>
+" clip-path="url(#pa96addb0e0)" style="fill: #f8fbff; stroke: #2f5f8f; stroke-width: 1.05; stroke-linejoin: miter"/>
    </g>
    <g id="patch_5">
     <path d="M 285.895636 144.468 
@@ -59,33 +59,33 @@ L 435.642545 144.468
 L 435.642545 94.552364 
 L 285.895636 94.552364 
 z
-" clip-path="url(#pa047abb955)" style="fill: #f7fff8; stroke: #3f6f4f; stroke-width: 1.05; stroke-linejoin: miter"/>
+" clip-path="url(#pa96addb0e0)" style="fill: #f7fff8; stroke: #3f6f4f; stroke-width: 1.05; stroke-linejoin: miter"/>
    </g>
    <g id="PathCollection_1">
     <defs>
-     <path id="mc166ec7729" d="M -3.535534 3.535534 
+     <path id="me0aee83db1" d="M -3.535534 3.535534 
 L 3.535534 -3.535534 
 M -3.535534 -3.535534 
 L 3.535534 3.535534 
 " style="stroke: #8f2f2f; stroke-width: 1.5"/>
     </defs>
-    <g clip-path="url(#pa047abb955)">
-     <use xlink:href="#mc166ec7729" x="188.144182" y="215.181818" style="fill: #8f2f2f; stroke: #8f2f2f; stroke-width: 1.5"/>
+    <g clip-path="url(#pa96addb0e0)">
+     <use xlink:href="#me0aee83db1" x="188.144182" y="215.181818" style="fill: #8f2f2f; stroke: #8f2f2f; stroke-width: 1.5"/>
     </g>
    </g>
    <g id="PathCollection_2">
-    <g clip-path="url(#pa047abb955)">
-     <use xlink:href="#mc166ec7729" x="188.144182" y="198.543273" style="fill: #8f2f2f; stroke: #8f2f2f; stroke-width: 1.5"/>
+    <g clip-path="url(#pa96addb0e0)">
+     <use xlink:href="#me0aee83db1" x="188.144182" y="198.543273" style="fill: #8f2f2f; stroke: #8f2f2f; stroke-width: 1.5"/>
     </g>
    </g>
    <g id="PathCollection_3">
-    <g clip-path="url(#pa047abb955)">
-     <use xlink:href="#mc166ec7729" x="204.782727" y="215.181818" style="fill: #8f2f2f; stroke: #8f2f2f; stroke-width: 1.5"/>
+    <g clip-path="url(#pa96addb0e0)">
+     <use xlink:href="#me0aee83db1" x="204.782727" y="215.181818" style="fill: #8f2f2f; stroke: #8f2f2f; stroke-width: 1.5"/>
     </g>
    </g>
    <g id="PathCollection_4">
-    <g clip-path="url(#pa047abb955)">
-     <use xlink:href="#mc166ec7729" x="204.782727" y="198.543273" style="fill: #8f2f2f; stroke: #8f2f2f; stroke-width: 1.5"/>
+    <g clip-path="url(#pa96addb0e0)">
+     <use xlink:href="#me0aee83db1" x="204.782727" y="198.543273" style="fill: #8f2f2f; stroke: #8f2f2f; stroke-width: 1.5"/>
     </g>
    </g>
    <g id="patch_6">
@@ -95,7 +95,7 @@ L 217.261636 186.064364
 L 175.665273 186.064364 
 L 175.665273 227.660727 
 z
-" clip-path="url(#pa047abb955)" style="fill: none; stroke: #2f5f8f; stroke-width: 1.2; stroke-linejoin: miter"/>
+" clip-path="url(#pa96addb0e0)" style="fill: none; stroke: #2f5f8f; stroke-width: 1.2; stroke-linejoin: miter"/>
    </g>
    <g id="text_1">
     <text style="font-size: 8.7px; font-family: 'DejaVu Sans'" transform="translate(43.193469 81.682881)">геометрия</text>
@@ -139,13 +139,10 @@ L 285.057111 119.510182
 L 281.857111 121.110182 
 " style="fill: none; stroke: #3f6f4f; stroke-width: 0.75; stroke-linecap: round"/>
    </g>
-   <g id="text_5">
-    <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #5c5c5c" x="231.820364" y="63.355091" transform="rotate(-0 231.820364 63.355091)">интегрирование по 4 точкам Гаусса</text>
-   </g>
   </g>
  </g>
  <defs>
-  <clipPath id="pa047abb955">
+  <clipPath id="pa96addb0e0">
    <rect x="7.2" y="7.2" width="457.56" height="249.578182"/>
   </clipPath>
  </defs>

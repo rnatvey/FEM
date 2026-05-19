@@ -9,10 +9,10 @@
 2.8,fig_2_08.png,fig_2_08.svg,Схема учета закреплений и внешних нагрузок в конечно-элементной модели,generated schematic/chart; editable SVG saved
 2.9,fig_2_09.png,fig_2_09.svg,Точки Гаусса четырехузлового элемента и восстановление напряжений,generated schematic/chart; editable SVG saved
 2.10,fig_2_10.png,fig_2_10.svg,Преобразование компонентов напряжений из декартовой системы координат в полярную,generated schematic/chart; editable SVG saved
-2.11,fig_2_11.png,,Типовая конечно-элементная сетка поперечного сечения массивной шины с локальным сгущением в зоне контакта,results\main_scale_hyperelastic_reference_triplet_coarse\penalty_contact\computational_mesh.png
+2.11,fig_2_11.png,,Типовая конечно-элементная сетка поперечного сечения массивной шины с локальным сгущением в зоне контакта,results\main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor\penalty_contact\computational_mesh.png
 2.12,fig_2_12.png,fig_2_12.svg,Характерные зоны концентрации напряжений в поперечном сечении шины,generated schematic/chart; editable SVG saved
 3.1,fig_3_01.png,fig_3_01.svg,Расчетная схема кольцевого сектора шины и жесткой опорной плоскости,generated schematic/chart; editable SVG saved
-3.2,fig_3_02.png,,Конечно-элементная сетка с локальным сгущением в зоне контакта,results\main_scale_hyperelastic_reference_triplet_coarse\penalty_contact\computational_mesh.png
+3.2,fig_3_02.png,,Конечно-элементная сетка с локальным сгущением в зоне контакта,results\main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor\penalty_contact\computational_mesh.png
 3.3,fig_3_03.png,fig_3_03.svg,Потенциальная и активная контактные области на внешнем контуре сектора,generated schematic/chart; editable SVG saved
 3.4,fig_3_04.png,fig_3_04.svg,Переход от начальной конфигурации к текущей и смысл градиента деформации,generated schematic/chart; editable SVG saved
 3.5,fig_3_05.png,fig_3_05.svg,Геометрический смысл нормального зазора,generated schematic/chart; editable SVG saved
@@ -30,23 +30,23 @@
 4.6,fig_4_06.png,fig_4_06.svg,Распределение контактного давления по дуге для штрафного метода и метода расширенного Лагранжа,generated schematic/chart; editable SVG saved
 4.7,fig_4_07.png,fig_4_07.svg,Активная контактная зона для штрафного метода и метода расширенного Лагранжа,generated schematic/chart; editable SVG saved
 5.1,fig_5_01.png,fig_5_01.svg,Переход от явной контактной задачи к эквивалентной бесконтактной нагрузке,generated schematic/chart; editable SVG saved
-5.2,fig_5_02.png,,Поле перемещений в расчете явного контакта штрафным методом,results\main_scale_hyperelastic_reference_triplet_coarse\penalty_contact\displacement_magnitude.png
-5.3,fig_5_03.png,,Модуль контактной силы в расчете штрафным методом,results\main_scale_hyperelastic_reference_triplet_coarse\penalty_contact\contact_force_magnitude.png
-5.4,fig_5_04.png,,Распределение эквивалентных напряжений по Мизесу в расчете штрафным методом,results\main_scale_hyperelastic_reference_triplet_coarse\penalty_contact\von_mises_stress.png
-5.5,fig_5_05.png,,Распределение определителя градиента деформации в расчете штрафным методом,results\main_scale_hyperelastic_reference_triplet_coarse\penalty_contact\jacobian_determinant.png
-5.6,fig_5_06.png,,Поле пенетрации в расчете штрафным методом,results\main_scale_hyperelastic_reference_triplet_coarse\penalty_contact\penetration.png
-5.7,fig_5_07.png,,Профиль контактного давления по дуге в расчете штрафным методом,results\main_scale_hyperelastic_reference_triplet_coarse\penalty_contact\contact_patch_profiles.png
-5.8,fig_5_08.png,,Поле перемещений в расчете методом расширенного Лагранжа,results\main_scale_hyperelastic_reference_triplet_coarse\augmented_lagrangian_contact\displacement_magnitude.png
-5.9,fig_5_09.png,,Модуль контактной силы в расчете методом расширенного Лагранжа,results\main_scale_hyperelastic_reference_triplet_coarse\augmented_lagrangian_contact\contact_force_magnitude.png
-5.10,fig_5_10.png,,Распределение эквивалентных напряжений по Мизесу в расчете методом расширенного Лагранжа,results\main_scale_hyperelastic_reference_triplet_coarse\augmented_lagrangian_contact\von_mises_stress.png
-5.11,fig_5_11.png,,Распределение определителя градиента деформации в расчете методом расширенного Лагранжа,results\main_scale_hyperelastic_reference_triplet_coarse\augmented_lagrangian_contact\jacobian_determinant.png
+5.2,fig_5_02.png,,Поле перемещений в расчете явного контакта штрафным методом,results\main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor\penalty_contact\displacement_magnitude.png
+5.3,fig_5_03.png,fig_5_03.svg,Модуль контактной силы в расчете штрафным методом,generated schematic/chart; editable SVG saved
+5.4,fig_5_04.png,,Распределение эквивалентных напряжений по Мизесу в расчете штрафным методом,results\main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor\penalty_contact\von_mises_stress.png
+5.5,fig_5_05.png,,Распределение определителя градиента деформации в расчете штрафным методом,results\main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor\penalty_contact\jacobian_determinant.png
+5.6,fig_5_06.png,fig_5_06.svg,Поле пенетрации в расчете штрафным методом,generated schematic/chart; editable SVG saved
+5.7,fig_5_07.png,fig_5_07.svg,Профиль контактного давления по дуге в расчете штрафным методом,generated schematic/chart; editable SVG saved
+5.8,fig_5_08.png,,Поле перемещений в расчете методом расширенного Лагранжа,results\main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor\augmented_lagrangian_contact\displacement_magnitude.png
+5.9,fig_5_09.png,,Модуль контактной силы в расчете методом расширенного Лагранжа,results\main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor\augmented_lagrangian_contact\contact_force_magnitude.png
+5.10,fig_5_10.png,,Распределение эквивалентных напряжений по Мизесу в расчете методом расширенного Лагранжа,results\main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor\augmented_lagrangian_contact\von_mises_stress.png
+5.11,fig_5_11.png,,Распределение определителя градиента деформации в расчете методом расширенного Лагранжа,results\main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor\augmented_lagrangian_contact\jacobian_determinant.png
 5.12,fig_5_12.png,fig_5_12.svg,Активная контактная область в расчете методом расширенного Лагранжа,generated schematic/chart; editable SVG saved
-5.13,fig_5_13.png,,Профиль контактного давления по дуге в расчете методом расширенного Лагранжа,results\main_scale_hyperelastic_reference_triplet_coarse\augmented_lagrangian_contact\contact_patch_profiles.png
+5.13,fig_5_13.png,fig_5_13.svg,Профиль контактного давления по дуге в расчете методом расширенного Лагранжа,generated schematic/chart; editable SVG saved
 5.14,fig_5_14.png,fig_5_14.svg,Параболическая аппроксимация контактного давления на внешнем контуре шины,generated schematic/chart; editable SVG saved
 5.15,fig_5_15.png,fig_5_15.svg,Приложение восстановленного параболического давления в бесконтактной задаче,generated schematic/chart; editable SVG saved
-5.16,fig_5_16.png,,Сравнение полей перемещений для явного контакта и бесконтактной аппроксимации,composite: results\main_scale_hyperelastic_reference_triplet_coarse\augmented_lagrangian_contact\displacement_magnitude.png + results\main_scale_hyperelastic_reference_triplet_coarse\no_contact_surrogate\displacement_magnitude.png
+5.16,fig_5_16.png,,Сравнение полей перемещений для явного контакта и бесконтактной аппроксимации,composite: results\main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor\augmented_lagrangian_contact\displacement_magnitude.png + results\main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor\no_contact_surrogate\displacement_magnitude.png
 5.17,fig_5_17.png,fig_5_17.svg,Сравнение модулей контактных и эквивалентных нагрузочных сил,generated schematic/chart; editable SVG saved
-5.18,fig_5_18.png,,Сравнение эквивалентных напряжений по Мизесу,composite: results\main_scale_hyperelastic_reference_triplet_coarse\augmented_lagrangian_contact\von_mises_stress.png + results\main_scale_hyperelastic_reference_triplet_coarse\no_contact_surrogate\von_mises_stress.png
-5.19,fig_5_19.png,,Сравнение плотности энергии деформации,composite: results\main_scale_hyperelastic_reference_triplet_coarse\augmented_lagrangian_contact\strain_energy_density.png + results\main_scale_hyperelastic_reference_triplet_coarse\no_contact_surrogate\strain_energy_density.png
+5.18,fig_5_18.png,,Сравнение эквивалентных напряжений по Мизесу,composite: results\main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor\augmented_lagrangian_contact\von_mises_stress.png + results\main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor\no_contact_surrogate\von_mises_stress.png
+5.19,fig_5_19.png,,Сравнение плотности энергии деформации,composite: results\main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor\augmented_lagrangian_contact\strain_energy_density.png + results\main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor\no_contact_surrogate\strain_energy_density.png
 5.20,fig_5_20.png,fig_5_20.svg,Профили напряжений по внешнему контуру шины,generated schematic/chart; editable SVG saved
 5.21,fig_5_21.png,fig_5_21.svg,Профили напряжений по радиальному сечению,generated schematic/chart; editable SVG saved

@@ -17,7 +17,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
 
 
 ROOT = Path(__file__).resolve().parents[1]
-RESULTS = ROOT / "results" / "main_scale_hyperelastic_reference_triplet_coarse"
+RESULTS = ROOT / "results" / "main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor"
 OUT = ROOT / "docs" / "figures_numbered"
 
 # GOST-like drafting palette: mostly monochrome, with muted accents only where
@@ -37,6 +37,11 @@ ACCENT_LW = 1.55
 THIN_LW = 0.45
 DIM_LW = 0.75
 ARROW_SCALE = 8
+
+R_INNER_MM = 250.0
+R_OUTER_MM = 300.0
+THETA1_DEG = 210.0
+THETA2_DEG = 330.0
 
 
 @dataclass(frozen=True)
@@ -197,6 +202,11 @@ def outer_arc_points(theta1: float, theta2: float, radius: float = 3.0, center: 
     return center[0] + radius * np.cos(th), center[1] + radius * np.sin(th)
 
 
+def ring_arc_mm(theta1: float, theta2: float, radius: float = R_OUTER_MM, n: int = 160) -> tuple[np.ndarray, np.ndarray]:
+    th = np.deg2rad(np.linspace(theta1, theta2, n))
+    return radius * np.cos(th), radius * np.sin(th)
+
+
 def add_ring_mesh(ax: plt.Axes, center: tuple[float, float] = (0, 0), theta1: float = 210, theta2: float = 330) -> None:
     for r in np.linspace(2.5, 3.0, 5):
         x, y = outer_arc_points(theta1, theta2, r, center, 100)
@@ -209,6 +219,98 @@ def add_ring_mesh(ax: plt.Axes, center: tuple[float, float] = (0, 0), theta1: fl
             color=MID_GRAY,
             lw=THIN_LW,
         )
+
+
+def draw_results_ring_mesh(ax: plt.Axes) -> None:
+    ax.set_aspect("equal", adjustable="box")
+    ax.set_xlim(-170, 170)
+    ax.set_ylim(-315, -205)
+    ax.axis("off")
+    for radius in np.linspace(R_INNER_MM, R_OUTER_MM, 6):
+        x, y = ring_arc_mm(THETA1_DEG, THETA2_DEG, radius, 180)
+        ax.plot(x, y, color=MID_GRAY, lw=THIN_LW)
+    for angle in np.linspace(THETA1_DEG, THETA2_DEG, 17):
+        xi, yi = ring_arc_mm(angle, angle, R_INNER_MM, 1)
+        xo, yo = ring_arc_mm(angle, angle, R_OUTER_MM, 1)
+        ax.plot([xi[0], xo[0]], [yi[0], yo[0]], color=MID_GRAY, lw=THIN_LW)
+    x, y = ring_arc_mm(THETA1_DEG, THETA2_DEG, R_INNER_MM, 180)
+    ax.plot(x, y, color=INK, lw=OBJECT_LW)
+    x, y = ring_arc_mm(THETA1_DEG, THETA2_DEG, R_OUTER_MM, 180)
+    ax.plot(x, y, color=INK, lw=OBJECT_LW)
+    for angle in (THETA1_DEG, THETA2_DEG):
+        xi, yi = ring_arc_mm(angle, angle, R_INNER_MM, 1)
+        xo, yo = ring_arc_mm(angle, angle, R_OUTER_MM, 1)
+        ax.plot([xi[0], xo[0]], [yi[0], yo[0]], color=INK, lw=OBJECT_LW)
+    ax.plot([-160, 160], [-302.0, -302.0], color=INK, lw=OBJECT_LW)
+
+
+def plot_contact_profile(
+    dst: Path,
+    case_name: str,
+    columns: list[str],
+    labels: list[str],
+    ylabel: str,
+    colors: list[str] | None = None,
+) -> str:
+    rows = read_numeric_csv(RESULTS / case_name / "contact_patch_profiles.csv")
+    x = np.array([float(row["relative_angle_deg"]) for row in rows])
+    active = np.array([float(row.get("active", 0.0)) > 0.0 for row in rows])
+    colors = colors or [RED, BLUE, GREEN]
+    fig, ax = plt.subplots(figsize=(7.4, 4.6))
+    if np.any(active):
+        ax.axvspan(float(x[active].min()), float(x[active].max()), color=LIGHT_GRAY, zorder=0)
+    for column, label, color in zip(columns, labels, colors):
+        y = np.array([float(row[column]) for row in rows])
+        ax.plot(x, y, color=color, lw=OBJECT_LW, marker="o", ms=2.8, label=label)
+    ax.axhline(0, color=GRAY, lw=THIN_LW)
+    ax.set_xlabel("Относительный угол по внешней дуге, град")
+    ax.set_ylabel(ylabel)
+    ax.grid(True)
+    if len(columns) > 1:
+        ax.legend(loc="best")
+    return save(fig, dst)
+
+
+def contact_force_boundary(case_name: str) -> Callable[[Path], str]:
+    def builder(dst: Path) -> str:
+        return plot_contact_profile(
+            dst,
+            case_name,
+            ["integrated_normal_force_kn"],
+            ["нормальная контактная сила"],
+            "Сила на фасетке, кН",
+            [RED],
+        )
+
+    return builder
+
+
+def penetration_boundary(case_name: str) -> Callable[[Path], str]:
+    def builder(dst: Path) -> str:
+        return plot_contact_profile(
+            dst,
+            case_name,
+            ["average_penetration", "maximum_penetration"],
+            ["средняя пенетрация", "максимальная пенетрация"],
+            "Пенетрация, мм",
+            [BLUE, RED],
+        )
+
+    return builder
+
+
+def contact_pressure_profile(case_name: str) -> Callable[[Path], str]:
+    def builder(dst: Path) -> str:
+        return plot_contact_profile(
+            dst,
+            case_name,
+            ["average_pressure_mpa"],
+            ["контактное давление"],
+            "Контактное давление, МПа",
+            [GREEN],
+        )
+
+    return builder
 
 
 def figure_2_1(dst: Path) -> str:
@@ -247,7 +349,6 @@ def figure_2_2(dst: Path) -> str:
     for x, y in pts:
         ax.plot([x, px], [y, py], color=MID_GRAY, lw=0.8, ls=":")
     ax.text(3.45, 4.55, "u(x,y) = Σ Nᵢ(x,y) uᵢ", ha="center", fontsize=13)
-    ax.text(3.45, 0.1, "поле внутри элемента определяется узловыми значениями", ha="center", fontsize=9, color=GRAY)
     return save(fig, dst)
 
 
@@ -271,7 +372,6 @@ def figure_2_3(dst: Path) -> str:
     for x in [-gp, gp]:
         for y in [-gp, gp]:
             ax.scatter(x, y, marker="x", s=45, color=RED, lw=1.0)
-    ax.text(0, -1.45, "локальный квадрат изопараметрического элемента Q4", ha="center", fontsize=9, color=GRAY)
     return save(fig, dst)
 
 
@@ -288,7 +388,7 @@ def figure_2_4(dst: Path) -> str:
     ax.text(2.1, 1.0, "εₓ", fontsize=11, color=GRAY)
     ax.text(2.1, 0.65, "εᵧ", fontsize=11, color=GRAY)
     ax.text(2.1, 0.3, "γₓᵧ", fontsize=11, color=GRAY)
-    ax.text(6.6, 0.55, "столбцы соответствуют uᵢ и vᵢ каждого узла", ha="center", fontsize=9, color=GRAY)
+    ax.text(6.6, 0.55, "uᵢ, vᵢ", ha="center", fontsize=9, color=GRAY)
     return save(fig, dst)
 
 
@@ -302,7 +402,6 @@ def figure_2_5(dst: Path) -> str:
     arrow(ax, (2.5, 4.15), (3.4, 3.55), BLUE)
     arrow(ax, (2.5, 2.35), (3.4, 3.0), ORANGE)
     arrow(ax, (5.7, 3.3), (6.7, 3.3), GREEN)
-    ax.text(5.4, 4.65, "интегрирование по 4 точкам Гаусса", ha="center", fontsize=10, color=GRAY)
     for x in [4.35, 4.75]:
         for y in [1.0, 1.4]:
             ax.scatter(x, y, marker="x", color=RED, s=50)
@@ -329,7 +428,6 @@ def figure_2_6(dst: Path) -> str:
     arrow(ax, (0, -1.25), (0, 1.35), GRAY)
     ax.text(1.43, -0.05, "ξ", fontsize=13)
     ax.text(0.05, 1.4, "η", fontsize=13)
-    ax.text(0, 1.23, "2×2 точки Гаусса", ha="center", color=RED, fontsize=11)
     return save(fig, dst)
 
 
@@ -359,7 +457,6 @@ def figure_2_7(dst: Path) -> str:
             if 3 <= i <= 5 and 2 <= j <= 4:
                 face = "#fdebd3"
             ax.add_patch(patches.Rectangle((4.4 + 0.42 * j, 1.2 + 0.42 * i), 0.42, 0.42, facecolor=face, edgecolor=MID_GRAY, lw=0.6))
-    ax.text(6.0, 0.55, "вклады элементов суммируются в общих узлах", ha="center", fontsize=9, color=GRAY)
     return save(fig, dst)
 
 
@@ -395,7 +492,6 @@ def figure_2_9(dst: Path) -> str:
     box(ax, (5.55, 1.0), 2.1, 0.9, "экстраполяция\nи усреднение", "#f8fbff", BLUE)
     arrow(ax, (4.8, 2.5), (5.55, 2.95), RED)
     arrow(ax, (6.6, 2.5), (6.6, 1.9), BLUE)
-    ax.text(2.7, 4.55, "восстановление напряжений Q4-элемента", ha="center", fontsize=12, color=GRAY)
     return save(fig, dst)
 
 
@@ -433,7 +529,6 @@ def figure_2_12(dst: Path) -> str:
         rad = math.radians(theta)
         lx, ly = 3.32 * math.cos(rad) + dx, 3.32 * math.sin(rad) - 0.2
         ax.text(lx, ly, label, ha="center", fontsize=8, color=RED if theta == 270 else ORANGE)
-    ax.text(0, 0.35, "повышенные напряжения возникают\nв центре и на границах активного контакта", ha="center", fontsize=10, color=GRAY)
     ax.plot([-3.4, 3.4], [-3.05, -3.05], color=GRAY, lw=1.2)
     ax.text(2.45, -3.25, "жесткая плоскость", color=GRAY, fontsize=8)
     return save(fig, dst)
@@ -465,7 +560,6 @@ def figure_3_1(dst: Path) -> str:
     ax.plot([-3.85, 3.85], [plane_y, plane_y], color=INK, lw=OBJECT_LW)
     for x0 in np.arange(-3.75, 3.9, 0.35):
         ax.plot([x0 - 0.18, x0 + 0.18], [plane_y - 0.16, plane_y], color="#8a8a8a", lw=THIN_LW)
-    ax.text(2.55, -3.68, "жесткая опорная плоскость", color=GRAY, fontsize=9, ha="center")
 
     for angle in (240, 300):
         ax.plot(
@@ -500,7 +594,6 @@ def figure_3_1(dst: Path) -> str:
     ax.annotate("заданное\nперемещение u_y", xy=(0.42, -2.47), xytext=(2.32, -2.52),
                 ha="left", va="center", fontsize=9, color=RED,
                 arrowprops=dict(arrowstyle="-", color=RED, lw=DIM_LW, shrinkA=4, shrinkB=4))
-    ax.text(-3.2, 0.34, "кольцевой сектор шины", ha="left", va="center", fontsize=9, color=GRAY)
     return save(fig, dst)
 
 
@@ -519,7 +612,7 @@ def figure_3_4(dst: Path) -> str:
     arrow(ax, (6.55, 1.7), (7.45, 2.95), RED)
     ax.text(1.65, 1.45, "dX", color=BLUE)
     ax.text(6.35, 1.45, "dx", color=RED)
-    ax.text(4.75, 0.6, "F = ∂x / ∂X: локальное растяжение и поворот материального отрезка", ha="center", fontsize=10, color=GRAY)
+    ax.text(4.75, 0.6, "F = ∂x / ∂X", ha="center", fontsize=10, color=GRAY)
     return save(fig, dst)
 
 
@@ -581,7 +674,6 @@ def figure_3_7(dst: Path) -> str:
         color=RED,
     )
     ax.text(0, -3.12, "потенциальная контактная граница Γc", ha="center", fontsize=9, color=BLUE)
-    ax.text(0, 0.35, "внешний контур представлен набором контактных фасеток", ha="center", fontsize=10, color=GRAY)
     return save(fig, dst)
 
 
@@ -599,7 +691,6 @@ def figure_3_8(dst: Path) -> str:
         double_arrow(ax, (p[0], 0.8), (p[0], p[1]), RED, lw=1.2)
         ax.text(p[0] + 0.12, (p[1] + 0.8) / 2, "gₙ", color=RED, fontsize=10)
         ax.text(p[0], p[1] + 0.35, "активна" if active else "неактивна", ha="center", fontsize=8, color=GREEN if active else GRAY)
-    ax.text(4.0, 3.8, "двухточечная квадратура по контактной фасетке", ha="center", fontsize=11)
     return save(fig, dst)
 
 
@@ -650,7 +741,6 @@ def figure_3_11(dst: Path) -> str:
     arrow(ax, (6.0, 4.25), (7.0, 4.25), GRAY)
     arrow(ax, (8.35, 3.8), (8.35, 3.0), ORANGE)
     arrow(ax, (9.7, 4.25), (10.4, 4.25), GREEN)
-    ax.text(6.2, 1.0, "на каждой ньютоновской итерации решается новая разреженная система", ha="center", fontsize=10, color=GRAY)
     return save(fig, dst)
 
 
@@ -666,7 +756,6 @@ def figure_4_1(dst: Path) -> str:
     arrow(ax, (2.9, 3.1), (4.1, 1.6), GREEN)
     arrow(ax, (6.8, 4.4), (8.0, 4.4), RED)
     arrow(ax, (6.8, 1.6), (8.0, 1.6), GREEN)
-    ax.text(6.0, 0.25, "сравнение: пенетрация, реакция, давление, время расчета", ha="center", fontsize=10, color=GRAY)
     return save(fig, dst)
 
 
@@ -681,7 +770,6 @@ def figure_4_2(dst: Path) -> str:
         arrow(ax, (x1, 4.25), (x2, 4.25), GRAY)
     ax.text(6.15, 2.35, "λᵐ⁺¹ = max(0, λᵐ + ρ ⟨-gₙ⟩)", ha="center", fontsize=13)
     arrow(ax, (10.7, 3.8), (1.7, 3.8), GREEN, lw=1.0, connectionstyle="arc3,rad=-0.25")
-    ax.text(6.0, 0.8, "внешние итерации уточняют контактное давление", ha="center", fontsize=10, color=GRAY)
     return save(fig, dst)
 
 
@@ -709,10 +797,11 @@ def figure_4_4(dst: Path) -> str:
     fig, ax = plt.subplots(figsize=(6.8, 4.6))
     ax.bar(labels, values, color=[RED, GREEN], width=0.55)
     ax.set_yscale("log")
+    ax.set_ylim(min(values) * 0.35, max(values) * 4.0)
     ax.set_ylabel("Максимальная пенетрация, мм")
     ax.grid(True, axis="y", which="both", ls="--", lw=0.5, color="#d4dae2")
     for i, value in enumerate(values):
-        ax.text(i, value * 1.8, f"{value:.3e}", ha="center", fontsize=9)
+        ax.text(i, value * 1.45, f"{value:.3e}", ha="center", fontsize=9)
     return save(fig, dst)
 
 
@@ -722,6 +811,7 @@ def figure_4_5(dst: Path) -> str:
     values = [float(cases["penalty_contact"]["total_time_seconds"]), float(cases["augmented_lagrangian_contact"]["total_time_seconds"])]
     fig, ax = plt.subplots(figsize=(6.8, 4.6))
     ax.bar(labels, values, color=[RED, GREEN], width=0.55)
+    ax.set_ylim(0, max(values) * 1.18)
     ax.set_ylabel("Время расчета, с")
     ax.grid(True, axis="y", ls="--", lw=0.5, color="#d4dae2")
     for i, value in enumerate(values):
@@ -788,38 +878,39 @@ def compose_side_by_side(sources: list[Path], labels: list[str], dst: Path, sour
 
 
 def draw_active_arc_panel(ax: plt.Axes, rows: list[dict[str, float | str]], title: str) -> None:
-    setup_plain(ax, (-3.8, 3.8), (-3.35, 0.9))
-    ring_sector(ax, (0, 0), 3.0, 2.5, 205, 335, "#f8fbff")
-    add_ring_mesh(ax, (0, 0), 205, 335)
-    x, y = outer_arc_points(225, 315, 3.04, (0, 0), 140)
-    ax.plot(x, y, color=BLUE, lw=ACCENT_LW, alpha=0.85)
-    angles = np.array([float(r["relative_angle_deg"]) for r in rows])
-    active = np.array([float(r.get("active_length", 0.0)) > 0.0 or float(r.get("active", 0.0)) > 0.0 for r in rows])
-    step = float(np.median(np.diff(np.sort(angles)))) if len(angles) > 1 else 1.0
-    for angle, is_active in zip(angles, active):
-        if not is_active:
+    draw_results_ring_mesh(ax)
+    active_length = 0.0
+    for row in rows:
+        if float(row.get("active_length", 0.0)) <= 0.0 and float(row.get("active", 0.0)) <= 0.0:
             continue
-        x, y = outer_arc_points(270 + angle - step / 2, 270 + angle + step / 2, 3.11, (0, 0), 8)
+        x_mid = float(row["reference_midpoint_x"])
+        y_mid = float(row["reference_midpoint_y"])
+        radius = float(np.hypot(x_mid, y_mid))
+        theta = math.degrees(math.atan2(y_mid, x_mid))
+        length = max(float(row.get("active_length", 0.0)), 0.35 * float(row.get("facet_length", 0.0)))
+        half_angle = math.degrees(length / max(radius, 1.0)) / 2.0
+        x, y = ring_arc_mm(theta - half_angle, theta + half_angle, radius + 2.2, 10)
         ax.plot(x, y, color=RED, lw=ACCENT_LW, solid_capstyle="butt")
-    ax.plot([-3.4, 3.4], [-3.05, -3.05], color=GRAY, lw=1.1)
-    active_length = sum(float(r.get("active_length", 0.0)) for r in rows)
-    ax.text(0, 0.48, title, ha="center", fontsize=11, color=GRAY, fontweight="bold")
-    ax.text(0, -3.28, f"активная длина: {active_length:.2f} мм", ha="center", fontsize=9, color=RED)
+        active_length += float(row.get("active_length", 0.0))
+    if title:
+        ax.text(0, -214, title, ha="center", va="center", fontsize=10, color=GRAY, fontweight="bold")
+    ax.text(0, -309.5, f"активная длина: {active_length:.2f} мм", ha="center", fontsize=8.5, color=RED)
 
 
 def figure_4_7(dst: Path) -> str:
-    penalty = read_numeric_csv(RESULTS / "penalty_contact" / "contact_patch_profiles.csv")
-    al = read_numeric_csv(RESULTS / "augmented_lagrangian_contact" / "contact_patch_profiles.csv")
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4.8))
+    penalty = read_numeric_csv(RESULTS / "penalty_contact" / "contact_facets.csv")
+    al = read_numeric_csv(RESULTS / "augmented_lagrangian_contact" / "contact_facets.csv")
+    fig, axes = plt.subplots(2, 1, figsize=(7.8, 6.2))
     draw_active_arc_panel(axes[0], penalty, "Штрафной метод")
     draw_active_arc_panel(axes[1], al, "Расширенный Лагранж")
+    fig.subplots_adjust(hspace=0.08)
     return save(fig, dst)
 
 
 def figure_5_12(dst: Path) -> str:
-    al = read_numeric_csv(RESULTS / "augmented_lagrangian_contact" / "contact_patch_profiles.csv")
+    al = read_numeric_csv(RESULTS / "augmented_lagrangian_contact" / "contact_facets.csv")
     fig, ax = plt.subplots(figsize=(7.6, 4.8))
-    draw_active_arc_panel(ax, al, "Активная контактная область AL")
+    draw_active_arc_panel(ax, al, "")
     return save(fig, dst)
 
 
@@ -881,7 +972,6 @@ def figure_5_15(dst: Path) -> str:
         end = ((3.25 - 0.25 - 0.35 * weight) * math.cos(rad), (3.25 - 0.25 - 0.35 * weight) * math.sin(rad))
         arrow(ax, start, end, RED, lw=DIM_LW + 0.45 * weight)
     ax.text(0, -3.52, "p(s) = p₀(1 - (s/a)²), |s| ≤ a", ha="center", color=RED, fontsize=10)
-    ax.text(0, 0.35, "нагрузка прикладывается к заранее выбранной дуге", ha="center", fontsize=10, color=GRAY)
     return save(fig, dst)
 
 
@@ -994,17 +1084,17 @@ def build_tasks() -> list[FigureTask]:
         FigureTask("4.7", "Активная контактная зона для штрафного метода и метода расширенного Лагранжа", figure_4_7),
         FigureTask("5.1", "Переход от явной контактной задачи к эквивалентной бесконтактной нагрузке", figure_5_1),
         FigureTask("5.2", "Поле перемещений в расчете явного контакта штрафным методом", copy_image(penalty / "displacement_magnitude.png")),
-        FigureTask("5.3", "Модуль контактной силы в расчете штрафным методом", copy_image(penalty / "contact_force_magnitude.png")),
+        FigureTask("5.3", "Модуль контактной силы в расчете штрафным методом", contact_force_boundary("penalty_contact")),
         FigureTask("5.4", "Распределение эквивалентных напряжений по Мизесу в расчете штрафным методом", copy_image(penalty / "von_mises_stress.png")),
         FigureTask("5.5", "Распределение определителя градиента деформации в расчете штрафным методом", copy_image(penalty / "jacobian_determinant.png")),
-        FigureTask("5.6", "Поле пенетрации в расчете штрафным методом", copy_image(penalty / "penetration.png")),
-        FigureTask("5.7", "Профиль контактного давления по дуге в расчете штрафным методом", copy_image(penalty / "contact_patch_profiles.png")),
+        FigureTask("5.6", "Поле пенетрации в расчете штрафным методом", penetration_boundary("penalty_contact")),
+        FigureTask("5.7", "Профиль контактного давления по дуге в расчете штрафным методом", contact_pressure_profile("penalty_contact")),
         FigureTask("5.8", "Поле перемещений в расчете методом расширенного Лагранжа", copy_image(al / "displacement_magnitude.png")),
         FigureTask("5.9", "Модуль контактной силы в расчете методом расширенного Лагранжа", copy_image(al / "contact_force_magnitude.png")),
         FigureTask("5.10", "Распределение эквивалентных напряжений по Мизесу в расчете методом расширенного Лагранжа", copy_image(al / "von_mises_stress.png")),
         FigureTask("5.11", "Распределение определителя градиента деформации в расчете методом расширенного Лагранжа", copy_image(al / "jacobian_determinant.png")),
         FigureTask("5.12", "Активная контактная область в расчете методом расширенного Лагранжа", figure_5_12),
-        FigureTask("5.13", "Профиль контактного давления по дуге в расчете методом расширенного Лагранжа", copy_image(al / "contact_patch_profiles.png")),
+        FigureTask("5.13", "Профиль контактного давления по дуге в расчете методом расширенного Лагранжа", contact_pressure_profile("augmented_lagrangian_contact")),
         FigureTask("5.14", "Параболическая аппроксимация контактного давления на внешнем контуре шины", figure_5_14),
         FigureTask("5.15", "Приложение восстановленного параболического давления в бесконтактной задаче", figure_5_15),
         FigureTask("5.16", "Сравнение полей перемещений для явного контакта и бесконтактной аппроксимации", composite_fields("5.16", "displacement_magnitude.png", ["Явный контакт AL", "Бесконтактная нагрузка"], ["augmented_lagrangian_contact", "no_contact_surrogate"])),
@@ -1053,7 +1143,7 @@ def write_manifest(tasks: list[FigureTask]) -> None:
 
     with (OUT / "README.md").open("w", encoding="utf-8-sig") as handle:
         handle.write("# Пронумерованные рисунки для диплома\n\n")
-        handle.write("Документ Word не изменялся. Расчетные рисунки взяты из `results/main_scale_hyperelastic_reference_triplet_coarse`, потому что эта папка соответствует численным значениям в тексте диплома.\n\n")
+        handle.write("Документ Word не изменялся. Расчетные рисунки взяты из `results/main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor`, где соблюдено условие симметрии.\n\n")
         handle.write("Сгенерированные SVG/PNG-схемы приведены к более строгому инженерному стилю: тонкие основные и выносные линии, прямоугольные блоки, умеренные цветовые акценты и штриховка опорных поверхностей по логике ЕСКД.\n\n")
         handle.write("| Рисунок | PNG | SVG | Источник |\n")
         handle.write("| --- | --- | --- | --- |\n")

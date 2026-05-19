@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-05-19T01:26:17.859305</dc:date>
+    <dc:date>2026-05-19T19:30:45.161797</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -35,7 +35,7 @@ L 131.262 152.652
 L 131.262 109.872 
 L 32.868 109.872 
 z
-" clip-path="url(#p8380ff154d)" style="fill: #f8fbff; stroke: #2f5f8f; stroke-width: 1.05; stroke-linejoin: miter"/>
+" clip-path="url(#pd296121594)" style="fill: #f8fbff; stroke: #2f5f8f; stroke-width: 1.05; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
     <path d="M 182.598 97.038 
@@ -43,7 +43,7 @@ L 298.104 97.038
 L 298.104 54.258 
 L 182.598 54.258 
 z
-" clip-path="url(#p8380ff154d)" style="fill: #fff8f8; stroke: #8f2f2f; stroke-width: 1.05; stroke-linejoin: miter"/>
+" clip-path="url(#pd296121594)" style="fill: #fff8f8; stroke: #8f2f2f; stroke-width: 1.05; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
     <path d="M 182.598 216.822 
@@ -51,7 +51,7 @@ L 298.104 216.822
 L 298.104 174.042 
 L 182.598 174.042 
 z
-" clip-path="url(#p8380ff154d)" style="fill: #f7fff8; stroke: #3f6f4f; stroke-width: 1.05; stroke-linejoin: miter"/>
+" clip-path="url(#pd296121594)" style="fill: #f7fff8; stroke: #3f6f4f; stroke-width: 1.05; stroke-linejoin: miter"/>
    </g>
    <g id="patch_5">
     <path d="M 349.44 97.038 
@@ -59,7 +59,7 @@ L 477.78 97.038
 L 477.78 54.258 
 L 349.44 54.258 
 z
-" clip-path="url(#p8380ff154d)" style="fill: #ffffff; stroke: #8f2f2f; stroke-width: 1.05; stroke-linejoin: miter"/>
+" clip-path="url(#pd296121594)" style="fill: #ffffff; stroke: #8f2f2f; stroke-width: 1.05; stroke-linejoin: miter"/>
    </g>
    <g id="patch_6">
     <path d="M 349.44 216.822 
@@ -67,7 +67,7 @@ L 477.78 216.822
 L 477.78 174.042 
 L 349.44 174.042 
 z
-" clip-path="url(#p8380ff154d)" style="fill: #ffffff; stroke: #3f6f4f; stroke-width: 1.05; stroke-linejoin: miter"/>
+" clip-path="url(#pd296121594)" style="fill: #ffffff; stroke: #3f6f4f; stroke-width: 1.05; stroke-linejoin: miter"/>
    </g>
    <g id="text_1">
     <text style="font-size: 8.7px; font-family: 'DejaVu Sans'" transform="translate(63.589055 123.920559)">условие</text>
@@ -124,13 +124,10 @@ L 348.601475 195.432
 L 345.401475 197.032 
 " style="fill: none; stroke: #3f6f4f; stroke-width: 0.75; stroke-linecap: round"/>
    </g>
-   <g id="text_6">
-    <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #5c5c5c" x="263.88" y="253.185" transform="rotate(-0 263.88 253.185)">сравнение: пенетрация, реакция, давление, время расчета</text>
-   </g>
   </g>
  </g>
  <defs>
-  <clipPath id="p8380ff154d">
+  <clipPath id="pd296121594">
    <rect x="7.2" y="7.2" width="513.36" height="256.68"/>
   </clipPath>
  </defs>
