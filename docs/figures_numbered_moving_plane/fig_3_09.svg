@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="516.6pt" height="265.5pt" viewBox="0 0 516.6 265.5" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-05-20T01:02:11.850638</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.8, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 265.5 
+L 516.6 265.5 
+L 516.6 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 28.125 107.64 
+L 111.825 107.64 
+L 111.825 69.975 
+L 28.125 69.975 
+z
+" clip-path="url(#p7f05b89356)" style="fill: #f8fbff; stroke: #2f5f8f; stroke-width: 1.05; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 141.12 107.64 
+L 237.375 107.64 
+L 237.375 69.975 
+L 141.12 69.975 
+z
+" clip-path="url(#p7f05b89356)" style="fill: #f8fbff; stroke: #2f5f8f; stroke-width: 1.05; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 270.855 107.64 
+L 362.925 107.64 
+L 362.925 69.975 
+L 270.855 69.975 
+z
+" clip-path="url(#p7f05b89356)" style="fill: #fffaf2; stroke: #8a6630; stroke-width: 1.05; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 392.22 107.64 
+L 475.92 107.64 
+L 475.92 69.975 
+L 392.22 69.975 
+z
+" clip-path="url(#p7f05b89356)" style="fill: #f7fff8; stroke: #3f6f4f; stroke-width: 1.05; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 203.895 203.895 
+L 308.52 203.895 
+L 308.52 166.23 
+L 203.895 166.23 
+z
+" clip-path="url(#p7f05b89356)" style="fill: #ffffff; stroke: #5c5c5c; stroke-width: 1.05; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 8.7px; font-family: 'DejaVu Sans'; text-anchor: middle" x="69.975" y="91.208156" transform="rotate(-0 69.975 91.208156)">uᵏ</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 8.7px; font-family: 'DejaVu Sans'; text-anchor: middle" x="189.2475" y="91.282242" transform="rotate(-0 189.2475 91.282242)">сборка R(uᵏ), Kᵏ</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 8.7px; font-family: 'DejaVu Sans'; text-anchor: middle" x="316.89" y="91.208156" transform="rotate(-0 316.89 91.208156)">Kᵏ Δu = -R</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 8.7px; font-family: 'DejaVu Sans'; text-anchor: middle" x="434.07" y="91.208156" transform="rotate(-0 434.07 91.208156)">uᵏ⁺¹ = uᵏ + αΔu</text>
+   </g>
+   <g id="patch_7">
+    <path d="M 111.825 88.8075 
+Q 126.4725 88.8075 140.281475 88.8075 
+" style="fill: none; stroke: #5c5c5c; stroke-width: 0.75; stroke-linecap: round"/>
+    <path d="M 137.081475 87.2075 
+L 140.281475 88.8075 
+L 137.081475 90.4075 
+" style="fill: none; stroke: #5c5c5c; stroke-width: 0.75; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 237.375 88.8075 
+Q 254.115 88.8075 270.016475 88.8075 
+" style="fill: none; stroke: #5c5c5c; stroke-width: 0.75; stroke-linecap: round"/>
+    <path d="M 266.816475 87.2075 
+L 270.016475 88.8075 
+L 266.816475 90.4075 
+" style="fill: none; stroke: #5c5c5c; stroke-width: 0.75; stroke-linecap: round"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 362.925 88.8075 
+Q 377.5725 88.8075 391.381475 88.8075 
+" style="fill: none; stroke: #5c5c5c; stroke-width: 0.75; stroke-linecap: round"/>
+    <path d="M 388.181475 87.2075 
+L 391.381475 88.8075 
+L 388.181475 90.4075 
+" style="fill: none; stroke: #5c5c5c; stroke-width: 0.75; stroke-linecap: round"/>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 8.7px; font-family: 'DejaVu Sans'" transform="translate(234.645094 182.592108)">проверка</text>
+    <text style="font-size: 8.7px; font-family: 'DejaVu Sans'" transform="translate(229.049227 192.334205)">сходимости</text>
+   </g>
+   <g id="patch_10">
+    <path d="M 434.07 107.64 
+Q 346.185 136.935 259.095495 165.964835 
+" style="fill: none; stroke: #5c5c5c; stroke-width: 0.75; stroke-linecap: round"/>
+    <path d="M 262.637246 166.470799 
+L 259.095495 165.964835 
+L 261.625317 163.435013 
+" style="fill: none; stroke: #5c5c5c; stroke-width: 0.75; stroke-linecap: round"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 203.895 185.0625 
+Q 136.935 146.35125 70.700941 108.059684 
+" style="fill: none; stroke: #5c5c5c; stroke-width: 0.75; stroke-linecap: round"/>
+    <path d="M 72.670487 111.04647 
+L 70.700941 108.059684 
+L 74.272097 108.276118 
+" style="fill: none; stroke: #5c5c5c; stroke-width: 0.75; stroke-linecap: round"/>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #5c5c5c" x="116.01" y="166.23" transform="rotate(-0 116.01 166.23)">если нет</text>
+   </g>
+   <g id="patch_12">
+    <path d="M 308.52 185.0625 
+Q 369.2025 185.0625 429.046475 185.0625 
+" style="fill: none; stroke: #3f6f4f; stroke-width: 0.75; stroke-linecap: round"/>
+    <path d="M 425.846475 183.4625 
+L 429.046475 185.0625 
+L 425.846475 186.6625 
+" style="fill: none; stroke: #3f6f4f; stroke-width: 0.75; stroke-linecap: round"/>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #3f6f4f" transform="translate(383.85 164.521969)">если да: следующий</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #3f6f4f" transform="translate(383.85 174.6)">шаг нагрузки</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p7f05b89356">
+   <rect x="7.2" y="7.2" width="502.2" height="251.1"/>
+  </clipPath>
+ </defs>
+</svg>

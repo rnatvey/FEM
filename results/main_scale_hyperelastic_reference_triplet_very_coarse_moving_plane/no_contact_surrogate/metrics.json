@@ -1,0 +1,153 @@
+{
+  "base_name": "solution",
+  "files": {
+    "vtu": "solution.vtu",
+    "metrics": "metrics.json"
+  },
+  "units": {
+    "length": "mm",
+    "stress": "MPa",
+    "pressure": "MPa",
+    "elastic_modulus": "MPa",
+    "strain": "1",
+    "force_internal": "N",
+    "force_display": "kN"
+  },
+  "counts": {
+    "nodes": 4941,
+    "elements": 4800,
+    "total_dofs": 9882,
+    "free_dofs": 9720,
+    "constrained_dofs": 162,
+    "prescribed_dofs": 0
+  },
+  "timings": {
+    "structural_assembly_time_seconds": 1.5232086999999996,
+    "contact_assembly_time_seconds": 0,
+    "boundary_condition_time_seconds": 0.043362100000000008,
+    "reduction_time_seconds": 0.043362100000000008,
+    "assembly_time_seconds": 1.5286515999999997,
+    "linear_solve_time_seconds": 8.4053001000000016,
+    "solve_time_seconds": 8.4053001000000016,
+    "total_time_seconds": 9.9853809000000009
+  },
+  "formulation": {
+    "finite_strain": true,
+    "point_stress_measure": "cauchy",
+    "point_strain_measure": "green_lagrange",
+    "point_field_semantics": "nodal_averaged_from_element_summaries",
+    "cell_field_semantics": "element_mean_over_integration_points"
+  },
+  "iterations": {
+    "load_steps": 8,
+    "converged_load_steps": 8,
+    "linear_solves": 25,
+    "direct_linear_solves": 0,
+    "nonlinear_iterations": 33,
+    "linear_iterations": 37435
+  },
+  "solver": {
+    "backend": "ConjugateGradient",
+    "converged": true,
+    "used_direct_solver": false
+  },
+  "residuals": {
+    "linear_residual_estimate": 9.9083267002572313e-11,
+    "linear_relative_residual_norm": 9.9100809670973933e-11,
+    "equilibrium_residual_norm": 1.4561010252901099e-08
+  },
+  "matrix": {
+    "structural_nnz": 174484,
+    "contact_nnz": 0,
+    "total_nnz": 174484,
+    "nnz": 174484
+  },
+  "finite_strain": {
+    "configured": true,
+    "strain_energy": 1376.1567122021474,
+    "has_near_incompressible_material": true,
+    "max_effective_poissons_ratio": 0.47999999999999998,
+    "max_bulk_to_shear_ratio": 24.666666666666643,
+    "min_cell_jacobian_determinant": 0.95385450620603573,
+    "mean_cell_jacobian_determinant": 0.9843044874056891,
+    "max_cell_jacobian_determinant": 1.0454800078754367,
+    "min_cell_strain_energy_density": 3.0778233485672198e-06,
+    "mean_cell_strain_energy_density": 0.12200160234893109,
+    "max_cell_strain_energy_density": 0.41170163417133243
+  },
+  "contact": {
+    "configured": false,
+    "method": "none",
+    "candidate_contact_facets": 0,
+    "active_contact_facets": 0,
+    "active_contact_gauss_points": 0,
+    "contact_force_norm": 0,
+    "contact_state_update_norm": 0,
+    "contact_state_relative_update_norm": 0,
+    "contact_state_max_update_magnitude": 0,
+    "contact_state_relative_max_update": 0,
+    "max_normal_multiplier": 0,
+    "mean_normal_multiplier": 0,
+    "max_penetration": 0,
+    "max_nodal_penetration": 0,
+    "minimum_signed_distance": 0,
+    "total_normal_force": 0,
+    "active_contact_area": 0,
+    "contact_patch_length": 0,
+    "max_facet_average_pressure": 0,
+    "mean_active_pressure": 0,
+    "center_of_pressure_x": 0,
+    "center_of_pressure_y": 0
+  },
+  "extrema": {
+    "max_displacement_magnitude": 8.4219709235409148,
+    "max_reaction_force_magnitude": 14.791619582454853,
+    "max_contact_force_magnitude": 0
+  },
+  "extra": {
+    "plane_strain_poissons_ratio_for_von_mises": 0,
+    "case_name": "no_contact_surrogate_contact_focused_very_coarse_steps_8",
+    "mesh_label": "contact_focused_very_coarse",
+    "geometry_family": "tire_ring",
+    "study_family": "main_scale_hyperelastic_reference_triplet",
+    "contact_method": "none",
+    "contact_parameter_name": "surrogate_parabolic_pressure",
+    "contact_parameter_value": 5.9143525056736852,
+    "minimum_jacobian_determinant": 0.95385450620603573,
+    "maximum_jacobian_determinant": 1.0454800078754367,
+    "maximum_strain_energy_density": 0.41238148170599936,
+    "gauss_point_count": 19200,
+    "hyperelastic_load_steps": 8,
+    "youngs_modulus": 11.84,
+    "poissons_ratio": 0.47999999999999998,
+    "thickness": 1,
+    "ring_center_x": 0,
+    "ring_center_y": 0,
+    "ring_inner_radius": 250,
+    "ring_outer_radius": 300,
+    "ring_start_angle_rad": 4.1887902047863905,
+    "ring_end_angle_rad": 5.2359877559829879,
+    "ring_contact_center_angle_rad": 4.7123889803846897,
+    "ring_contact_half_angle_rad": 0.087266462599716474,
+    "ring_radial_layers": 61,
+    "ring_circumferential_nodes": 81,
+    "mesh_circumferential_refinement_strength": 6,
+    "mesh_radial_refinement_strength": 1.3999999999999999,
+    "mesh_circumferential_localization_power": 2,
+    "mesh_min_radial_step": 0.51231104668022454,
+    "mesh_max_radial_step": 1.2218816619405004,
+    "mesh_min_angular_step": 0.0038000250071803521,
+    "mesh_max_angular_step": 0.025788543698514577,
+    "mesh_min_outer_arc_step": 1.1113051673484087,
+    "mesh_max_outer_arc_step": 7.7757967923775873,
+    "mesh_min_aspect_ratio": 2.2233252867386457,
+    "mesh_max_aspect_ratio": 15.088406314361601,
+    "surrogate_max_pressure": 5.9143525056736852,
+    "surrogate_contact_half_angle_rad": 0.19301833248323488,
+    "surrogate_contact_half_width": 57.544046767245369,
+    "surrogate_contact_center_x": 1.3223568714361013e-11,
+    "surrogate_total_normal_force": 530.16900151659752,
+    "surrogate_active_facets": 46,
+    "surrogate_loaded_facets": 62
+  }
+}

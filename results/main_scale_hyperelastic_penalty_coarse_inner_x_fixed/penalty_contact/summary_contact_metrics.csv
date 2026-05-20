@@ -1,0 +1,2 @@
+case_name,contact_method,contact_parameter_name,contact_parameter_value,mesh_label,group_label,contact_patch_length,max_average_pressure_mpa,mean_active_pressure_mpa,total_normal_force_kn,center_of_pressure_arc
+penalty_contact,penalty,penalty_parameter,500.0,контактно-ориентированная грубая,Штрафной метод / контактно-ориентированная грубая,127.02698100457194,5.89337480971608,4.162186052407835,0.5287099286167043,2.9309887850104133e-12

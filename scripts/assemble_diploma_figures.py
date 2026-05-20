@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import math
+import os
 import shutil
 import zipfile
 from dataclasses import dataclass
@@ -17,8 +18,17 @@ from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
 
 
 ROOT = Path(__file__).resolve().parents[1]
-RESULTS = ROOT / "results" / "main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor"
-OUT = ROOT / "docs" / "figures_numbered"
+RESULTS = Path(
+    os.environ.get(
+        "FEM_DIPLOMA_RESULTS",
+        ROOT / "results" / "main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor",
+    )
+)
+if not RESULTS.is_absolute():
+    RESULTS = ROOT / RESULTS
+OUT = Path(os.environ.get("FEM_DIPLOMA_FIGURES_OUT", ROOT / "docs" / "figures_numbered"))
+if not OUT.is_absolute():
+    OUT = ROOT / OUT
 
 # GOST-like drafting palette: mostly monochrome, with muted accents only where
 # they separate boundary conditions, contact state, or comparison curves.
@@ -1143,7 +1153,12 @@ def write_manifest(tasks: list[FigureTask]) -> None:
 
     with (OUT / "README.md").open("w", encoding="utf-8-sig") as handle:
         handle.write("# Пронумерованные рисунки для диплома\n\n")
-        handle.write("Документ Word не изменялся. Расчетные рисунки взяты из `results/main_scale_hyperelastic_reference_triplet_coarse_symmetric_anchor`, где соблюдено условие симметрии.\n\n")
+        results_label = RESULTS
+        try:
+            results_label = RESULTS.relative_to(ROOT)
+        except ValueError:
+            pass
+        handle.write(f"Документ Word не изменялся. Расчетные рисунки взяты из `{results_label}`.\n\n")
         handle.write("Сгенерированные SVG/PNG-схемы приведены к более строгому инженерному стилю: тонкие основные и выносные линии, прямоугольные блоки, умеренные цветовые акценты и штриховка опорных поверхностей по логике ЕСКД.\n\n")
         handle.write("| Рисунок | PNG | SVG | Источник |\n")
         handle.write("| --- | --- | --- | --- |\n")

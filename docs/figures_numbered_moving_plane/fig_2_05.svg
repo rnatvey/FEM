@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="471.96pt" height="263.978182pt" viewBox="0 0 471.96 263.978182" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-05-20T01:02:10.359914</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.8, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 263.978182 
+L 471.96 263.978182 
+L 471.96 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 23.838545 107.031273 
+L 111.190909 107.031273 
+L 111.190909 61.275273 
+L 23.838545 61.275273 
+z
+" clip-path="url(#pd27d4a91e9)" style="fill: #f8fbff; stroke: #2f5f8f; stroke-width: 1.05; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 23.838545 181.904727 
+L 111.190909 181.904727 
+L 111.190909 136.148727 
+L 23.838545 136.148727 
+z
+" clip-path="url(#pd27d4a91e9)" style="fill: #fffaf2; stroke: #8a6630; stroke-width: 1.05; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 148.627636 144.468 
+L 244.299273 144.468 
+L 244.299273 94.552364 
+L 148.627636 94.552364 
+z
+" clip-path="url(#pd27d4a91e9)" style="fill: #f8fbff; stroke: #2f5f8f; stroke-width: 1.05; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 285.895636 144.468 
+L 435.642545 144.468 
+L 435.642545 94.552364 
+L 285.895636 94.552364 
+z
+" clip-path="url(#pd27d4a91e9)" style="fill: #f7fff8; stroke: #3f6f4f; stroke-width: 1.05; stroke-linejoin: miter"/>
+   </g>
+   <g id="PathCollection_1">
+    <defs>
+     <path id="m3f84b8c66f" d="M -3.535534 3.535534 
+L 3.535534 -3.535534 
+M -3.535534 -3.535534 
+L 3.535534 3.535534 
+" style="stroke: #8f2f2f; stroke-width: 1.5"/>
+    </defs>
+    <g clip-path="url(#pd27d4a91e9)">
+     <use xlink:href="#m3f84b8c66f" x="188.144182" y="215.181818" style="fill: #8f2f2f; stroke: #8f2f2f; stroke-width: 1.5"/>
+    </g>
+   </g>
+   <g id="PathCollection_2">
+    <g clip-path="url(#pd27d4a91e9)">
+     <use xlink:href="#m3f84b8c66f" x="188.144182" y="198.543273" style="fill: #8f2f2f; stroke: #8f2f2f; stroke-width: 1.5"/>
+    </g>
+   </g>
+   <g id="PathCollection_3">
+    <g clip-path="url(#pd27d4a91e9)">
+     <use xlink:href="#m3f84b8c66f" x="204.782727" y="215.181818" style="fill: #8f2f2f; stroke: #8f2f2f; stroke-width: 1.5"/>
+    </g>
+   </g>
+   <g id="PathCollection_4">
+    <g clip-path="url(#pd27d4a91e9)">
+     <use xlink:href="#m3f84b8c66f" x="204.782727" y="198.543273" style="fill: #8f2f2f; stroke: #8f2f2f; stroke-width: 1.5"/>
+    </g>
+   </g>
+   <g id="patch_6">
+    <path d="M 175.665273 227.660727 
+L 217.261636 227.660727 
+L 217.261636 186.064364 
+L 175.665273 186.064364 
+L 175.665273 227.660727 
+z
+" clip-path="url(#pd27d4a91e9)" style="fill: none; stroke: #2f5f8f; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 8.7px; font-family: 'DejaVu Sans'" transform="translate(43.193469 81.682881)">геометрия</text>
+    <text style="font-size: 8.7px; font-family: 'DejaVu Sans'" transform="translate(45.668212 91.424977)">элемента</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 8.7px; font-family: 'DejaVu Sans'" transform="translate(47.818743 156.556335)">матрица</text>
+    <text style="font-size: 8.7px; font-family: 'DejaVu Sans'" transform="translate(64.165227 166.298432)">D</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 8.7px; font-family: 'DejaVu Sans'" transform="translate(180.581876 117.030954)">B(ξᵢ,ηᵢ),</text>
+    <text style="font-size: 8.7px; font-family: 'DejaVu Sans'" transform="translate(186.654205 126.790722)">det J</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 8.7px; font-family: 'DejaVu Sans'; text-anchor: middle" x="360.769091" y="121.910838" transform="rotate(-0 360.769091 121.910838)">Kₑ = Σ Bᵀ D B detJ wᵢwⱼ</text>
+   </g>
+   <g id="patch_7">
+    <path d="M 111.190909 84.153273 
+Q 129.909273 96.632182 147.929941 108.645961 
+" style="fill: none; stroke: #2f5f8f; stroke-width: 0.75; stroke-linecap: round"/>
+    <path d="M 146.1549 105.53964 
+L 147.929941 108.645961 
+L 144.37986 108.2022 
+" style="fill: none; stroke: #2f5f8f; stroke-width: 0.75; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 111.190909 159.026727 
+Q 129.909273 145.507909 147.947861 132.48004 
+" style="fill: none; stroke: #8a6630; stroke-width: 0.75; stroke-linecap: round"/>
+    <path d="M 144.416903 133.056523 
+L 147.947861 132.48004 
+L 146.290473 135.650696 
+" style="fill: none; stroke: #8a6630; stroke-width: 0.75; stroke-linecap: round"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 244.299273 119.510182 
+Q 265.097455 119.510182 285.057111 119.510182 
+" style="fill: none; stroke: #3f6f4f; stroke-width: 0.75; stroke-linecap: round"/>
+    <path d="M 281.857111 117.910182 
+L 285.057111 119.510182 
+L 281.857111 121.110182 
+" style="fill: none; stroke: #3f6f4f; stroke-width: 0.75; stroke-linecap: round"/>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pd27d4a91e9">
+   <rect x="7.2" y="7.2" width="457.56" height="249.578182"/>
+  </clipPath>
+ </defs>
+</svg>

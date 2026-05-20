@@ -29,6 +29,7 @@ void FEModel::setAssembly(std::shared_ptr<Assembly> assembly) {
 
 void FEModel::setContactSolver(std::unique_ptr<IRigidPlaneContactSolver> contactSolver) {
     contactSolver_ = std::move(contactSolver);
+    contactPlaneLoadRampEnabled_ = false;
 }
 
 void FEModel::configureRigidPlaneContact(const RigidPlane2D& plane,
@@ -43,6 +44,7 @@ void FEModel::configureRigidPlanePenaltyContact(const RigidPlane2D& plane,
     penaltyParameter_ = penaltyParameter;
     contactSolver_ = std::make_unique<RigidPlaneContactSolver>(assembly_, plane, penaltyParameter_);
     contactSolver_->setContactFacets(facets);
+    contactPlaneLoadRampEnabled_ = false;
 }
 
 void FEModel::configureRigidPlaneAugmentedLagrangianContact(const RigidPlane2D& plane,
@@ -52,6 +54,21 @@ void FEModel::configureRigidPlaneAugmentedLagrangianContact(const RigidPlane2D& 
     contactSolver_ = std::make_unique<RigidPlaneAugmentedLagrangianContactSolver>(
         assembly_, plane, augmentedLagrangianSettings_);
     contactSolver_->setContactFacets(facets);
+    contactPlaneLoadRampEnabled_ = false;
+}
+
+void FEModel::setContactPlaneLoadRamp(const RigidPlane2D& startPlane,
+    const RigidPlane2D& endPlane) {
+    contactPlaneLoadRampStart_ = startPlane;
+    contactPlaneLoadRampEnd_ = endPlane;
+    contactPlaneLoadRampEnabled_ = true;
+    if (contactSolver_) {
+        contactSolver_->setPlane(startPlane);
+    }
+}
+
+void FEModel::clearContactPlaneLoadRamp() {
+    contactPlaneLoadRampEnabled_ = false;
 }
 
 bool FEModel::solve() {
@@ -131,6 +148,10 @@ bool FEModel::solveHyperelastic() {
     nodalDataCalculated_ = false;
     performanceMetrics_ = {};
     performanceMetrics_.loadSteps = std::max(1, hyperelasticLoadSteps_);
+    if (useContact && contactPlaneLoadRampEnabled_) {
+        applyContactPlaneLoadFactor(0.0);
+    }
+
     if (useContact) {
         performanceMetrics_.contactMethod = std::string(contactSolver_->getMethodName());
         contactSolver_->resetState();
@@ -304,6 +325,9 @@ bool FEModel::solveHyperelastic() {
     while (targetLoadFactorIndex < targetLoadFactors.size()) {
         const int loadStep = static_cast<int>(targetLoadFactorIndex) + 1;
         const double loadFactor = targetLoadFactors[targetLoadFactorIndex];
+        if (useContact && contactPlaneLoadRampEnabled_) {
+            applyContactPlaneLoadFactor(loadFactor);
+        }
         const Assembly::ConstraintData stepConstraintData =
             buildScaledConstraintData(loadFactor);
         const Eigen::VectorXd stepExternalForce = baseExternalForce * loadFactor;
@@ -402,8 +426,10 @@ bool FEModel::solveHyperelastic() {
                 const double relativeResidualNorm = freeResidualNorm / referenceForceNorm;
                 performanceMetrics_.equilibriumResidualNorm = freeResidualNorm;
 
-                if (relativeResidualNorm < residualTolerance &&
-                    lastRelativeIncrement < incrementTolerance &&
+                const bool residualConverged = relativeResidualNorm < residualTolerance;
+                const bool incrementConverged =
+                    lastRelativeIncrement < incrementTolerance || freeResidualNorm <= residualTolerance;
+                if (residualConverged && incrementConverged &&
                     (!usePenaltyContact || activeSetStable)) {
                     stepConverged = true;
                     break;
@@ -510,9 +536,11 @@ bool FEModel::solveHyperelastic() {
                     const double relativeResidualNorm = freeResidualNorm / referenceForceNorm;
                     performanceMetrics_.equilibriumResidualNorm = freeResidualNorm;
 
-                    if (relativeResidualNorm < residualTolerance &&
-                        equilibriumLastRelativeIncrement < incrementTolerance &&
-                        activeSetStable) {
+                    const bool residualConverged = relativeResidualNorm < residualTolerance;
+                    const bool incrementConverged =
+                        equilibriumLastRelativeIncrement < incrementTolerance ||
+                        freeResidualNorm <= residualTolerance;
+                    if (residualConverged && incrementConverged && activeSetStable) {
                         equilibriumConverged = true;
                         break;
                     }
@@ -599,6 +627,9 @@ bool FEModel::solveHyperelastic() {
                 break;
             }
 
+            if (useContact && contactPlaneLoadRampEnabled_) {
+                applyContactPlaneLoadFactor(convergedLoadFactor);
+            }
             const double splitLoadFactor = convergedLoadFactor + 0.5 * stepSize;
             targetLoadFactors.insert(
                 targetLoadFactors.begin() + static_cast<std::ptrdiff_t>(targetLoadFactorIndex),
@@ -636,6 +667,9 @@ bool FEModel::solveHyperelastic() {
     }
 
     if (useContact) {
+        if (contactPlaneLoadRampEnabled_) {
+            applyContactPlaneLoadFactor(convergedLoadFactor);
+        }
         Eigen::SparseMatrix<double> finalStructuralTangent;
         double finalStrainEnergy = 0.0;
         assembly_->assembleFiniteStrainSystem(
@@ -1182,6 +1216,29 @@ void FEModel::calculateReactionForcesFromInternalForce(const Eigen::VectorXd& in
         }
     }
     performanceMetrics_.equilibriumResidualNorm = std::sqrt(freeDofResidualSquaredNorm);
+}
+
+void FEModel::applyContactPlaneLoadFactor(double loadFactor) {
+    if (!contactSolver_ || !contactPlaneLoadRampEnabled_) {
+        return;
+    }
+
+    loadFactor = std::clamp(loadFactor, 0.0, 1.0);
+    RigidPlane2D plane;
+    plane.normal =
+        (1.0 - loadFactor) * contactPlaneLoadRampStart_.normal +
+        loadFactor * contactPlaneLoadRampEnd_.normal;
+    const double normalNorm = plane.normal.norm();
+    if (normalNorm > 1.0e-14) {
+        plane.normal /= normalNorm;
+    }
+    else {
+        plane.normal = contactPlaneLoadRampEnd_.normal;
+    }
+    plane.offset =
+        (1.0 - loadFactor) * contactPlaneLoadRampStart_.offset +
+        loadFactor * contactPlaneLoadRampEnd_.offset;
+    contactSolver_->setPlane(plane);
 }
 
 void FEModel::applyContactConditions(const Eigen::VectorXd& trialDisplacements,

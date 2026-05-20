@@ -1,0 +1,2 @@
+case,success,load_steps,converged_load_steps,nonlinear_iterations,max_penetration,total_time_seconds,contact_force_norm,minimum_signed_distance,minimum_jacobian_determinant,maximum_jacobian_determinant,linear_solver_backend
+penalty_contact,true,13,13,305,0.011787,373.672,528.71,-0.0117871414,0.931282,1.02607,mixed

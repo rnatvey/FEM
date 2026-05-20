@@ -1,0 +1,4 @@
+case_name,contact_method,contact_parameter_name,contact_parameter_value,mesh_label,group_label,contact_patch_length,max_average_pressure_mpa,mean_active_pressure_mpa,total_normal_force_kn,center_of_pressure_arc
+augmented_lagrangian_contact,augmented_lagrangian,augmentation_scaling_factor,20.0,контактно-ориентированная грубая,Расширенный метод Лагранжа / контактно-ориентированная грубая,127.02698100457194,5.905865935789459,4.169671300522481,0.529660757086778,-1.3322676295501878e-11
+no_contact_surrogate,none,surrogate_parabolic_pressure,5.905865935789459,контактно-ориентированная грубая,Бесконтактная суррогатная задача / контактно-ориентированная грубая,0.0,0.0,0.0,0.0,471.23889803846896
+penalty_contact,penalty,penalty_parameter,500.0,контактно-ориентированная грубая,Штрафной метод / контактно-ориентированная грубая,127.02698100457194,5.893374809716078,4.162186052410356,0.5287099286170246,-1.0125233984581428e-11

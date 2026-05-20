@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
@@ -69,6 +71,13 @@ struct SurrogateLoadParameters {
     int activeFacetCount = 0;
 };
 
+struct ContactDriveSettings {
+    bool useMovingPlane = false;
+    double movingPlaneNormalDisplacement = -kPrescribedInnerBoundaryDy;
+    bool prescribeInnerBoundaryX = false;
+    double prescribedInnerBoundaryDx = 0.0;
+};
+
 std::string environmentString(std::string_view variableName) {
     if (const char* value = std::getenv(std::string(variableName).c_str());
         value != nullptr) {
@@ -101,6 +110,33 @@ std::string toLower(std::string value) {
             return static_cast<char>(std::tolower(character));
         });
     return value;
+}
+
+bool environmentBool(std::string_view variableName, bool defaultValue) {
+    const std::string value = toLower(environmentString(variableName));
+    if (value.empty()) {
+        return defaultValue;
+    }
+    return value == "1" || value == "true" || value == "yes" || value == "on";
+}
+
+ContactDriveSettings readContactDriveSettings() {
+    ContactDriveSettings settings;
+    const std::string contactDrive =
+        toLower(environmentString("FEM_MAIN_SCALE_HYPERELASTIC_TRIPLET_CONTACT_DRIVE"));
+    settings.useMovingPlane =
+        environmentBool("FEM_MAIN_SCALE_HYPERELASTIC_TRIPLET_MOVE_PLANE", false) ||
+        contactDrive == "plane" ||
+        contactDrive == "moving_plane" ||
+        contactDrive == "rigid_plane";
+    settings.movingPlaneNormalDisplacement = environmentDouble(
+        "FEM_MAIN_SCALE_HYPERELASTIC_TRIPLET_PLANE_DY",
+        -kPrescribedInnerBoundaryDy);
+    settings.prescribeInnerBoundaryX = environmentBool(
+        "FEM_MAIN_SCALE_HYPERELASTIC_TRIPLET_PRESCRIBE_INNER_X", false);
+    settings.prescribedInnerBoundaryDx = environmentDouble(
+        "FEM_MAIN_SCALE_HYPERELASTIC_TRIPLET_INNER_DX", 0.0);
+    return settings;
 }
 
 std::set<std::string> parseRequestedCases(std::string_view casesSpec) {
@@ -145,7 +181,9 @@ MeshVariant resolveMeshVariant(std::string_view requestedLabel) {
     return *variantIt;
 }
 
-MeshGenerator::TireContactAnalysisControl buildContactControl(const MeshVariant& meshVariant) {
+MeshGenerator::TireContactAnalysisControl buildContactControl(
+    const MeshVariant& meshVariant,
+    const ContactDriveSettings& driveSettings) {
     MeshGenerator::TireContactAnalysisControl control;
     control.mesh.center = kTireCenter;
     control.mesh.innerRadius = kTireInnerRadius;
@@ -173,10 +211,18 @@ MeshGenerator::TireContactAnalysisControl buildContactControl(const MeshVariant&
         -(kTireOuterRadius + kPlaneInitialGap)
     };
     control.innerRadiusTolerance = 1.0e-5;
-    control.prescribeInnerBoundaryX = false;
-    control.prescribeInnerBoundaryY = true;
-    control.prescribedInnerBoundaryDy = kPrescribedInnerBoundaryDy;
-    control.addInnerBoundaryAnchor = true;
+    if (driveSettings.useMovingPlane) {
+        control.prescribeInnerBoundaryX = false;
+        control.prescribeInnerBoundaryY = false;
+        control.addInnerBoundaryAnchor = false;
+    }
+    else {
+        control.prescribeInnerBoundaryX = driveSettings.prescribeInnerBoundaryX;
+        control.prescribeInnerBoundaryY = true;
+        control.prescribedInnerBoundaryDx = driveSettings.prescribedInnerBoundaryDx;
+        control.prescribedInnerBoundaryDy = kPrescribedInnerBoundaryDy;
+        control.addInnerBoundaryAnchor = !driveSettings.prescribeInnerBoundaryX;
+    }
     control.anchorFixX = true;
     control.anchorFixY = false;
     control.anchorSelectMinimumX = true;
@@ -199,6 +245,21 @@ double computeMinimumSignedDistance(
             std::min(minimumSignedDistance, plane.signedDistance(deformedPosition));
     }
     return minimumSignedDistance;
+}
+
+RigidPlane2D movePlaneAlongNormal(
+    const RigidPlane2D& plane,
+    double normalDisplacement) {
+    RigidPlane2D movedPlane = plane;
+    movedPlane.offset += normalDisplacement;
+    return movedPlane;
+}
+
+void fixInnerBoundaryForMovingPlaneDrive(
+    const HyperelasticScenarioSupport::TireContactCase& tireCase) {
+    for (int nodeId : tireCase.innerBoundaryNodeIds) {
+        tireCase.assembly->addFixedNode(nodeId, true, true);
+    }
 }
 
 std::string formatNumber(double value) {
@@ -361,9 +422,18 @@ CaseOutcome runPenaltyContactCase(
     int maxAdaptiveLoadSteps,
     int maxIterations,
     const std::filesystem::path& outputRoot) {
-    const auto control = buildContactControl(meshVariant);
+    const ContactDriveSettings driveSettings = readContactDriveSettings();
+    const auto control = buildContactControl(meshVariant, driveSettings);
     const auto tireCase = HyperelasticScenarioSupport::buildFiniteStrainTireContactCase(
         control, kYoungsModulus, kPoissonsRatio, kThickness);
+    if (driveSettings.useMovingPlane) {
+        fixInnerBoundaryForMovingPlaneDrive(tireCase);
+    }
+    const RigidPlane2D finalContactPlane = driveSettings.useMovingPlane
+        ? movePlaneAlongNormal(
+              tireCase.rigidPlane,
+              driveSettings.movingPlaneNormalDisplacement)
+        : tireCase.rigidPlane;
 
     FEModel model;
     model.setAssembly(tireCase.assembly);
@@ -373,6 +443,9 @@ CaseOutcome runPenaltyContactCase(
     model.setMaxAdaptiveHyperelasticLoadSteps(maxAdaptiveLoadSteps);
     model.configureRigidPlanePenaltyContact(
         tireCase.rigidPlane, tireCase.mesh.candidateContactFacets, penalty);
+    if (driveSettings.useMovingPlane) {
+        model.setContactPlaneLoadRamp(tireCase.rigidPlane, finalContactPlane);
+    }
 
     CaseOutcome outcome;
     outcome.success = model.solveHyperelastic();
@@ -380,7 +453,7 @@ CaseOutcome runPenaltyContactCase(
     outcome.diagnostics =
         HyperelasticScenarioSupport::evaluateFiniteStrainDiagnostics(model);
     outcome.minimumSignedDistance =
-        computeMinimumSignedDistance(model, tireCase.assembly, tireCase.rigidPlane);
+        computeMinimumSignedDistance(model, tireCase.assembly, model.getContactPlane());
     outcome.nodeCount = tireCase.assembly->getNodeCount();
     outcome.elementCount =
         static_cast<int>(tireCase.assembly->getFiniteStrainElements().size());
@@ -403,10 +476,24 @@ CaseOutcome runPenaltyContactCase(
         {
             {"penalty_parameter", penalty},
             {"plane_initial_gap", kPlaneInitialGap},
-            {"inner_boundary_prescribed_dy", kPrescribedInnerBoundaryDy},
-            {"rigid_plane_normal_x", tireCase.rigidPlane.normal.x()},
-            {"rigid_plane_normal_y", tireCase.rigidPlane.normal.y()},
-            {"rigid_plane_offset", tireCase.rigidPlane.offset},
+            {"contact_drive_moving_plane", driveSettings.useMovingPlane ? 1.0 : 0.0},
+            {"plane_prescribed_normal_displacement",
+                driveSettings.useMovingPlane
+                    ? driveSettings.movingPlaneNormalDisplacement
+                    : 0.0},
+            {"plane_initial_offset", tireCase.rigidPlane.offset},
+            {"plane_final_offset", model.getContactPlane().offset},
+            {"inner_boundary_prescribe_x", control.prescribeInnerBoundaryX ? 1.0 : 0.0},
+            {"inner_boundary_prescribed_dx", control.prescribedInnerBoundaryDx},
+            {"inner_boundary_prescribe_y", control.prescribeInnerBoundaryY ? 1.0 : 0.0},
+            {"inner_boundary_prescribed_dy",
+                control.prescribeInnerBoundaryY ? control.prescribedInnerBoundaryDy : 0.0},
+            {"inner_boundary_fixed_x", driveSettings.useMovingPlane ? 1.0 : 0.0},
+            {"inner_boundary_fixed_y", driveSettings.useMovingPlane ? 1.0 : 0.0},
+            {"inner_boundary_anchor_enabled", control.addInnerBoundaryAnchor ? 1.0 : 0.0},
+            {"rigid_plane_normal_x", model.getContactPlane().normal.x()},
+            {"rigid_plane_normal_y", model.getContactPlane().normal.y()},
+            {"rigid_plane_offset", model.getContactPlane().offset},
         });
 
     return outcome;
@@ -419,9 +506,18 @@ std::pair<CaseOutcome, SurrogateLoadParameters> runAugmentedLagrangianContactCas
     int maxAdaptiveLoadSteps,
     int maxIterations,
     const std::filesystem::path& outputRoot) {
-    const auto control = buildContactControl(meshVariant);
+    const ContactDriveSettings driveSettings = readContactDriveSettings();
+    const auto control = buildContactControl(meshVariant, driveSettings);
     const auto tireCase = HyperelasticScenarioSupport::buildFiniteStrainTireContactCase(
         control, kYoungsModulus, kPoissonsRatio, kThickness);
+    if (driveSettings.useMovingPlane) {
+        fixInnerBoundaryForMovingPlaneDrive(tireCase);
+    }
+    const RigidPlane2D finalContactPlane = driveSettings.useMovingPlane
+        ? movePlaneAlongNormal(
+              tireCase.rigidPlane,
+              driveSettings.movingPlaneNormalDisplacement)
+        : tireCase.rigidPlane;
 
     FEModel model;
     model.setAssembly(tireCase.assembly);
@@ -436,6 +532,9 @@ std::pair<CaseOutcome, SurrogateLoadParameters> runAugmentedLagrangianContactCas
     settings.automaticScalingFactor = augmentationScalingFactor;
     model.configureRigidPlaneAugmentedLagrangianContact(
         tireCase.rigidPlane, tireCase.mesh.candidateContactFacets, settings);
+    if (driveSettings.useMovingPlane) {
+        model.setContactPlaneLoadRamp(tireCase.rigidPlane, finalContactPlane);
+    }
 
     CaseOutcome outcome;
     outcome.success = model.solveHyperelastic();
@@ -443,7 +542,7 @@ std::pair<CaseOutcome, SurrogateLoadParameters> runAugmentedLagrangianContactCas
     outcome.diagnostics =
         HyperelasticScenarioSupport::evaluateFiniteStrainDiagnostics(model);
     outcome.minimumSignedDistance =
-        computeMinimumSignedDistance(model, tireCase.assembly, tireCase.rigidPlane);
+        computeMinimumSignedDistance(model, tireCase.assembly, model.getContactPlane());
     outcome.nodeCount = tireCase.assembly->getNodeCount();
     outcome.elementCount =
         static_cast<int>(tireCase.assembly->getFiniteStrainElements().size());
@@ -469,10 +568,24 @@ std::pair<CaseOutcome, SurrogateLoadParameters> runAugmentedLagrangianContactCas
         {
             {"augmentation_scaling_factor", augmentationScalingFactor},
             {"plane_initial_gap", kPlaneInitialGap},
-            {"inner_boundary_prescribed_dy", kPrescribedInnerBoundaryDy},
-            {"rigid_plane_normal_x", tireCase.rigidPlane.normal.x()},
-            {"rigid_plane_normal_y", tireCase.rigidPlane.normal.y()},
-            {"rigid_plane_offset", tireCase.rigidPlane.offset},
+            {"contact_drive_moving_plane", driveSettings.useMovingPlane ? 1.0 : 0.0},
+            {"plane_prescribed_normal_displacement",
+                driveSettings.useMovingPlane
+                    ? driveSettings.movingPlaneNormalDisplacement
+                    : 0.0},
+            {"plane_initial_offset", tireCase.rigidPlane.offset},
+            {"plane_final_offset", model.getContactPlane().offset},
+            {"inner_boundary_prescribe_x", control.prescribeInnerBoundaryX ? 1.0 : 0.0},
+            {"inner_boundary_prescribed_dx", control.prescribedInnerBoundaryDx},
+            {"inner_boundary_prescribe_y", control.prescribeInnerBoundaryY ? 1.0 : 0.0},
+            {"inner_boundary_prescribed_dy",
+                control.prescribeInnerBoundaryY ? control.prescribedInnerBoundaryDy : 0.0},
+            {"inner_boundary_fixed_x", driveSettings.useMovingPlane ? 1.0 : 0.0},
+            {"inner_boundary_fixed_y", driveSettings.useMovingPlane ? 1.0 : 0.0},
+            {"inner_boundary_anchor_enabled", control.addInnerBoundaryAnchor ? 1.0 : 0.0},
+            {"rigid_plane_normal_x", model.getContactPlane().normal.x()},
+            {"rigid_plane_normal_y", model.getContactPlane().normal.y()},
+            {"rigid_plane_offset", model.getContactPlane().offset},
             {"surrogate_max_pressure", surrogateParameters.maxPressure},
             {"surrogate_contact_half_angle_rad", surrogateParameters.contactHalfAngle},
             {"surrogate_contact_half_width", surrogateParameters.contactHalfWidth},
@@ -491,7 +604,7 @@ CaseOutcome runNoContactSurrogateCase(
     int maxAdaptiveLoadSteps,
     int maxIterations,
     const std::filesystem::path& outputRoot) {
-    auto control = buildContactControl(meshVariant);
+    auto control = buildContactControl(meshVariant, readContactDriveSettings());
     control.mesh.expectedContactHalfAngle =
         std::max(surrogateParameters.contactHalfAngle, 0.5 * DEG_TO_RAD);
     control.mesh.candidateFacetWindowScale = 1.5;

@@ -78,6 +78,9 @@ public:
     void configureRigidPlaneAugmentedLagrangianContact(const RigidPlane2D& plane,
         const std::vector<ContactFacet>& facets,
         const AugmentedLagrangianSettings& settings);
+    void setContactPlaneLoadRamp(const RigidPlane2D& startPlane,
+        const RigidPlane2D& endPlane);
+    void clearContactPlaneLoadRamp();
     bool hasContactSolver() const { return contactSolver_ != nullptr; }
 
     bool solve();
@@ -130,6 +133,7 @@ private:
         const Eigen::VectorXd& contactForce);
     void applyContactConditions(const Eigen::VectorXd& trialDisplacements,
         ContactIterationInfo& iterationInfo);
+    void applyContactPlaneLoadFactor(double loadFactor);
     void assembleExternalForces(Eigen::VectorXd& globalF) const;
     void applyPrescribedDisplacements(const Assembly::ConstraintData& constraintData,
         Eigen::VectorXd& fullDisplacements) const;
@@ -152,6 +156,9 @@ private:
     int hyperelasticLoadSteps_ = 1;
     int maxAdaptiveHyperelasticLoadSteps_ = 120;
     AugmentedLagrangianSettings augmentedLagrangianSettings_;
+    bool contactPlaneLoadRampEnabled_ = false;
+    RigidPlane2D contactPlaneLoadRampStart_;
+    RigidPlane2D contactPlaneLoadRampEnd_;
     int iterationCount_ = 0;
 
     Eigen::SparseMatrix<double> globalK_;
