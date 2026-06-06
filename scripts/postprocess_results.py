@@ -46,9 +46,18 @@ FIELD_DISCRETE_LEVELS = 14
 FIELD_IMAGE_CROP_TOLERANCE = 245
 FIELD_IMAGE_CROP_PADDING_PX = 8
 DISPLAY_BOUNDS_PADDING_RATIO = 0.025
-PROFILE_LINE_WIDTH = 1.6
-PROFILE_SECONDARY_LINE_WIDTH = 1.3
-PROFILE_MARKER_SIZE = 4.2
+OUTPUT_DPI = 220
+PLOT_TITLE_SIZE = 22
+AXIS_LABEL_SIZE = 18
+TICK_LABEL_SIZE = 15
+LEGEND_FONT_SIZE = 15
+LEGEND_TITLE_SIZE = 15
+COLORBAR_LABEL_SIZE = 17
+COLORBAR_TICK_SIZE = 15
+ANNOTATION_FONT_SIZE = 13
+PROFILE_LINE_WIDTH = 2.45
+PROFILE_SECONDARY_LINE_WIDTH = 2.05
+PROFILE_MARKER_SIZE = 6.6
 PROFILE_FILL_ALPHA = 0.18
 
 
@@ -60,12 +69,14 @@ def configure_plot_style() -> None:
             "axes.facecolor": "white",
             "axes.edgecolor": "#222222",
             "axes.linewidth": 1.0,
-            "axes.titlesize": 13,
-            "axes.labelsize": 11,
+            "axes.titlesize": PLOT_TITLE_SIZE,
+            "axes.labelsize": AXIS_LABEL_SIZE,
             "axes.titleweight": "semibold",
             "font.family": "Times New Roman",
             "font.serif": ["Times New Roman"],
-            "font.size": 10,
+            "font.size": 16,
+            "legend.fontsize": LEGEND_FONT_SIZE,
+            "legend.title_fontsize": LEGEND_TITLE_SIZE,
             "legend.frameon": True,
             "legend.facecolor": "white",
             "legend.edgecolor": "#bbbbbb",
@@ -77,7 +88,7 @@ def configure_plot_style() -> None:
             "xtick.minor.size": 3,
             "ytick.minor.size": 3,
             "savefig.facecolor": "white",
-            "savefig.dpi": 180,
+            "savefig.dpi": OUTPUT_DPI,
             "axes.formatter.use_mathtext": True,
             "mathtext.fontset": "stix",
         }
@@ -89,6 +100,7 @@ def apply_axes_style(axis: plt.Axes, *, x_minor: bool = True, y_minor: bool = Tr
         axis.xaxis.set_minor_locator(AutoMinorLocator())
     if y_minor:
         axis.yaxis.set_minor_locator(AutoMinorLocator())
+    axis.tick_params(axis="both", which="both", labelsize=TICK_LABEL_SIZE)
     axis.grid(True, which="major", linestyle="--", linewidth=0.65, color="#aeb6bf", alpha=0.9)
     axis.grid(True, which="minor", linestyle=":", linewidth=0.5, color="#d5dbe3", alpha=0.9)
 
@@ -259,8 +271,8 @@ def plot_summary_series(
         color=color,
         linestyle=method_style["linestyle"],
         marker=method_style["marker"],
-        linewidth=1.55,
-        markersize=4.8,
+        linewidth=2.0,
+        markersize=5.8,
         markerfacecolor="white",
         markeredgecolor=color,
         markeredgewidth=1.0,
@@ -295,7 +307,7 @@ def add_summary_legends(
             linewidth=1.6,
             linestyle=method_styles[method_name]["linestyle"],
             marker=method_styles[method_name]["marker"],
-            markersize=4.8,
+            markersize=5.8,
             markerfacecolor="white",
             markeredgecolor=TECHNICAL_COLORS["gray"],
             markeredgewidth=1.0,
@@ -311,8 +323,8 @@ def add_summary_legends(
         bbox_to_anchor=(0.30, 1.015),
         ncol=max(1, min(2, len(mesh_handles))),
         title="Сетка",
-        fontsize=9,
-        title_fontsize=9,
+        fontsize=LEGEND_FONT_SIZE,
+        title_fontsize=LEGEND_TITLE_SIZE,
     )
     fig.add_artist(mesh_legend)
     fig.legend(
@@ -321,8 +333,8 @@ def add_summary_legends(
         bbox_to_anchor=(0.77, 1.01),
         ncol=max(1, len(method_handles)),
         title="Метод контакта",
-        fontsize=9,
-        title_fontsize=9,
+        fontsize=LEGEND_FONT_SIZE,
+        title_fontsize=LEGEND_TITLE_SIZE,
     )
 
 
@@ -529,12 +541,13 @@ def save_rendered_image_figure(
             normalizer = plt.Normalize(vmin=value_range[0], vmax=value_range[1])
             scalar_mappable = plt.cm.ScalarMappable(norm=normalizer, cmap=cmap)
         colorbar = fig.colorbar(scalar_mappable, ax=axis, pad=0.03, fraction=0.046)
-        colorbar.set_label(colorbar_label)
+        colorbar.set_label(colorbar_label, fontsize=COLORBAR_LABEL_SIZE)
+        colorbar.ax.tick_params(labelsize=COLORBAR_TICK_SIZE)
         if indicator_ticks is not None:
             colorbar.set_ticks(indicator_ticks)
 
     fig.tight_layout()
-    fig.savefig(output_path, dpi=180)
+    fig.savefig(output_path, dpi=OUTPUT_DPI)
     plt.close(fig)
 
 
@@ -1203,10 +1216,10 @@ def save_ring_contour_profiles(case: dict[str, Any], ring_metadata: dict[str, An
     axes[2].set_ylabel("τ_rθ, МПа")
     axes[2].set_xlabel("Угол относительно центра контакта, град")
     finalize_profile_axes(axes)
-    axes[0].legend(loc="upper center", ncol=3, fontsize=9)
+    axes[0].legend(loc="upper center", ncol=3, fontsize=LEGEND_FONT_SIZE)
 
     fig.tight_layout()
-    fig.savefig(case_dir / "ring_contour_stress_profiles.png", dpi=180)
+    fig.savefig(case_dir / "ring_contour_stress_profiles.png", dpi=OUTPUT_DPI)
     plt.close(fig)
 
     write_rows_csv(
@@ -1290,7 +1303,7 @@ def save_ring_radial_profiles(case: dict[str, Any], ring_metadata: dict[str, Any
     finalize_profile_axes(axes)
 
     fig.tight_layout()
-    fig.savefig(case_dir / "ring_radial_section_profiles.png", dpi=180)
+    fig.savefig(case_dir / "ring_radial_section_profiles.png", dpi=OUTPUT_DPI)
     plt.close(fig)
 
     write_rows_csv(
@@ -1358,13 +1371,13 @@ def save_inner_boundary_reaction_profile(case: dict[str, Any], ring_metadata: di
         label="|R|",
         marker="^",
     )
-    axis.set_title("Р РµР°РєС†РёРё РЅР° РІРЅСѓС‚СЂРµРЅРЅРµРј РєРѕРЅС‚СѓСЂРµ")
-    axis.set_xlabel("РЈРіРѕР» РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕ С†РµРЅС‚СЂР° РєРѕРЅС‚Р°РєС‚Р°, РіСЂР°Рґ")
-    axis.set_ylabel(f"Р РµР°РєС†РёСЏ, {FORCE_UNIT_LABEL}")
+    axis.set_title("Реакции на внутреннем контуре")
+    axis.set_xlabel("Угол относительно центра контакта, град")
+    axis.set_ylabel(f"Реакция, {FORCE_UNIT_LABEL}")
     apply_axes_style(axis)
-    axis.legend(loc="best", fontsize=9)
+    axis.legend(loc="best", fontsize=LEGEND_FONT_SIZE)
     fig.tight_layout()
-    fig.savefig(case_dir / "inner_boundary_reaction_profile.png", dpi=180)
+    fig.savefig(case_dir / "inner_boundary_reaction_profile.png", dpi=OUTPUT_DPI)
     plt.close(fig)
 
     csv_rows = [
@@ -1478,7 +1491,7 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
         axes[0].legend(loc="best")
 
         fig.tight_layout()
-        fig.savefig(case_dir / "contact_patch_profiles.png", dpi=180)
+        fig.savefig(case_dir / "contact_patch_profiles.png", dpi=OUTPUT_DPI)
         plt.close(fig)
 
         write_rows_csv(
@@ -1586,7 +1599,7 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
     finalize_profile_axes(axes)
 
     fig.tight_layout()
-    fig.savefig(case_dir / "contact_patch_profiles.png", dpi=180)
+    fig.savefig(case_dir / "contact_patch_profiles.png", dpi=OUTPUT_DPI)
     plt.close(fig)
 
     write_rows_csv(
@@ -1601,6 +1614,345 @@ def save_contact_patch_profiles(case: dict[str, Any], ring_metadata: dict[str, A
         ],
         csv_rows,
     )
+
+
+def save_outer_boundary_contact_pressure_profile(
+    case: dict[str, Any],
+    ring_metadata: dict[str, Any],
+) -> bool:
+    case_dir = case["case_dir"]
+    contact_facet_rows = build_ring_contact_facet_fields(case, ring_metadata)
+    if not contact_facet_rows:
+        return False
+
+    arc_coordinate = np.array(
+        [float(row["arc_coordinate"]) for row in contact_facet_rows],
+        dtype=float,
+    )
+    relative_angle_deg = np.array(
+        [float(row["relative_angle_deg"]) for row in contact_facet_rows],
+        dtype=float,
+    )
+    average_pressure = np.array(
+        [float(row["average_pressure"]) * PRESSURE_TO_MPA for row in contact_facet_rows],
+        dtype=float,
+    )
+    integrated_normal_force = np.array(
+        [float(row["integrated_normal_force"]) * FORCE_TO_KN for row in contact_facet_rows],
+        dtype=float,
+    )
+    active_mask = np.array([bool(row["active"]) for row in contact_facet_rows], dtype=bool)
+    facet_length = np.array([float(row["facet_length"]) for row in contact_facet_rows], dtype=float)
+    active_length = np.array([float(row["active_length"]) for row in contact_facet_rows], dtype=float)
+
+    if average_pressure.size == 0:
+        return False
+
+    fig, axis = plt.subplots(figsize=(11.5, 5.4))
+    axis.axhline(0.0, color=TECHNICAL_COLORS["gray"], linewidth=1.0, alpha=0.7)
+    axis.plot(
+        arc_coordinate,
+        average_pressure,
+        color=TECHNICAL_COLORS["light_gray"],
+        linewidth=1.2,
+        label="Потенциальные контактные области",
+    )
+    plot_profile_series(
+        axis,
+        arc_coordinate,
+        average_pressure,
+        color=TECHNICAL_COLORS["teal"],
+        label="Среднее контактное давление",
+        marker="o",
+        fill_under=True,
+        fill_mask=active_mask,
+    )
+    if np.any(active_mask):
+        axis.scatter(
+            arc_coordinate[active_mask],
+            average_pressure[active_mask],
+            s=42,
+            color=TECHNICAL_COLORS["red"],
+            edgecolor="white",
+            linewidth=0.6,
+            zorder=4,
+            label="Активные фасетки",
+        )
+
+    axis.set_title("Контактное давление на внешней границе")
+    axis.set_xlabel(f"Дуговая координата относительно центра контакта, {LENGTH_UNIT_LABEL}")
+    axis.set_ylabel(f"Контактное давление, {STRESS_UNIT_LABEL}")
+    apply_axes_style(axis)
+    axis.legend(loc="best", fontsize=LEGEND_FONT_SIZE)
+    fig.tight_layout()
+    fig.savefig(case_dir / "outer_boundary_contact_pressure.png", dpi=OUTPUT_DPI)
+    plt.close(fig)
+
+    csv_rows = [
+        [
+            arc_coordinate[i],
+            relative_angle_deg[i],
+            int(active_mask[i]),
+            facet_length[i],
+            active_length[i],
+            integrated_normal_force[i],
+            average_pressure[i],
+        ]
+        for i in range(len(contact_facet_rows))
+    ]
+    write_rows_csv(
+        case_dir / "outer_boundary_contact_pressure.csv",
+        [
+            "arc_coordinate",
+            "relative_angle_deg",
+            "active",
+            "facet_length",
+            "active_length",
+            "integrated_normal_force_kn",
+            "average_pressure_mpa",
+        ],
+        csv_rows,
+    )
+    return True
+
+
+def first_ring_case(cases: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    for case in cases:
+        ring_metadata = load_ring_metadata(case)
+        if ring_metadata is not None:
+            return case, ring_metadata
+    return None
+
+
+def ring_half_span(ring_metadata: dict[str, Any]) -> float:
+    contact_center_angle = float(ring_metadata["contact_center_angle"])
+    start_angle = float(ring_metadata.get("start_angle", math.nan))
+    end_angle = float(ring_metadata.get("end_angle", math.nan))
+    if math.isfinite(start_angle) and math.isfinite(end_angle):
+        return max(
+            abs(wrap_angle(start_angle - contact_center_angle)),
+            abs(wrap_angle(end_angle - contact_center_angle)),
+        )
+    return math.radians(30.0)
+
+
+def estimate_active_contact_half_angle(
+    cases: list[dict[str, Any]],
+    ring_metadata: dict[str, Any],
+) -> float:
+    half_angle = float(ring_metadata.get("contact_half_angle", math.nan))
+    if not math.isfinite(half_angle) or half_angle <= 0.0:
+        half_angle = math.radians(5.0)
+
+    for case in cases:
+        rows = build_ring_contact_facet_fields(case, ring_metadata)
+        active_angles = [
+            abs(float(row["relative_angle_rad"]))
+            for row in rows
+            if bool(row.get("active"))
+        ]
+        if active_angles:
+            half_angle = max(half_angle, max(active_angles))
+
+        extra = case["metrics"].get("extra", {})
+        surrogate_half_angle = float(extra.get("surrogate_contact_half_angle_rad", math.nan))
+        if math.isfinite(surrogate_half_angle) and surrogate_half_angle > 0.0:
+            half_angle = max(half_angle, surrogate_half_angle)
+
+    return half_angle
+
+
+def illustrative_ring_grid(
+    ring_metadata: dict[str, Any],
+    *,
+    radial_segments: int = 6,
+    angular_segments: int = 24,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    inner_radius = float(ring_metadata["inner_radius"])
+    outer_radius = float(ring_metadata["outer_radius"])
+    center = np.asarray(ring_metadata["center"], dtype=float)
+    contact_center_angle = float(ring_metadata["contact_center_angle"])
+    half_span = ring_half_span(ring_metadata)
+
+    radial_parameter = np.linspace(0.0, 1.0, radial_segments + 1)
+    radii = inner_radius + (outer_radius - inner_radius) * (
+        1.0 - (1.0 - radial_parameter) ** 2.15
+    )
+
+    angular_parameter = np.linspace(-1.0, 1.0, angular_segments + 1)
+    relative_angles = half_span * np.sign(angular_parameter) * np.abs(angular_parameter) ** 1.65
+    angles = contact_center_angle + relative_angles
+
+    points = np.zeros((len(radii), len(angles), 2), dtype=float)
+    for radial_index, radius in enumerate(radii):
+        points[radial_index, :, 0] = center[0] + radius * np.cos(angles)
+        points[radial_index, :, 1] = center[1] + radius * np.sin(angles)
+
+    return radii, angles, points
+
+
+def plot_illustrative_grid(
+    axis: plt.Axes,
+    points: np.ndarray,
+    *,
+    color: str,
+    linewidth: float,
+    alpha: float,
+) -> None:
+    for radial_index in range(points.shape[0]):
+        axis.plot(
+            points[radial_index, :, 0],
+            points[radial_index, :, 1],
+            color=color,
+            linewidth=linewidth,
+            alpha=alpha,
+        )
+    for angular_index in range(points.shape[1]):
+        axis.plot(
+            points[:, angular_index, 0],
+            points[:, angular_index, 1],
+            color=color,
+            linewidth=linewidth,
+            alpha=alpha,
+        )
+
+
+def plot_illustrative_contact_facets(
+    axis: plt.Axes,
+    ring_metadata: dict[str, Any],
+    angles: np.ndarray,
+    points: np.ndarray,
+    *,
+    candidate_half_angle: float,
+) -> None:
+    contact_center_angle = float(ring_metadata["contact_center_angle"])
+    outer_points = points[-1, :, :]
+
+    for segment_index in range(len(angles) - 1):
+        relative_angle = abs(wrap_angle(0.5 * (angles[segment_index] + angles[segment_index + 1]) - contact_center_angle))
+        if relative_angle <= candidate_half_angle:
+            axis.plot(
+                outer_points[segment_index : segment_index + 2, 0],
+                outer_points[segment_index : segment_index + 2, 1],
+                color=TECHNICAL_COLORS["orange"],
+                linewidth=4.2,
+                solid_capstyle="round",
+                zorder=3,
+            )
+
+
+def set_illustrative_axes(axis: plt.Axes, title: str) -> None:
+    axis.set_title(title)
+    axis.set_xlabel(f"Координата X, {LENGTH_UNIT_LABEL}")
+    axis.set_ylabel(f"Координата Y, {LENGTH_UNIT_LABEL}")
+    axis.set_aspect("equal", adjustable="box")
+    apply_axes_style(axis)
+
+
+def save_illustrative_contact_mesh_plots(cases: list[dict[str, Any]], output_root: Path) -> bool:
+    ring_case = first_ring_case(cases)
+    if ring_case is None:
+        return False
+
+    _, ring_metadata = ring_case
+    radii, angles, points = illustrative_ring_grid(ring_metadata)
+    active_half_angle = estimate_active_contact_half_angle(cases, ring_metadata)
+    half_span = ring_half_span(ring_metadata)
+    nominal_half_angle = float(ring_metadata.get("contact_half_angle", active_half_angle))
+    if not math.isfinite(nominal_half_angle) or nominal_half_angle <= 0.0:
+        nominal_half_angle = active_half_angle
+    candidate_half_angle = min(
+        half_span,
+        max(1.35 * active_half_angle, 2.0 * nominal_half_angle),
+    )
+
+    fig, axis = plt.subplots(figsize=(12.5, 6.2))
+    plot_illustrative_grid(
+        axis,
+        points,
+        color=TECHNICAL_COLORS["gray"],
+        linewidth=1.05,
+        alpha=0.95,
+    )
+    set_illustrative_axes(axis, "Расчетная конечно-элементная сетка")
+    fig.tight_layout()
+    fig.savefig(output_root / "illustrative_contact_focused_mesh.png", dpi=OUTPUT_DPI)
+    plt.close(fig)
+
+    legend_handles = [
+        Line2D([0], [0], color=TECHNICAL_COLORS["gray"], linewidth=1.4, label="Элементы сетки"),
+        Line2D([0], [0], color=TECHNICAL_COLORS["orange"], linewidth=4.2, label="Потенциальные контактные области"),
+    ]
+
+    fig, axis = plt.subplots(figsize=(12.5, 6.2))
+    plot_illustrative_grid(
+        axis,
+        points,
+        color=TECHNICAL_COLORS["light_gray"],
+        linewidth=0.95,
+        alpha=0.95,
+    )
+    plot_illustrative_contact_facets(
+        axis,
+        ring_metadata,
+        angles,
+        points,
+        candidate_half_angle=candidate_half_angle,
+    )
+    set_illustrative_axes(axis, "Потенциальные контактные области")
+    axis.legend(handles=legend_handles, loc="upper center", ncol=2, fontsize=LEGEND_FONT_SIZE)
+    fig.tight_layout()
+    fig.savefig(output_root / "illustrative_contact_facets.png", dpi=OUTPUT_DPI)
+    plt.close(fig)
+
+    zoom_angle = max(candidate_half_angle * 1.55, math.radians(4.0))
+    contact_center_angle = float(ring_metadata["contact_center_angle"])
+    center = np.asarray(ring_metadata["center"], dtype=float)
+    inner_radius = float(ring_metadata["inner_radius"])
+    outer_radius = float(ring_metadata["outer_radius"])
+    zoom_angles = contact_center_angle + np.linspace(-zoom_angle, zoom_angle, 24)
+    zoom_radii = np.array([inner_radius, outer_radius], dtype=float)
+    zoom_points = np.array(
+        [
+            [
+                [
+                    center[0] + radius * math.cos(angle),
+                    center[1] + radius * math.sin(angle),
+                ]
+                for angle in zoom_angles
+            ]
+            for radius in zoom_radii
+        ],
+        dtype=float,
+    ).reshape(-1, 2)
+    x_min, y_min = np.min(zoom_points, axis=0)
+    x_max, y_max = np.max(zoom_points, axis=0)
+    x_padding = max(0.08 * (x_max - x_min), 4.0)
+    y_padding = max(0.18 * (y_max - y_min), 4.0)
+
+    fig, axis = plt.subplots(figsize=(9.5, 6.4))
+    plot_illustrative_grid(
+        axis,
+        points,
+        color=TECHNICAL_COLORS["light_gray"],
+        linewidth=1.05,
+        alpha=0.95,
+    )
+    plot_illustrative_contact_facets(
+        axis,
+        ring_metadata,
+        angles,
+        points,
+        candidate_half_angle=candidate_half_angle,
+    )
+    axis.set_xlim(x_min - x_padding, x_max + x_padding)
+    axis.set_ylim(y_min - y_padding, y_max + y_padding)
+    set_illustrative_axes(axis, "Потенциальные контактные области крупным планом")
+    axis.legend(handles=legend_handles, loc="best", fontsize=LEGEND_FONT_SIZE)
+    fig.tight_layout()
+    fig.savefig(output_root / "illustrative_contact_facets_zoom.png", dpi=OUTPUT_DPI)
+    plt.close(fig)
+    return True
 
 
 def run_checks(case: dict[str, Any]) -> list[str]:
@@ -1744,7 +2096,7 @@ def save_case_metric_overview(case: dict[str, Any]) -> None:
             f"{value:.3e}",
             ha="center",
             va="bottom",
-            fontsize=9,
+            fontsize=ANNOTATION_FONT_SIZE,
         )
 
     axes[1].axis("off")
@@ -1756,11 +2108,11 @@ def save_case_metric_overview(case: dict[str, Any]) -> None:
         va="top",
         ha="left",
         family="Times New Roman",
-        fontsize=10,
+        fontsize=12,
     )
 
     fig.tight_layout()
-    fig.savefig(case_dir / "case_overview.png", dpi=180)
+    fig.savefig(case_dir / "case_overview.png", dpi=OUTPUT_DPI)
     plt.close(fig)
 
 
@@ -1785,7 +2137,7 @@ def save_case_plots(case: dict[str, Any], warp_factor: float) -> None:
         (
             "displacement_x",
             "displacement_x.png",
-            f"Горизонтальное перемещение u_x, {LENGTH_UNIT_LABEL}",
+            f"Горизонтальное перемещение uₓ, {LENGTH_UNIT_LABEL}",
             "coolwarm",
             1.0,
             False,
@@ -1793,13 +2145,13 @@ def save_case_plots(case: dict[str, Any], warp_factor: float) -> None:
         (
             "displacement_y",
             "displacement_y.png",
-            f"Вертикальное перемещение u_y, {LENGTH_UNIT_LABEL}",
+            f"Вертикальное перемещение uᵧ, {LENGTH_UNIT_LABEL}",
             "coolwarm",
             1.0,
             False,
         ),
         ("sigma_yy", "sigma_yy.png", f"Напряжение σ_yy, {STRESS_UNIT_LABEL}", "coolwarm", STRESS_TO_MPA, False),
-        ("von_mises_stress", "von_mises_stress.png", f"Эквивалентное напряжение Мизеса, {STRESS_UNIT_LABEL}", "plasma", STRESS_TO_MPA, False),
+        ("von_mises_stress", "von_mises_stress.png", f"Поле эквивалентных напряжений по Мизесу, {STRESS_UNIT_LABEL}", "plasma", STRESS_TO_MPA, False),
         (
             "reaction_force_magnitude",
             "reaction_force_magnitude.png",
@@ -1901,6 +2253,7 @@ def save_ring_specific_plots(case: dict[str, Any]) -> None:
     save_ring_radial_profiles(case, ring_metadata)
     save_inner_boundary_reaction_profile(case, ring_metadata)
     save_contact_patch_profiles(case, ring_metadata)
+    save_outer_boundary_contact_pressure_profile(case, ring_metadata)
 
 
 def build_summary_plot(cases: list[dict[str, Any]], output_root: Path, output_name: str) -> bool:
@@ -1999,7 +2352,7 @@ def build_summary_plot(cases: list[dict[str, Any]], output_root: Path, output_na
     )
 
     fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.88))
-    fig.savefig(output_root / output_name, dpi=180)
+    fig.savefig(output_root / output_name, dpi=OUTPUT_DPI)
     plt.close(fig)
     return True
 
@@ -2136,7 +2489,7 @@ def build_contact_summary_plot(cases: list[dict[str, Any]], output_root: Path) -
     )
 
     fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.88))
-    fig.savefig(output_root / "summary_contact_metrics.png", dpi=180)
+    fig.savefig(output_root / "summary_contact_metrics.png", dpi=OUTPUT_DPI)
     plt.close(fig)
 
     write_rows_csv(
@@ -2298,7 +2651,7 @@ def build_method_comparison_plot(cases: list[dict[str, Any]], output_root: Path)
     )
 
     fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.88))
-    fig.savefig(output_root / "method_comparison_metrics.png", dpi=180)
+    fig.savefig(output_root / "method_comparison_metrics.png", dpi=OUTPUT_DPI)
     plt.close(fig)
 
     write_rows_csv(
@@ -2364,6 +2717,8 @@ def main() -> int:
         print(f"Saved contact summary plots to {common_root / 'summary_contact_metrics.png'}")
     if build_method_comparison_plot(loaded_cases, common_root):
         print(f"Saved method comparison plots to {common_root / 'method_comparison_metrics.png'}")
+    if save_illustrative_contact_mesh_plots(loaded_cases, common_root):
+        print(f"Saved illustrative contact mesh plots to {common_root}")
     return 0
 
 
